@@ -13,11 +13,11 @@ class RolController extends Controller
      */
     public function index()
     {
-        $rols = Rol::where('is_deleted', false)
+        $rols = Rol::active() // Usando un scope local
                  ->orderBy('nombre')
-                 ->get();
-        
-        return view('rols.index', compact('rols')); // Usando 'rols' para coincidir con tu tabla
+                 ->paginate(10); // Agregado paginación
+                
+        return view('rols.index', compact('rols'));
     }
 
     /**
@@ -34,7 +34,7 @@ class RolController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre' => 'required|string|max:45|unique:rols,nombre', // Tabla 'rols'
+            'nombre' => 'required|string|max:45|unique:rols,nombre',
             'status' => 'sometimes|boolean'
         ]);
 
@@ -44,7 +44,7 @@ class RolController extends Controller
                 'status' => $validated['status'] ?? true,
                 'create_date' => now(),
                 'last_update' => now(),
-                'is_deleted' => false
+                // is_deleted no es necesario, por defecto es false
             ]);
 
             return redirect()->route('rols.index')
@@ -61,9 +61,7 @@ class RolController extends Controller
      */
     public function show($id)
     {
-        $rol = Rol::where('is_deleted', false)
-               ->findOrFail($id);
-               
+        $rol = Rol::active()->findOrFail($id);
         return view('rols.show', compact('rol'));
     }
 
@@ -72,9 +70,7 @@ class RolController extends Controller
      */
     public function edit($id)
     {
-        $rol = Rol::where('is_deleted', false)
-               ->findOrFail($id);
-               
+        $rol = Rol::active()->findOrFail($id);
         return view('rols.edit', compact('rol'));
     }
 
@@ -83,11 +79,10 @@ class RolController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $rol = Rol::where('is_deleted', false)
-               ->findOrFail($id);
+        $rol = Rol::active()->findOrFail($id);
 
         $validated = $request->validate([
-            'nombre' => 'required|string|max:45|unique:rols,nombre,'.$rol->id_roles.',id_roles', // Tabla 'rols'
+            'nombre' => 'required|string|max:45|unique:rols,nombre,'.$rol->id_roles.',id_roles',
             'status' => 'required|boolean'
         ]);
 

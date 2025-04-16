@@ -36,7 +36,13 @@
                     <tr>
                         <td>{{ $rol->id_roles }}</td>
                         <td>{{ $rol->nombre }}</td>
-                        <td>{{ $rol->create_date->format('d/m/Y H:i') }}</td>
+                        <td>
+                            @if($rol->create_date)
+                                {{ \Carbon\Carbon::parse($rol->create_date)->format('d/m/Y H:i') }}
+                            @else
+                                Fecha no disponible
+                            @endif
+                        </td>
                         <td>
                             <a href="{{ route('rols.edit', $rol->id_roles) }}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-edit"></i>
