@@ -4,19 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes; // Añadir este import
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Rol extends Model
 {
-    use HasFactory, SoftDeletes; // Añadir SoftDeletes
+    use HasFactory, SoftDeletes;
 
     protected $table = 'rols';
     protected $primaryKey = 'id_roles';
-    public $timestamps = true; // Esto es redundante, es el valor por defecto
+    public $timestamps = true;
 
     protected $fillable = [
         'nombre',
-        'status',  // Agregado para que sea asignable en masa
+        'status',
         'is_deleted'
     ];
 
@@ -31,6 +31,12 @@ class Rol extends Model
         'deleted_at'
     ];
 
+    // Cambiar el nombre del scope de active() a activos() para consistencia
+    public function scopeActivos($query)
+    {
+        return $query->where('status', true)
+                    ->where('is_deleted', false);
+    }
 
     protected static function boot()
     {
@@ -50,13 +56,5 @@ class Rol extends Model
                 $model->save();
             }
         });
-    }
-
-    /**
-     * Scope para roles no eliminados
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_deleted', false);
     }
 }
