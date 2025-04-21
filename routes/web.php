@@ -6,6 +6,7 @@ use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\EstadoController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\TiendaController;
+use App\Http\Controllers\UsuarioController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -62,4 +63,20 @@ Route::prefix('tiendas')->group(function () {
     Route::get('/{id}/edit', [TiendaController::class, 'edit'])->name('tiendas.edit');
     Route::put('/{id}', [TiendaController::class, 'update'])->name('tiendas.update');
     Route::delete('/{id}', [TiendaController::class, 'destroy'])->name('tiendas.destroy');
+});
+
+
+Route::prefix('usuarios')->group(function () {
+    // Rutas adicionales para búsqueda (DEBEN IR ANTES de las rutas con parámetros)
+    Route::get('/buscar-personal', [UsuarioController::class, 'buscarPersonal'])->name('usuarios.buscarPersonal');
+    Route::get('/get-personal-data/{id}', [UsuarioController::class, 'getPersonalData'])->name('usuarios.getPersonalData');
+
+    // Rutas principales
+    Route::get('/', [UsuarioController::class, 'index'])->name('usuarios.index');
+    Route::get('/create', [UsuarioController::class, 'create'])->name('usuarios.create');
+    Route::post('/', [UsuarioController::class, 'store'])->name('usuarios.store');
+    Route::get('/{id}', [UsuarioController::class, 'show'])->name('usuarios.show');
+    Route::get('/{id}/edit', [UsuarioController::class, 'edit'])->name('usuarios.edit');
+    Route::put('/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
+    Route::delete('/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
 });
