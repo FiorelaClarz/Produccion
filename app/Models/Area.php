@@ -11,7 +11,7 @@ class Area extends Model
     
     protected $table = 'areas';
     protected $primaryKey = 'id_areas';
-    public $timestamps = false; // Deshabilitar timestamps automáticos
+    public $timestamps = false;
     
     protected $fillable = [
         'nombre',
@@ -29,6 +29,13 @@ class Area extends Model
         'status' => 'boolean',
         'is_deleted' => 'boolean'
     ];
+
+    // Añadir scope activos
+    public function scopeActivos($query)
+    {
+        return $query->where('status', true)
+                    ->where('is_deleted', false);
+    }
 
     protected static function boot()
     {
@@ -57,7 +64,7 @@ class Area extends Model
                 'last_update' => now()->toDateString(),
                 'updated_at_datetime' => now()
             ]);
-            return false; // Evitar eliminación real
+            return false;
         });
     }
 }
