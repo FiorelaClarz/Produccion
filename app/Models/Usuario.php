@@ -117,6 +117,11 @@ class Usuario extends Model
     public function scopeActivos($query)
     {
         return $query->where('status', true)
-                    ->where('is_deleted', false);
+            ->where('is_deleted', false);
+    }
+
+    public function scopeNoEliminados($query)
+    {
+        return $query->where('is_deleted', false);
     }
 }
