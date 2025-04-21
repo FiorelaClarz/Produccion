@@ -31,6 +31,13 @@ class Tienda extends Model
         'deleted_at' => 'datetime'
     ];
 
+    // Añadir scope activos
+    public function scopeActivos($query)
+    {
+        return $query->where('status', true)
+                    ->where('is_deleted', false);
+    }
+
     protected static function boot()
     {
         parent::boot();
