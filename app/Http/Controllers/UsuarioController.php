@@ -15,6 +15,7 @@ class UsuarioController extends Controller
     public function index()
     {
         $usuarios = Usuario::with(['tienda', 'area', 'rol'])
+            ->where('is_deleted', false) // Solo usuarios no eliminados
             ->orderBy('status', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -104,7 +105,7 @@ class UsuarioController extends Controller
         $usuario->update([
             'status' => false,
             'is_deleted' => true,
-            'deleted_at' => now(),
+            'deleted_at' => now()->timezone(config('app.timezone')),
         ]);
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario desactivado exitosamente');
@@ -118,7 +119,7 @@ class UsuarioController extends Controller
             return response()->json([]);
         }
 
-        \Log::info("Iniciando búsqueda para: " . $term); // Debug
+        // \Log::info("Iniciando búsqueda para: " . $term); // Debug
 
         try {
             $results = PersonalApi::select(
