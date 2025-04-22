@@ -34,8 +34,14 @@ class UsuarioController extends Controller
 
     public function store(Request $request)
     {
+
+        //         \Log::debug('Datos recibidos en store:', $request->all());
+        // dd($request->all()); // Esto detendrá la ejecución y mostrará los datos
+
+
         $request->validate([
             'nombre_personal' => 'required',
+            'dni_personal' => 'required|exists:personal_api,dni_personal', // Validar que sean 8 dígitos
             'clave' => 'required|min:8|confirmed',
             'id_roles' => 'required|exists:rols,id_roles',
             'id_tiendas_api' => 'required|exists:tiendas,id_tiendas',
@@ -46,9 +52,12 @@ class UsuarioController extends Controller
             DB::beginTransaction();
 
             $personal = PersonalApi::where('nombre', $request->nombre_personal)->firstOrFail();
+            // Buscar por DNI en lugar de nombre para mayor precisión tal vez??
+            // $personal = PersonalApi::where('dni_personal', $request->dni_personal)->firstOrFail();
 
             $usuario = Usuario::create([
                 'nombre_personal' => $request->nombre_personal,
+                'dni_personal' => $request->dni_personal, // Guardar DNI
                 'id_personal_api' => $personal->id_personal_api,
                 'clave' => $request->clave,
                 'id_tiendas_api' => $request->id_tiendas_api,
@@ -56,11 +65,12 @@ class UsuarioController extends Controller
                 'id_roles' => $request->id_roles,
                 'status' => true,
                 'is_deleted' => false,
-                'create_date' => now(),
+                'created_at' => now()->timezone(config('app.timezone')), // Usar created_at en lugar de create_date
+                'updated_at' => now()->timezone(config('app.timezone')), // Usar updated_at en lugar de last_update
             ]);
 
             DB::commit();
-
+            // \Log::info('Usuario creado exitosamente', ['usuario_id' => $usuario->id_usuarios]);
             return redirect()->route('usuarios.index')->with('success', 'Usuario creado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -101,14 +111,25 @@ class UsuarioController extends Controller
 
     public function destroy($id)
     {
-        $usuario = Usuario::findOrFail($id);
-        $usuario->update([
-            'status' => false,
-            'is_deleted' => true,
-            'deleted_at' => now()->timezone(config('app.timezone')),
-        ]);
+        try {
+            DB::beginTransaction();
 
-        return redirect()->route('usuarios.index')->with('success', 'Usuario desactivado exitosamente');
+            $usuario = Usuario::findOrFail($id);
+            
+            $usuario->update([
+                'status' => false,
+                'is_deleted' => true,
+                'deleted_at' => now()->timezone(config('app.timezone')),
+            ]);
+            $usuario->delete();
+            DB::commit();
+
+            return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado exitosamente');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
+        }
     }
 
     public function buscarPersonal(Request $request)
@@ -119,12 +140,11 @@ class UsuarioController extends Controller
             return response()->json([]);
         }
 
-        // \Log::info("Iniciando búsqueda para: " . $term); // Debug
-
         try {
             $results = PersonalApi::select(
                 'id_personal_api as id',
                 'nombre',
+                'dni_personal',
                 'id_tiendas_api',
                 'id_areas'
             )
@@ -134,6 +154,7 @@ class UsuarioController extends Controller
                 ])
                 ->where(function ($query) use ($term) {
                     $query->where('nombre', 'ILIKE', "%{$term}%")
+                        ->orWhere('dni_personal', 'ILIKE', "%{$term}%")
                         ->orWhere('codigo_personal', 'ILIKE', "%{$term}%");
                 })
                 ->limit(10)
@@ -141,8 +162,9 @@ class UsuarioController extends Controller
                 ->map(function ($item) {
                     return [
                         'id' => $item->id,
-                        'text' => $item->nombre, // Mantenemos 'text' para compatibilidad
+                        'text' => $item->nombre,
                         'nombre' => $item->nombre,
+                        'dni_personal' => $item->dni_personal, // Agregar este campo
                         'tienda' => optional($item->tienda)->nombre ?? 'Sin tienda',
                         'tienda_id' => $item->id_tiendas_api,
                         'area' => optional($item->area)->nombre ?? 'Sin área',
@@ -150,11 +172,8 @@ class UsuarioController extends Controller
                     ];
                 });
 
-            // \Log::debug('Resultados encontrados:', $results->toArray()); // Debug
-
             return response()->json($results);
         } catch (\Exception $e) {
-            // \Log::error("Error en buscarPersonal: " . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -167,6 +186,7 @@ class UsuarioController extends Controller
             return response()->json([
                 'id_personal_api' => $personal->id_personal_api,
                 'nombre' => $personal->nombre,
+                'dni_personal' => $personal->dni_personal,
                 'id_areas' => $personal->id_areas,
                 'area_nombre' => $personal->area->nombre ?? 'N/A',
                 'id_tiendas_api' => $personal->id_tiendas_api,
