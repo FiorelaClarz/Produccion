@@ -15,12 +15,12 @@ return new class extends Migration
     {
         Schema::create('rols', function (Blueprint $table) {
             $table->id('id_roles');
-            $table->string('nombre', 45);
-            $table->date('create_date')->nullable();
-            $table->date('last_update')->nullable();
+            $table->string('nombre', 45);            
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->nullable()->useCurrentOnUpdate();            
             $table->boolean('status')->default(true);
             $table->boolean('is_deleted')->default(false);
-            $table->timestamps();
+            // $table->timestamps();
         });
     }
     /**
