@@ -49,7 +49,10 @@ class TurnoController extends Controller
      */
     public function show(string $id)
     {
-        $turno = Turno::findOrFail($id);
+        $turno = Turno::where('id_turnos', $id)
+            ->where('is_deleted', false)
+            ->firstOrFail();
+
         return view('turnos.show', compact('turno'));
     }
 
