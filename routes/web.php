@@ -31,4 +31,5 @@ Route::prefix('turnos')->group(function () {
     Route::get('/{id}/edit', [TurnoController::class, 'edit'])->name('turnos.edit');
     Route::put('/{id}', [TurnoController::class, 'update'])->name('turnos.update');
     Route::delete('/{id}', [TurnoController::class, 'destroy'])->name('turnos.destroy');
+    Route::get('/{id}', [TurnoController::class, 'show'])->name('turnos.show');
 });
