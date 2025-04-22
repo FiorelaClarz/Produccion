@@ -4,19 +4,25 @@ namespace App\Http\Controllers;
 
 use App\Models\Rol;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class RolController extends Controller
 {
     /**
-     * Listar todos los roles activos
+     * Listar todos los roles activos no eliminados
      */
     public function index()
     {
-        $rols = Rol::active() // Usando un scope local
-                 ->orderBy('nombre')
-                 ->paginate(10); // Agregado paginación
-                
+
+
+        // Temporalmente para diagnóstico:
+        // dd($rols->toArray()); 
+
+        // Versión final (cuando funcione):
+        $rols = Rol::where('is_deleted', false)
+            ->orderBy('status', 'desc')
+            ->orderBy('nombre')
+            ->get();
+
         return view('rols.index', compact('rols'));
     }
 
@@ -39,30 +45,21 @@ class RolController extends Controller
         ]);
 
         try {
-            $rol = Rol::create([
+            Rol::create([
                 'nombre' => $validated['nombre'],
                 'status' => $validated['status'] ?? true,
-                'create_date' => now(),
-                'last_update' => now(),
-                // is_deleted no es necesario, por defecto es false
+                'created_at' => now()->timezone(config('app.timezone')),
+                'updated_at' => now()->timezone(config('app.timezone')),
+                'is_deleted' => false,
+
             ]);
 
             return redirect()->route('rols.index')
-                   ->with('success', 'Rol creado exitosamente');
-                   
+                ->with('success', 'Rol creado exitosamente');
         } catch (\Exception $e) {
             return back()->withInput()
-                   ->with('error', 'Error al crear rol: '.$e->getMessage());
+                ->with('error', 'Error al crear rol: ' . $e->getMessage());
         }
-    }
-
-    /**
-     * Mostrar detalles de un rol
-     */
-    public function show($id)
-    {
-        $rol = Rol::active()->findOrFail($id);
-        return view('rols.show', compact('rol'));
     }
 
     /**
@@ -70,7 +67,9 @@ class RolController extends Controller
      */
     public function edit($id)
     {
-        $rol = Rol::active()->findOrFail($id);
+        $rol = Rol::where('is_deleted', false)
+            ->findOrFail($id);
+
         return view('rols.edit', compact('rol'));
     }
 
@@ -79,47 +78,49 @@ class RolController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $rol = Rol::active()->findOrFail($id);
+        $rol = Rol::where('is_deleted', false)
+            ->findOrFail($id);
 
         $validated = $request->validate([
-            'nombre' => 'required|string|max:45|unique:rols,nombre,'.$rol->id_roles.',id_roles',
-            'status' => 'required|boolean'
+            'nombre' => 'required|string|max:45|unique:rols,nombre,' . $rol->id_roles . ',id_roles',
+            'status' => 'sometimes|boolean'
         ]);
 
         try {
             $rol->update([
                 'nombre' => $validated['nombre'],
-                'status' => $validated['status'],
-                'last_update' => now()
+                'status' => $request->has('status'), // true si está marcado, false si no
+                'updated_at' => now()->timezone(config('app.timezone'))
             ]);
 
             return redirect()->route('rols.index')
-                   ->with('success', 'Rol actualizado exitosamente');
-                   
+                ->with('success', 'Rol actualizado exitosamente');
         } catch (\Exception $e) {
             return back()->withInput()
-                   ->with('error', 'Error al actualizar rol: '.$e->getMessage());
+                ->with('error', 'Error al actualizar rol: ' . $e->getMessage());
         }
     }
 
     /**
-     * Eliminar rol (soft delete)
+     * Eliminar rol (marcar como eliminado)
      */
     public function destroy($id)
     {
-        $rol = Rol::findOrFail($id);
-
+        $rol = Rol::where('is_deleted', false)
+            ->findOrFail($id);
+        $rol->delete();
         try {
             $rol->update([
                 'is_deleted' => true,
-                'last_update' => now()
+                'status' => false,
+                'deleted_at' => now()->timezone(config('app.timezone')),
+                'updated_at' => now()->timezone(config('app.timezone'))
             ]);
 
             return redirect()->route('rols.index')
-                   ->with('success', 'Rol eliminado exitosamente');
-                   
+                ->with('success', 'Rol eliminado exitosamente');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error al eliminar rol: '.$e->getMessage());
+            return back()->with('error', 'Error al eliminar rol: ' . $e->getMessage());
         }
     }
 }
