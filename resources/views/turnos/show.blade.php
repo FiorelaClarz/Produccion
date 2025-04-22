@@ -2,22 +2,63 @@
 
 @section('content')
 <div class="container">
-    <h1>Detalle del Turno</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Detalles del Turno</h3>
+                </div>
 
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">ID: {{ $turno->id_turnos }}</h5>
-            <p class="card-text">
-                <strong>Nombre:</strong> {{ $turno->nombre }}<br>
-                <strong>Fecha Creación:</strong> {{ $turno->create_date }}<br>
-                <strong>Última Actualización:</strong> {{ $turno->last_update }}<br>
-                <strong>Estado:</strong> 
-                <span class="badge {{ $turno->status ? 'bg-success' : 'bg-secondary' }}">
-                    {{ $turno->status ? 'Activo' : 'Inactivo' }}
-                </span>
-            </p>
-            <a href="{{ route('turnos.edit', $turno->id_turnos) }}" class="btn btn-warning">Editar</a>
-            <a href="{{ route('turnos.index') }}" class="btn btn-secondary">Volver</a>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <label class="col-md-4 col-form-label text-md-end">ID:</label>
+                        <div class="col-md-6">
+                            <p class="form-control-plaintext">{{ $turno->id_turnos }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-md-4 col-form-label text-md-end">Nombre:</label>
+                        <div class="col-md-6">
+                            <p class="form-control-plaintext">{{ $turno->nombre }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-md-4 col-form-label text-md-end">Fecha de Creación:</label>
+                        <div class="col-md-6">
+                            <p class="form-control-plaintext">{{ $turno->create_date }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-md-4 col-form-label text-md-end">Última Actualización:</label>
+                        <div class="col-md-6">
+                            <p class="form-control-plaintext">{{ $turno->last_update }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-md-4 col-form-label text-md-end">Estado:</label>
+                        <div class="col-md-6">
+                            <span class="badge {{ $turno->status ? 'bg-success' : 'bg-secondary' }}">
+                                {{ $turno->status ? 'Activo' : 'Inactivo' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-0">
+                        <div class="col-md-8 offset-md-4">
+                            <a href="{{ route('turnos.edit', $turno->id_turnos) }}" class="btn btn-primary">
+                                Editar
+                            </a>
+                            <a href="{{ route('turnos.index') }}" class="btn btn-secondary">
+                                Volver al Listado
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
