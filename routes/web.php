@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\EstadoController;
+use App\Http\Controllers\AreaController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -42,4 +43,14 @@ Route::prefix('estados')->group(function () {
     Route::get('/{id}/edit', [EstadoController::class, 'edit'])->name('estados.edit');
     Route::put('/{id}', [EstadoController::class, 'update'])->name('estados.update');
     Route::delete('/{id}', [EstadoController::class, 'destroy'])->name('estados.destroy');
+});
+
+Route::prefix('areas')->group(function () {
+    Route::get('/', [AreaController::class, 'index'])->name('areas.index');
+    Route::get('/create', [AreaController::class, 'create'])->name('areas.create');
+    Route::post('/', [AreaController::class, 'store'])->name('areas.store');
+    Route::get('/{id}', [AreaController::class, 'show'])->name('areas.show'); // Esta es la ruta importante
+    Route::get('/{id}/edit', [AreaController::class, 'edit'])->name('areas.edit');
+    Route::put('/{id}', [AreaController::class, 'update'])->name('areas.update');
+    Route::delete('/{id}', [AreaController::class, 'destroy'])->name('areas.destroy');
 });
