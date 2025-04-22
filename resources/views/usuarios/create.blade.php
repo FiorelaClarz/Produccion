@@ -14,8 +14,12 @@
                 <div class="form-group row">
                     <label for="nombre_personal" class="col-md-3 col-form-label">Nombre del Personal</label>
                     <div class="col-md-9">
-                        <input type="text" class="form-control" id="nombre_personal" name="nombre_personal" required
+                        <input type="text" class="form-control @error('nombre_personal') is-invalid @enderror"
+                            id="nombre_personal" name="nombre_personal" required
                             placeholder="Buscar personal (escribe al menos 2 caracteres)..." autocomplete="off">
+                        @error('nombre_personal')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                         <div id="personalResults" class="list-group mt-1" style="display:none; position:absolute; z-index:1000; width:100%; max-height:300px; overflow-y:auto;"></div>
                         <input type="hidden" id="id_personal_api" name="id_personal_api">
                         <small class="form-text text-muted">Escribe al menos 2 caracteres para buscar</small>
@@ -25,26 +29,30 @@
                 <div class="form-group row">
                     <label for="dni_personal" class="col-md-3 col-form-label">DNI</label>
                     <div class="col-md-9">
-                        <input type="text" class="form-control" id="dni_personal" name="dni_personal"
-                            required readonly autocomplete="off">
+                        <input type="text" class="form-control @error('dni_personal') is-invalid @enderror"
+                            id="dni_personal" name="dni_personal" required readonly autocomplete="off">
                         @error('dni_personal')
-                        <span class="text-danger">{{ $message }}</span>
+                        <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                 </div>
-
-
                 <div class="form-group row">
                     <label class="col-md-3 col-form-label">Tienda</label>
                     <div class="col-md-9">
                         <div class="input-group">
-                            <input type="text" class="form-control" id="tienda_nombre" readonly>
+                            <input type="text" class="form-control @error('id_tiendas_api') is-invalid @enderror"
+                                id="tienda_nombre" readonly>
                             <input type="hidden" id="id_tiendas_api" name="id_tiendas_api">
                             <div class="input-group-append">
                                 <button type="button" class="btn btn-outline-secondary" id="cambiarTienda">Cambiar</button>
                             </div>
                         </div>
-                        <select class="form-control mt-2" id="tienda_select" name="tienda_select" style="display:none;">
+                        @error('id_tiendas_api')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <select class="form-control mt-2 @error('id_tiendas_api') is-invalid @enderror"
+                            id="tienda_select" name="tienda_select" style="display:none;">
+                            <option value="">Seleccione una tienda</option>
                             @foreach($tiendas as $tienda)
                             <option value="{{ $tienda->id_tiendas }}">{{ $tienda->nombre }}</option>
                             @endforeach
@@ -56,13 +64,19 @@
                     <label class="col-md-3 col-form-label">Área</label>
                     <div class="col-md-9">
                         <div class="input-group">
-                            <input type="text" class="form-control" id="area_nombre" readonly>
+                            <input type="text" class="form-control @error('id_areas') is-invalid @enderror"
+                                id="area_nombre" readonly>
                             <input type="hidden" id="id_areas" name="id_areas">
                             <div class="input-group-append">
                                 <button type="button" class="btn btn-outline-secondary" id="cambiarArea">Cambiar</button>
                             </div>
                         </div>
-                        <select class="form-control mt-2" id="area_select" name="area_select" style="display:none;">
+                        @error('id_areas')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <select class="form-control mt-2 @error('id_areas') is-invalid @enderror"
+                            id="area_select" name="area_select" style="display:none;">
+                            <option value="">Seleccione un área</option>
                             @foreach($areas as $area)
                             <option value="{{ $area->id_areas }}">{{ $area->nombre }}</option>
                             @endforeach
@@ -73,27 +87,56 @@
                 <div class="form-group row">
                     <label for="id_roles" class="col-md-3 col-form-label">Rol</label>
                     <div class="col-md-9">
-                        <select class="form-control" id="id_roles" name="id_roles" required>
+                        <select class="form-control @error('id_roles') is-invalid @enderror"
+                            id="id_roles" name="id_roles" required>
                             <option value="">Seleccione un rol</option>
                             @foreach($roles as $rol)
-                            <option value="{{ $rol->id_roles }}">{{ $rol->nombre }}</option>
+                            <option value="{{ $rol->id_roles }}" {{ old('id_roles') == $rol->id_roles ? 'selected' : '' }}>
+                                {{ $rol->nombre }}
+                            </option>
                             @endforeach
                         </select>
+                        @error('id_roles')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
 
                 <div class="form-group row">
                     <label for="clave" class="col-md-3 col-form-label">Contraseña</label>
                     <div class="col-md-9">
-                        <input type="password" class="form-control" id="clave" name="clave" required minlength="8">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="clave" name="clave" required minlength="8">
+                            <div class="input-group-append">
+                                <span class="input-group-text toggle-password" data-target="#clave">
+                                    <i class="fas fa-eye"></i>
+                                </span>
+                            </div>
+                        </div>
                         <small class="form-text text-muted">Mínimo 8 caracteres</small>
+                        @error('clave')
+                        <span class="text-danger">{{ $message }}</span>
+                        @enderror
                     </div>
                 </div>
 
                 <div class="form-group row">
                     <label for="clave_confirmation" class="col-md-3 col-form-label">Confirmar Contraseña</label>
                     <div class="col-md-9">
-                        <input type="password" class="form-control" id="clave_confirmation" name="clave_confirmation" required minlength="8">
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="clave_confirmation" name="clave_confirmation" required minlength="8">
+                            <div class="input-group-append">
+                                <span class="input-group-text toggle-password" data-target="#clave_confirmation">
+                                    <i class="fas fa-eye"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div id="password-match-error" class="text-danger" style="display:none;">
+                            Las contraseñas no coinciden
+                        </div>
+                        @error('clave_confirmation')
+                        <span class="text-danger">{{ $message }}</span>
+                        @enderror
                     </div>
                 </div>
 
@@ -238,6 +281,113 @@
             $('#id_areas').val(selected.val());
         });
     });
+
+
+    // Validación en tiempo real
+    function validateForm() {
+        let isValid = true;
+
+        // Validar nombre
+        if ($('#nombre_personal').val().trim() === '') {
+            $('#nombre_personal').addClass('is-invalid');
+            isValid = false;
+        } else {
+            $('#nombre_personal').removeClass('is-invalid');
+        }
+
+        // Validar DNI
+        if ($('#dni_personal').val().trim() === '') {
+            $('#dni_personal').addClass('is-invalid');
+            isValid = false;
+        } else {
+            $('#dni_personal').removeClass('is-invalid');
+        }
+
+        // Validar tienda
+        if ($('#id_tiendas_api').val() === '' || $('#id_tiendas_api').val() === null) {
+            $('#tienda_nombre').addClass('is-invalid');
+            isValid = false;
+        } else {
+            $('#tienda_nombre').removeClass('is-invalid');
+        }
+
+        // Validar área
+        if ($('#id_areas').val() === '' || $('#id_areas').val() === null) {
+            $('#area_nombre').addClass('is-invalid');
+            isValid = false;
+        } else {
+            $('#area_nombre').removeClass('is-invalid');
+        }
+
+        // Validar rol
+        if ($('#id_roles').val() === '') {
+            $('#id_roles').addClass('is-invalid');
+            isValid = false;
+        } else {
+            $('#id_roles').removeClass('is-invalid');
+        }
+
+        return isValid;
+    }
+
+    // Función para mostrar/ocultar contraseña
+    $(document).on('click', '.toggle-password', function() {
+        const target = $(this).data('target');
+        const input = $(target);
+        const icon = $(this).find('i');
+
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+
+    // Validación en tiempo real de coincidencia de contraseñas
+    $('#clave, #clave_confirmation').on('keyup', function() {
+        const password = $('#clave').val();
+        const confirmPassword = $('#clave_confirmation').val();
+        const errorDiv = $('#password-match-error');
+
+        if (password && confirmPassword && password !== confirmPassword) {
+            errorDiv.show();
+        } else {
+            errorDiv.hide();
+        }
+    });
+
+    // Validación antes de enviar el formulario
+    $('form').on('submit', function(e) {
+        const password = $('#clave').val();
+        const confirmPassword = $('#clave_confirmation').val();
+
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            $('#password-match-error').show();
+            $('html, body').animate({
+                scrollTop: $('#password-match-error').offset().top - 100
+            }, 500);
+        }
+    });
+
+
+    // Validar al enviar el formulario
+    $('form').on('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+            // Desplazarse al primer error
+            $('html, body').animate({
+                scrollTop: $('.is-invalid').first().offset().top - 100
+            }, 500);
+        }
+    });
+
+    // Validar al cambiar campos
+    $('#nombre_personal, #dni_personal, #id_tiendas_api, #id_areas, #id_roles').on('change input', function() {
+        validateForm();
+    });
 </script>
 <style>
     #personalResults {
@@ -269,6 +419,21 @@
 
     #personalResults .list-group-item:last-child {
         border-bottom: none;
+    }
+
+    .toggle-password {
+        cursor: pointer;
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        border-left: none;
+    }
+
+    .toggle-password:hover {
+        background-color: #e9ecef;
+    }
+
+    .input-group-text {
+        transition: all 0.3s;
     }
 </style>
 @endsection
