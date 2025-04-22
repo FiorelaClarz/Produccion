@@ -32,6 +32,7 @@ class Usuario extends Model
      */
     protected $fillable = [
         'nombre_personal',
+        'dni_personal', 
         'id_personal_api',
         'clave',
         'id_tiendas_api',
@@ -39,8 +40,6 @@ class Usuario extends Model
         'id_roles',
         'status',
         'is_deleted',
-        'create_date',
-        'last_update',
     ];
 
     /**
@@ -52,10 +51,12 @@ class Usuario extends Model
         'deleted_at',
         'created_at',
         'updated_at',
-        'create_date',
-        'last_update',
     ];
 
+    protected $casts = [
+        'status' => 'boolean',
+        'is_deleted' => 'boolean'
+    ];
     /**
      * The attributes that should be hidden for arrays.
      *
@@ -89,7 +90,7 @@ class Usuario extends Model
      */
     public function tienda()
     {
-        return $this->belongsTo(Tienda::class, 'id_tiendas_api');
+        return $this->belongsTo(Tienda::class, 'id_tiendas_api', 'id_tiendas');
     }
 
     /**
