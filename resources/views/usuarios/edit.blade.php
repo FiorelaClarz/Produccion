@@ -59,8 +59,6 @@
                 
 
                 
-
-
                 <div class="form-group row">
                     <label for="status" class="col-md-3 col-form-label">Estado</label>
                     <div class="col-md-9">
