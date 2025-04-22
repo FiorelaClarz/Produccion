@@ -43,9 +43,21 @@ class UsuarioController extends Controller
             'nombre_personal' => 'required',
             'dni_personal' => 'required|exists:personal_api,dni_personal', // Validar que sean 8 dígitos
             'clave' => 'required|min:8|confirmed',
+            'clave_confirmation' => 'required|min:8',
             'id_roles' => 'required|exists:rols,id_roles',
             'id_tiendas_api' => 'required|exists:tiendas,id_tiendas',
             'id_areas' => 'required|exists:areas,id_areas',
+        ], [
+            'nombre_personal.required' => 'El nombre del personal es obligatorio',
+            'dni_personal.required' => 'El DNI es obligatorio',
+            'dni_personal.size' => 'El DNI debe tener 8 caracteres',
+            'dni_personal.unique' => 'Este DNI ya está registrado',
+            'id_tiendas_api.required' => 'Debe seleccionar una tienda',
+            'id_areas.required' => 'Debe seleccionar un área',
+            'id_roles.required' => 'Debe seleccionar un rol',
+            'clave.required' => 'La contraseña es obligatoria',
+            'clave.min' => 'La contraseña debe tener al menos 8 caracteres',
+            'clave.confirmed' => 'Las contraseñas no coinciden',
         ]);
 
         try {
@@ -115,7 +127,7 @@ class UsuarioController extends Controller
             DB::beginTransaction();
 
             $usuario = Usuario::findOrFail($id);
-            
+
             $usuario->update([
                 'status' => false,
                 'is_deleted' => true,
@@ -127,7 +139,7 @@ class UsuarioController extends Controller
             return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return back()->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
         }
     }
