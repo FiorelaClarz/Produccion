@@ -16,11 +16,14 @@ return new class extends Migration
         Schema::create('tiendas', function (Blueprint $table) {
             $table->id('id_tiendas');
             $table->string('nombre', 45);
+            $table->dateTime('created_at_datetime')->nullable();
+            $table->dateTime('updated_at_datetime')->nullable();
+            $table->dateTime('deleted_at')->nullable();
+            $table->boolean('status')->default(true);
             $table->boolean('is_deleted')->default(false);
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      *
