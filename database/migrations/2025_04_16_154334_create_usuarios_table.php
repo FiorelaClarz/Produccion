@@ -15,7 +15,7 @@ return new class extends Migration
             // Columna principal
             $table->id('id_usuarios');
             
-            // Relaciones - especificando tipo exacto para coincidir con las tablas referenciadas
+            // Relaciones
             $table->unsignedBigInteger('id_personal_api');
             $table->unsignedBigInteger('id_tiendas_api');
             $table->unsignedBigInteger('id_areas');
@@ -30,32 +30,41 @@ return new class extends Migration
             $table->boolean('is_deleted')->default(false);
             $table->date('last_update')->nullable();
             
+            // Timestamps automáticos
             $table->timestamps();
             
-            // Claves foráneas CORREGIDAS (especificando columnas exactas)
+            // Claves foráneas
             $table->foreign('id_personal_api')
-                  ->references('id_personal_api')  // Columna en la tabla referenciada
+                  ->references('id_personal_api')
                   ->on('personal_api')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
                   
             $table->foreign('id_tiendas_api')
-                  ->references('id_tiendas')  // Columna en la tabla referenciada
+                  ->references('id_tiendas')
                   ->on('tiendas')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
                   
             $table->foreign('id_areas')
-                  ->references('id_areas')  // Columna en la tabla referenciada
+                  ->references('id_areas')
                   ->on('areas')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
                   
             $table->foreign('id_roles')
-                  ->references('id_roles')  // Columna en la tabla referenciada
+                  ->references('id_roles')
                   ->on('rols')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
+            
+            // Índices
+            $table->index('id_personal_api');
+            $table->index('id_tiendas_api');
+            $table->index('id_areas');
+            $table->index('id_roles');
+            $table->index('status');
+            $table->index('is_deleted');
         });
     }
 
@@ -65,11 +74,19 @@ return new class extends Migration
     public function down()
     {
         Schema::table('usuarios', function (Blueprint $table) {
-            // Eliminar claves foráneas en orden inverso
-            $table->dropForeign(['id_roles']);
-            $table->dropForeign(['id_areas']);
-            $table->dropForeign(['id_tiendas_api']);
+            // Eliminar claves foráneas
             $table->dropForeign(['id_personal_api']);
+            $table->dropForeign(['id_tiendas_api']);
+            $table->dropForeign(['id_areas']);
+            $table->dropForeign(['id_roles']);
+            
+            // Eliminar índices
+            $table->dropIndex(['id_personal_api']);
+            $table->dropIndex(['id_tiendas_api']);
+            $table->dropIndex(['id_areas']);
+            $table->dropIndex(['id_roles']);
+            $table->dropIndex(['status']);
+            $table->dropIndex(['is_deleted']);
         });
         
         Schema::dropIfExists('usuarios');
