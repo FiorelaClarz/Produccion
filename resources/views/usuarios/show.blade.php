@@ -20,21 +20,28 @@
                             <p class="form-control-plaintext">{{ $usuario->nombre_personal }}</p>
                         </div>
                     </div>
-                    
+
+                    <div class="form-group row">
+                        <label class="col-md-4 col-form-label">DNI:</label>
+                        <div class="col-md-8">
+                            <p class="form-control-plaintext">{{ $usuario->dni_personal }}</p>
+                        </div>
+                    </div>
+
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Tienda:</label>
                         <div class="col-md-8">
                             <p class="form-control-plaintext">{{ $usuario->tienda->nombre ?? 'N/A' }}</p>
                         </div>
                     </div>
-                    
+
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Área:</label>
                         <div class="col-md-8">
                             <p class="form-control-plaintext">{{ $usuario->area->nombre ?? 'N/A' }}</p>
                         </div>
                     </div>
-                    
+
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Rol:</label>
                         <div class="col-md-8">
@@ -42,33 +49,33 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="col-md-6">
                     <h5>Estado y Auditoría</h5>
                     <hr>
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Estado:</label>
                         <div class="col-md-8">
-                            <span class="badge badge-{{ $usuario->status ? 'success' : 'danger' }}">
+                            <span class="badge badge-{{ $usuario->status ? 'success' : 'danger' }}" style="color: black;">
                                 {{ $usuario->status ? 'Activo' : 'Inactivo' }}
                             </span>
                         </div>
                     </div>
-                    
+
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Fecha Creación:</label>
                         <div class="col-md-8">
                             <p class="form-control-plaintext">{{ $usuario->created_at->format('d/m/Y H:i') }}</p>
                         </div>
                     </div>
-                    
+
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Última Actualización:</label>
                         <div class="col-md-8">
                             <p class="form-control-plaintext">{{ $usuario->updated_at->format('d/m/Y H:i') }}</p>
                         </div>
                     </div>
-                    
+
                     <div class="form-group row">
                         <label class="col-md-4 col-form-label">Contraseña:</label>
                         <div class="col-md-8">
@@ -77,7 +84,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="row mt-4">
                 <div class="col-md-12 text-right">
                     <a href="{{ route('usuarios.edit', $usuario->id_usuarios) }}" class="btn btn-primary">
@@ -92,12 +99,12 @@
 
 @section('scripts')
 <script>
-$(document).ready(function() {
-    // Mostrar puntos según la longitud de la contraseña
-    $('.password-placeholder').each(function() {
-        const length = $(this).data('length');
-        $(this).text('•'.repeat(length));
+    $(document).ready(function() {
+        // Mostrar puntos según la longitud de la contraseña
+        $('.password-placeholder').each(function() {
+            const length = $(this).data('length');
+            $(this).text('•'.repeat(length));
+        });
     });
-});
 </script>
 @endsection

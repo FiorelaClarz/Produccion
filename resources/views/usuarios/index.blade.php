@@ -17,6 +17,7 @@
                     <thead class="thead-light">
                         <tr>
                             <th class="text-center">Nombre</th>
+                            <th class="text-center">DNI</th>
                             <th class="text-center">Tienda</th>
                             <th class="text-center">Área</th>
                             <th class="text-center">Rol</th>
@@ -31,6 +32,7 @@
                                 <div class="font-weight-bold">{{ $usuario->nombre_personal }}</div>
                                 <small class="text-muted">ID: {{ $usuario->id_usuarios }}</small>
                             </td>
+                            <td class="text-center">{{ $usuario->dni_personal }}</td>
                             <td class="text-center">{{ $usuario->tienda->nombre ?? 'N/A' }}</td>
                             <td class="text-center">{{ $usuario->area->nombre ?? 'N/A' }}</td>
                             <td class="text-center">{{ $usuario->rol->nombre ?? 'N/A' }}</td>
@@ -45,20 +47,16 @@
                                     <a href="{{ route('usuarios.show', $usuario->id_usuarios) }}" class="btn btn-info btn-sm" title="Ver">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @if(!$usuario->is_deleted)
                                     <a href="{{ route('usuarios.edit', $usuario->id_usuarios) }}" class="btn btn-primary btn-sm" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    @if($usuario->status)
                                     <form action="{{ route('usuarios.destroy', $usuario->id_usuarios) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm" title="Desactivar" onclick="return confirm('¿Estás seguro?')">
-                                            <i class="fas fa-ban"></i>
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Eliminar" onclick="return confirm('¿Estás seguro que deseas eliminar este usuario?')">
+                                            <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </form>
-                                    @endif
-                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -75,36 +73,58 @@
 <style>
     /* Colores para filas activas */
     .fila-activa-par {
-        background-color: #f0fdf4; /* Verde muy claro */
+        background-color: #f0fdf4;
+        /* Verde muy claro */
     }
+
     .fila-activa-impar {
-        background-color: #dcfce7; /* Verde claro */
+        background-color: #dcfce7;
+        /* Verde claro */
     }
-    
+
     /* Colores para filas inactivas */
     .fila-inactiva-par {
-        background-color: #fef2f2; /* Rojo muy claro */
+        background-color: #fef2f2;
+        /* Rojo muy claro */
     }
+
     .fila-inactiva-impar {
-        background-color: #fee2e2; /* Rojo claro */
+        background-color: #fee2e2;
+        /* Rojo claro */
     }
-    
+
     /* Efecto hover */
-    .fila-activa-par:hover, .fila-activa-impar:hover {
-        background-color: #bbf7d0; /* Verde más intenso */
+    .fila-activa-par:hover,
+    .fila-activa-impar:hover {
+        background-color: #bbf7d0;
+        /* Verde más intenso */
     }
-    .fila-inactiva-par:hover, .fila-inactiva-impar:hover {
-        background-color: #fecaca; /* Rojo más intenso */
+
+    .fila-inactiva-par:hover,
+    .fila-inactiva-impar:hover {
+        background-color: #fecaca;
+        /* Rojo más intenso */
     }
-    
+
     /* Estilo para el último registro */
     tr:last-child {
         border-left: 3px solid #ff9800;
     }
-    
+
     /* Texto negro para el estado */
-    .badge-success, .badge-danger {
+    .badge-success,
+    .badge-danger {
         color: #000 !important;
+    }
+
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
     }
 </style>
 @endsection

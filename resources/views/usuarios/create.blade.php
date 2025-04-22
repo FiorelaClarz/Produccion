@@ -10,6 +10,7 @@
             <form action="{{ route('usuarios.store') }}" method="POST" autocomplete="off">
                 @csrf
 
+
                 <div class="form-group row">
                     <label for="nombre_personal" class="col-md-3 col-form-label">Nombre del Personal</label>
                     <div class="col-md-9">
@@ -20,6 +21,18 @@
                         <small class="form-text text-muted">Escribe al menos 2 caracteres para buscar</small>
                     </div>
                 </div>
+
+                <div class="form-group row">
+                    <label for="dni_personal" class="col-md-3 col-form-label">DNI</label>
+                    <div class="col-md-9">
+                        <input type="text" class="form-control" id="dni_personal" name="dni_personal"
+                            required readonly autocomplete="off">
+                        @error('dni_personal')
+                        <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
 
                 <div class="form-group row">
                     <label class="col-md-3 col-form-label">Tienda</label>
@@ -116,6 +129,7 @@
                     <a href="#" class="list-group-item list-group-item-action personal-item"
                        data-id="${item.id}"
                        data-nombre="${item.nombre || item.text}"
+                       data-dni="${item.dni_personal}"
                        data-tienda-id="${item.tienda_id}"
                        data-tienda-nombre="${item.tienda}"
                        data-area-id="${item.area_id}"
@@ -183,6 +197,7 @@
             const $item = $(this);
 
             $('#nombre_personal').val($item.data('nombre'));
+            $('#dni_personal').val($item.data('dni'));
             $('#id_personal_api').val($item.data('id'));
             $('#tienda_nombre').val($item.data('tienda-nombre'));
             $('#id_tiendas_api').val($item.data('tienda-id'));
