@@ -5,15 +5,14 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\EstadoController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\TiendaController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Versión mejorada usando resource (más limpio y estándar)
-Route::resource('rols', RolController::class)->except(['show']); // Excluyo show si no lo usas
+Route::resource('rols', RolController::class)->except(['show']); // show no lo usa
 
-// O si prefieres mantener tu versión actual, corrige el nombre de ruta para create:
 Route::prefix('rols')->group(function () {
     Route::get('/', [RolController::class, 'index'])->name('rols.index');
     Route::get('/create', [RolController::class, 'create'])->name('rols.create'); // Cambiado de 'crear' a 'create'
@@ -53,4 +52,14 @@ Route::prefix('areas')->group(function () {
     Route::get('/{id}/edit', [AreaController::class, 'edit'])->name('areas.edit');
     Route::put('/{id}', [AreaController::class, 'update'])->name('areas.update');
     Route::delete('/{id}', [AreaController::class, 'destroy'])->name('areas.destroy');
+});
+
+Route::prefix('tiendas')->group(function () {
+    Route::get('/', [TiendaController::class, 'index'])->name('tiendas.index');
+    Route::get('/create', [TiendaController::class, 'create'])->name('tiendas.create');
+    Route::post('/', [TiendaController::class, 'store'])->name('tiendas.store');
+    Route::get('/{id}', [TiendaController::class, 'show'])->name('tiendas.show');
+    Route::get('/{id}/edit', [TiendaController::class, 'edit'])->name('tiendas.edit');
+    Route::put('/{id}', [TiendaController::class, 'update'])->name('tiendas.update');
+    Route::delete('/{id}', [TiendaController::class, 'destroy'])->name('tiendas.destroy');
 });
