@@ -65,6 +65,7 @@ return [
 
         'pgsql' => [
             'driver' => 'pgsql',
+            'timezone' => env('APP_TIMEZONE', 'UTC'),
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
