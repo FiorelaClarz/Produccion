@@ -16,7 +16,7 @@
         </div>
     @endif
 
-    @if($rols->isEmpty())
+    @if($rols->count() === 0)  
         <div class="alert alert-info">
             No hay roles registrados.
         </div>
@@ -28,19 +28,36 @@
                         <th>ID</th>
                         <th>Nombre</th>
                         <th>Fecha Creación</th>
+                        <th>Última Actualización</th>
+                        <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($rols as $rol)
-                    <tr>
+                    <tr class="{{ $rol->status ? '' : 'table-secondary' }}">
                         <td>{{ $rol->id_roles }}</td>
                         <td>{{ $rol->nombre }}</td>
                         <td>
-                            @if($rol->create_date)
-                                {{ \Carbon\Carbon::parse($rol->create_date)->format('d/m/Y H:i') }}
+                            @if($rol->created_at)
+                                {{ $rol->created_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
+                                <small class="text-muted">({{ config('app.timezone') }})</small>
                             @else
                                 Fecha no disponible
+                            @endif
+                        </td>
+                        <td>
+                            @if($rol->updated_at)
+                                {{ $rol->updated_at->timezone(config('app.timezone'))->format('d/m/Y H:i') }}
+                            @else
+                                Nunca actualizado
+                            @endif
+                        </td>
+                        <td>
+                            @if($rol->status)
+                                <span class="badge bg-success">Activo</span>
+                            @else
+                                <span class="badge bg-warning text-dark">Inactivo</span>
                             @endif
                         </td>
                         <td>
@@ -50,7 +67,8 @@
                             <form action="{{ route('rols.destroy', $rol->id_roles) }}" method="POST" class="d-inline">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">
+                                <button type="submit" class="btn btn-sm btn-danger" 
+                                        onclick="return confirm('¿Estás seguro de eliminar este rol?')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
