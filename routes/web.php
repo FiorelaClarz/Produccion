@@ -90,66 +90,88 @@ Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLog
 Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login']);
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
 
-// Ruta del dashboard (protegida por auth)
 Route::middleware(['auth'])->group(function () {
+    // Dashboard
     Route::get('/dashboard', function () {
-        // Verificar si el usuario es administrador
-        if (Auth::user()->id_roles != 1) {
-            return redirect('/')->with('error', 'No tienes permiso para acceder al dashboard');
-        }
-
-        // Obtener items del menú para administradores
-        $menuItems = [
-            [
-                'text' => 'Dashboard',
-                'route' => 'dashboard',
-                'icon' => 'fas fa-tachometer-alt',
-                'visible' => true
-            ],
-            [
-                'text' => 'Usuarios',
-                'route' => 'usuarios.index',
-                'icon' => 'fas fa-users',
-                'visible' => true
-            ],
-            [
-                'text' => 'Roles',
-                'route' => 'rols.index',
-                'icon' => 'fas fa-user-tag',
-                'visible' => true
-            ],
-            [
-                'text' => 'Turnos',
-                'route' => 'turnos.index',
-                'icon' => 'fas fa-calendar-alt',
-                'visible' => true
-            ],
-            [
-                'text' => 'Áreas',
-                'route' => 'areas.index',
-                'icon' => 'fas fa-map-marked-alt',
-                'visible' => true
-            ],
-            [
-                'text' => 'Tiendas',
-                'route' => 'tiendas.index',
-                'icon' => 'fas fa-store',
-                'visible' => true
-            ],
-            [
-                'text' => 'Estados',
-                'route' => 'estados.index',
-                'icon' => 'fas fa-info-circle',
-                'visible' => true
-            ]
-        ];
-
-        return view('dashboard', compact('menuItems'));
+        return view('dashboard');
     })->name('dashboard');
 
-    // Aquí puedes agregar el resto de tus rutas protegidas
-    Route::resource('usuarios', UsuarioController::class);
+    // Home para otros roles
+    Route::get('/home', function () {
+        return view('home');
+    })->name('home');
 
-    // Si necesitas la ruta de configuración, agrégala así:
-    // Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion');
+    // Rutas de recursos
+    Route::resource('usuarios', UsuarioController::class);
+    Route::resource('rols', RolController::class)->except(['show']);
+    Route::resource('turnos', TurnoController::class);
+    Route::resource('estados', EstadoController::class);
+    Route::resource('areas', AreaController::class);
+    Route::resource('tiendas', TiendaController::class);
+
+    // Elimina los grupos de prefijos ya que ahora usamos Route::resource
 });
+
+// Ruta del dashboard (protegida por auth)
+// Route::middleware(['auth'])->group(function () {
+//     Route::get('/dashboard', function () {
+//         // Verificar si el usuario es administrador
+//         if (Auth::user()->id_roles != 1) {
+//             return redirect('/')->with('error', 'No tienes permiso para acceder al dashboard');
+//         }
+
+//         // Obtener items del menú para administradores
+//         $menuItems = [
+//             [
+//                 'text' => 'Dashboard',
+//                 'route' => 'dashboard',
+//                 'icon' => 'fas fa-tachometer-alt',
+//                 'visible' => true
+//             ],
+//             [
+//                 'text' => 'Usuarios',
+//                 'route' => 'usuarios.index',
+//                 'icon' => 'fas fa-users',
+//                 'visible' => true
+//             ],
+//             [
+//                 'text' => 'Roles',
+//                 'route' => 'rols.index',
+//                 'icon' => 'fas fa-user-tag',
+//                 'visible' => true
+//             ],
+//             [
+//                 'text' => 'Turnos',
+//                 'route' => 'turnos.index',
+//                 'icon' => 'fas fa-calendar-alt',
+//                 'visible' => true
+//             ],
+//             [
+//                 'text' => 'Áreas',
+//                 'route' => 'areas.index',
+//                 'icon' => 'fas fa-map-marked-alt',
+//                 'visible' => true
+//             ],
+//             [
+//                 'text' => 'Tiendas',
+//                 'route' => 'tiendas.index',
+//                 'icon' => 'fas fa-store',
+//                 'visible' => true
+//             ],
+//             [
+//                 'text' => 'Estados',
+//                 'route' => 'estados.index',
+//                 'icon' => 'fas fa-info-circle',
+//                 'visible' => true
+//             ]
+//         ];
+
+//         return view('dashboard', compact('menuItems'));
+//     })->name('dashboard');
+
+//     // Aquí puedes agregar el resto de tus rutas protegidas
+//     Route::resource('usuarios', UsuarioController::class);
+
+//     // Si necesitas la ruta de configuración, agrégala así:
+//     // Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion');
+// });
