@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RecetaCabecera extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'recetas_cab';
     protected $primaryKey = 'id_recetas';
@@ -16,13 +17,13 @@ class RecetaCabecera extends Model
     protected $fillable = [
         'id_areas',
         'id_productos_api',
+        'id_u_medidas',
         'nombre',
-        'create_date',
-        'last_update',
         'status',
         'is_deleted',
         'cant_rendimiento',
-        'id_u_medidas'
+        'constante_crecimiento',
+        'constante_peso_lata'
     ];
 
     protected $casts = [
@@ -49,7 +50,7 @@ class RecetaCabecera extends Model
     }
 
     // Relación con RecetaDetalle
-    public function recetasDetalle()
+    public function detalles()
     {
         return $this->hasMany(RecetaDetalle::class, 'id_recetas_cab');
     }

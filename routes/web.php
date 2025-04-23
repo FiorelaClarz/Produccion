@@ -8,9 +8,16 @@ use App\Http\Controllers\AreaController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\UMedidaController;
+use App\Http\Controllers\RecetaController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
+
+
+
+use Illuminate\Http\Request; // Necesario para el Request
+use App\Models\Producto;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -70,7 +77,6 @@ Route::prefix('tiendas')->group(function () {
 
 
 
-// O si prefieres definirlas manualmente:
 Route::prefix('umedidas')->group(function () {
     Route::get('/', [UMedidaController::class, 'index'])->name('umedidas.index');
     Route::get('/create', [UMedidaController::class, 'create'])->name('umedidas.create');
@@ -120,70 +126,41 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('estados', EstadoController::class);
     Route::resource('areas', AreaController::class);
     Route::resource('tiendas', TiendaController::class);
-
-    // Elimina los grupos de prefijos ya que ahora usamos Route::resource
 });
 
-// Ruta del dashboard (protegida por auth)
-// Route::middleware(['auth'])->group(function () {
-//     Route::get('/dashboard', function () {
-//         // Verificar si el usuario es administrador
-//         if (Auth::user()->id_roles != 1) {
-//             return redirect('/')->with('error', 'No tienes permiso para acceder al dashboard');
-//         }
 
-//         // Obtener items del menú para administradores
-//         $menuItems = [
-//             [
-//                 'text' => 'Dashboard',
-//                 'route' => 'dashboard',
-//                 'icon' => 'fas fa-tachometer-alt',
-//                 'visible' => true
-//             ],
-//             [
-//                 'text' => 'Usuarios',
-//                 'route' => 'usuarios.index',
-//                 'icon' => 'fas fa-users',
-//                 'visible' => true
-//             ],
-//             [
-//                 'text' => 'Roles',
-//                 'route' => 'rols.index',
-//                 'icon' => 'fas fa-user-tag',
-//                 'visible' => true
-//             ],
-//             [
-//                 'text' => 'Turnos',
-//                 'route' => 'turnos.index',
-//                 'icon' => 'fas fa-calendar-alt',
-//                 'visible' => true
-//             ],
-//             [
-//                 'text' => 'Áreas',
-//                 'route' => 'areas.index',
-//                 'icon' => 'fas fa-map-marked-alt',
-//                 'visible' => true
-//             ],
-//             [
-//                 'text' => 'Tiendas',
-//                 'route' => 'tiendas.index',
-//                 'icon' => 'fas fa-store',
-//                 'visible' => true
-//             ],
-//             [
-//                 'text' => 'Estados',
-//                 'route' => 'estados.index',
-//                 'icon' => 'fas fa-info-circle',
-//                 'visible' => true
-//             ]
-//         ];
+Route::prefix('recetas')->group(function () {
+    Route::get('/', [RecetaController::class, 'index'])->name('recetas.index');
+    Route::get('/create', [RecetaController::class, 'create'])->name('recetas.create');
+    Route::post('/', [RecetaController::class, 'store'])->name('recetas.store');
+    
+    // Rutas AJAX primero
+    Route::get('/buscar-productos', [RecetaController::class, 'buscarProductos'])->name('recetas.buscarProductos');
+    Route::post('/agregar-ingrediente', [RecetaController::class, 'agregarIngrediente'])->name('recetas.agregarIngrediente');
+    
+    // Rutas con parámetros
+    Route::get('/{id}', [RecetaController::class, 'show'])->name('recetas.show');
+    Route::get('/{id}/edit', [RecetaController::class, 'edit'])->name('recetas.edit');
+    Route::put('/{id}', [RecetaController::class, 'update'])->name('recetas.update');
+    Route::delete('/{id}', [RecetaController::class, 'destroy'])->name('recetas.destroy');
+});
 
-//         return view('dashboard', compact('menuItems'));
-//     })->name('dashboard');
+// Route::get('/test-busqueda-productos', function (Request $request) {
+//     $term = $request->input('term', '');
 
-//     // Aquí puedes agregar el resto de tus rutas protegidas
-//     Route::resource('usuarios', UsuarioController::class);
+//     $productos = Producto::where('nombre', 'ILIKE', '%' . $term . '%')
+//         ->whereNull('deleted_at')
+//         ->take(5)
+//         ->get(['id_item as id', 'nombre as text', 'costo']);
 
-//     // Si necesitas la ruta de configuración, agrégala así:
-//     // Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion');
+//     return response()->json([
+//         'success' => true,
+//         'term' => $term,
+//         'count' => $productos->count(),
+//         'results' => $productos,
+//         'sql' => Producto::where('nombre', 'ILIKE', '%' . $term . '%')
+//             ->whereNull('deleted_at')
+//             ->take(5)
+//             ->toSql()
+//     ]);
 // });

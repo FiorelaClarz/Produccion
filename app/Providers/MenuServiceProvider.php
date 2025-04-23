@@ -81,6 +81,12 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'umedidas.index',
                 'icon' => 'fas fa-balance-scale',
                 'visible' => true
+            ],
+            [
+                'text' => 'Recetas',
+                'route' => 'recetas.index',
+                'icon' => 'fas fa-utensils', // Icono de recetas
+                'visible' => true
             ]
         ];
 

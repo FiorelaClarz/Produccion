@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class RecetaDetalle extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'recetas_det';
     protected $primaryKey = 'id_recetas_det';
@@ -18,15 +19,14 @@ class RecetaDetalle extends Model
         'id_productos_api',
         'nombre',
         'cantidad',
+        'cant_presentacion',
         'id_u_medidas',
         'costo_unitario',
-        'subtotal_receta',
-        'constante_crecimientoKg',
-        'constante_peso_lata'
+        'subtotal_receta'
     ];
 
     // Relación con RecetaCabecera
-    public function recetaCabecera()
+    public function cabecera()
     {
         return $this->belongsTo(RecetaCabecera::class, 'id_recetas_cab');
     }
