@@ -7,6 +7,7 @@ use App\Http\Controllers\EstadoController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\UMedidaController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
@@ -19,10 +20,9 @@ Route::resource('rols', RolController::class)->except(['show']); // show no lo u
 
 Route::prefix('rols')->group(function () {
     Route::get('/', [RolController::class, 'index'])->name('rols.index');
-    Route::get('/create', [RolController::class, 'create'])->name('rols.create'); // Cambiado de 'crear' a 'create'
+    Route::get('/create', [RolController::class, 'create'])->name('rols.create');
     Route::post('/', [RolController::class, 'store'])->name('rols.store');
-    Route::get('/{id}/edit', [RolController::class, 'edit'])->name('rols.edit'); // Cambiado de 'editar' a 'edit'
-    Route::put('/{id}', [RolController::class, 'update'])->name('rols.update');
+    Route::get('/{id}/edit', [RolController::class, 'edit'])->name('rols.edit');
     Route::delete('/{id}', [RolController::class, 'destroy'])->name('rols.destroy');
 });
 
@@ -68,6 +68,18 @@ Route::prefix('tiendas')->group(function () {
     Route::delete('/{id}', [TiendaController::class, 'destroy'])->name('tiendas.destroy');
 });
 
+
+
+// O si prefieres definirlas manualmente:
+Route::prefix('umedidas')->group(function () {
+    Route::get('/', [UMedidaController::class, 'index'])->name('umedidas.index');
+    Route::get('/create', [UMedidaController::class, 'create'])->name('umedidas.create');
+    Route::post('/', [UMedidaController::class, 'store'])->name('umedidas.store');
+    Route::get('/{id}', [UMedidaController::class, 'show'])->name('umedidas.show');
+    Route::get('/{id}/edit', [UMedidaController::class, 'edit'])->name('umedidas.edit');
+    Route::put('/{id}', [UMedidaController::class, 'update'])->name('umedidas.update');
+    Route::delete('/{id}', [UMedidaController::class, 'destroy'])->name('umedidas.destroy');
+});
 
 Route::prefix('usuarios')->group(function () {
     // Rutas adicionales para búsqueda (DEBEN IR ANTES de las rutas con parámetros)
