@@ -7,54 +7,9 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">Panel de Control - Administrador</h1>
-        <div class="btn-toolbar mb-2 mb-md-0">
-            <div class="btn-group me-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary">Compartir</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary">Exportar</button>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle">
-                <i class="fas fa-calendar-alt me-1"></i>
-                Esta semana
-            </button>
-        </div>
     </div>
 
     <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-user me-1"></i>
-                    Información del Administrador
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title">Bienvenido, {{ Auth::user()->nombre_personal }}</h5>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <p class="card-text">
-                                <strong><i class="fas fa-store me-1"></i> Tienda:</strong><br>
-                                {{ Auth::user()->tienda->nombre ?? 'N/A' }}
-                            </p>
-                        </div>
-                        <div class="col-md-4">
-                            <p class="card-text">
-                                <strong><i class="fas fa-building me-1"></i> Área:</strong><br>
-                                {{ Auth::user()->area->nombre ?? 'N/A' }}
-                            </p>
-                        </div>
-                        <div class="col-md-4">
-                            <p class="card-text">
-                                <strong><i class="fas fa-user-tag me-1"></i> Rol:</strong><br>
-                                {{ Auth::user()->rol->nombre ?? 'N/A' }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Widgets específicos para administradores -->
-    <div class="row mt-4">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-primary text-white">
