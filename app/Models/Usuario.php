@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+// use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Hash;
 
-class Usuario extends Model
+// class Usuario extends Model
+class Usuario extends Authenticatable
 {
     use HasFactory, SoftDeletes;
 
@@ -75,6 +77,15 @@ class Usuario extends Model
     public function setClaveAttribute($value)
     {
         $this->attributes['clave'] = Hash::make($value);
+    }
+
+    /**
+     * Get the password for the user.
+     * Laravel espera 'password' por defecto, pero nosotros usamos 'clave'
+     */
+    public function getAuthPassword()
+    {
+        return $this->clave;
     }
 
     /**
