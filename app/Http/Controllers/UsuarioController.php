@@ -35,13 +35,22 @@ class UsuarioController extends Controller
     public function store(Request $request)
     {
 
-        //         \Log::debug('Datos recibidos en store:', $request->all());
-        // dd($request->all()); // Esto detendrá la ejecución y mostrará los datos
-
-
         $request->validate([
             'nombre_personal' => 'required',
-            'dni_personal' => 'required|exists:personal_api,dni_personal', // Validar que sean 8 dígitos
+            'dni_personal' => [
+                'required',
+                'exists:personal_api,dni_personal',
+                function ($attribute, $value, $fail) {
+                    // Verificar si ya existe un usuario con este DNI
+                    $exists = Usuario::where('dni_personal', $value)
+                        ->where('is_deleted', false)
+                        ->exists();
+
+                    if ($exists) {
+                        $fail('Este DNI ya está registrado como usuario.');
+                    }
+                }
+            ],
             'clave' => 'required|min:8|confirmed',
             'clave_confirmation' => 'required|min:8',
             'id_roles' => 'required|exists:rols,id_roles',
@@ -64,8 +73,15 @@ class UsuarioController extends Controller
             DB::beginTransaction();
 
             $personal = PersonalApi::where('nombre', $request->nombre_personal)->firstOrFail();
-            // Buscar por DNI en lugar de nombre para mayor precisión tal vez??
-            // $personal = PersonalApi::where('dni_personal', $request->dni_personal)->firstOrFail();
+
+            // Verificar si ya existe un usuario con este id_personal_api
+            $usuarioExistente = Usuario::where('id_personal_api', $personal->id_personal_api)
+                ->where('is_deleted', false)
+                ->first();
+
+            if ($usuarioExistente) {
+                return back()->with('error', 'Este personal ya tiene un usuario asociado.')->withInput();
+            }
 
             $usuario = Usuario::create([
                 'nombre_personal' => $request->nombre_personal,
@@ -144,6 +160,7 @@ class UsuarioController extends Controller
         }
     }
 
+
     public function buscarPersonal(Request $request)
     {
         $term = $request->get('term', '');
@@ -153,6 +170,11 @@ class UsuarioController extends Controller
         }
 
         try {
+            // Obtener IDs de personal que ya tienen usuario
+            $personalConUsuario = Usuario::where('is_deleted', false)
+                ->pluck('id_personal_api')
+                ->toArray();
+
             $results = PersonalApi::select(
                 'id_personal_api as id',
                 'nombre',
@@ -164,6 +186,7 @@ class UsuarioController extends Controller
                     'tienda:id_tiendas,nombre',
                     'area:id_areas,nombre'
                 ])
+                ->whereNotIn('id_personal_api', $personalConUsuario) // Excluir personal con usuario existente
                 ->where(function ($query) use ($term) {
                     $query->where('nombre', 'ILIKE', "%{$term}%")
                         ->orWhere('dni_personal', 'ILIKE', "%{$term}%")
@@ -176,7 +199,7 @@ class UsuarioController extends Controller
                         'id' => $item->id,
                         'text' => $item->nombre,
                         'nombre' => $item->nombre,
-                        'dni_personal' => $item->dni_personal, // Agregar este campo
+                        'dni_personal' => $item->dni_personal,
                         'tienda' => optional($item->tienda)->nombre ?? 'Sin tienda',
                         'tienda_id' => $item->id_tiendas_api,
                         'area' => optional($item->area)->nombre ?? 'Sin área',
@@ -189,6 +212,52 @@ class UsuarioController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    // public function buscarPersonal(Request $request)
+    // {
+    //     $term = $request->get('term', '');
+
+    //     if (strlen($term) < 2) {
+    //         return response()->json([]);
+    //     }
+
+    //     try {
+    //         $results = PersonalApi::select(
+    //             'id_personal_api as id',
+    //             'nombre',
+    //             'dni_personal',
+    //             'id_tiendas_api',
+    //             'id_areas'
+    //         )
+    //             ->with([
+    //                 'tienda:id_tiendas,nombre',
+    //                 'area:id_areas,nombre'
+    //             ])
+    //             ->where(function ($query) use ($term) {
+    //                 $query->where('nombre', 'ILIKE', "%{$term}%")
+    //                     ->orWhere('dni_personal', 'ILIKE', "%{$term}%")
+    //                     ->orWhere('codigo_personal', 'ILIKE', "%{$term}%");
+    //             })
+    //             ->limit(10)
+    //             ->get()
+    //             ->map(function ($item) {
+    //                 return [
+    //                     'id' => $item->id,
+    //                     'text' => $item->nombre,
+    //                     'nombre' => $item->nombre,
+    //                     'dni_personal' => $item->dni_personal, // Agregar este campo
+    //                     'tienda' => optional($item->tienda)->nombre ?? 'Sin tienda',
+    //                     'tienda_id' => $item->id_tiendas_api,
+    //                     'area' => optional($item->area)->nombre ?? 'Sin área',
+    //                     'area_id' => $item->id_areas
+    //                 ];
+    //             });
+
+    //         return response()->json($results);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => $e->getMessage()], 500);
+    //     }
+    // }
 
     public function getPersonalData($id)
     {
@@ -211,5 +280,16 @@ class UsuarioController extends Controller
                 'success' => false
             ], 404);
         }
+    }
+
+    public function verificarPersonal(Request $request)
+    {
+        $id_personal = $request->get('id');
+
+        $tieneUsuario = Usuario::where('id_personal_api', $id_personal)
+            ->where('is_deleted', false)
+            ->exists();
+
+        return response()->json(['tiene_usuario' => $tieneUsuario]);
     }
 }
