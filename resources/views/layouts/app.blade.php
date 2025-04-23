@@ -55,6 +55,7 @@
                 position: relative;
                 top: 0;
             }
+
             .main-content {
                 margin-left: 0;
                 width: 100%;
@@ -140,27 +141,23 @@
         <div class="row">
             <!-- Sidebar -->
             @auth
-            @if(Auth::user()->id_roles == 1)
             <div class="d-none d-md-block sidebar bg-dark">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
-                        @isset($menuItems)
-                            @foreach($menuItems as $item)
-                                @if(($item['visible'] ?? false) && Route::has($item['route']))
-                                <li class="nav-item">
-                                    <a class="nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }}"
-                                        href="{{ route($item['route']) }}">
-                                        <i class="{{ $item['icon'] }} me-2"></i>
-                                        {{ $item['text'] }}
-                                    </a>
-                                </li>
-                                @endif
-                            @endforeach
-                        @endisset
+                        @foreach($menuItems as $item)
+                        @if($item['visible'] && Route::has($item['route']))
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }}"
+                                href="{{ route($item['route']) }}">
+                                <i class="{{ $item['icon'] }} me-2"></i>
+                                {{ $item['text'] }}
+                            </a>
+                        </li>
+                        @endif
+                        @endforeach
                     </ul>
                 </div>
             </div>
-            @endif
             @endauth
 
             <!-- Main content -->
@@ -176,4 +173,5 @@
     <!-- Scripts de la aplicación -->
     @yield('scripts')
 </body>
+
 </html>
