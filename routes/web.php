@@ -7,6 +7,9 @@ use App\Http\Controllers\EstadoController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\UsuarioController;
+// use App\Http\Controllers\Auth;
+use App\Http\Controllers\Auth\LoginController;
+use Illuminate\Support\Facades\Auth; // Agrega esta línea
 
 Route::get('/', function () {
     return view('welcome');
@@ -70,7 +73,7 @@ Route::prefix('usuarios')->group(function () {
     // Rutas adicionales para búsqueda (DEBEN IR ANTES de las rutas con parámetros)
     Route::get('/buscar-personal', [UsuarioController::class, 'buscarPersonal'])->name('usuarios.buscarPersonal');
     Route::get('/get-personal-data/{id}', [UsuarioController::class, 'getPersonalData'])->name('usuarios.getPersonalData');
-
+    Route::get('/usuarios/verificar-personal', [UsuarioController::class, 'verificarPersonal'])->name('usuarios.verificarPersonal');
     // Rutas principales
     Route::get('/', [UsuarioController::class, 'index'])->name('usuarios.index');
     Route::get('/create', [UsuarioController::class, 'create'])->name('usuarios.create');
@@ -79,4 +82,74 @@ Route::prefix('usuarios')->group(function () {
     Route::get('/{id}/edit', [UsuarioController::class, 'edit'])->name('usuarios.edit');
     Route::put('/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
     Route::delete('/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+});
+
+
+// Rutas de autenticación
+Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login']);
+Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
+
+// Ruta del dashboard (protegida por auth)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
+        // Verificar si el usuario es administrador
+        if (Auth::user()->id_roles != 1) {
+            return redirect('/')->with('error', 'No tienes permiso para acceder al dashboard');
+        }
+
+        // Obtener items del menú para administradores
+        $menuItems = [
+            [
+                'text' => 'Dashboard',
+                'route' => 'dashboard',
+                'icon' => 'fas fa-tachometer-alt',
+                'visible' => true
+            ],
+            [
+                'text' => 'Usuarios',
+                'route' => 'usuarios.index',
+                'icon' => 'fas fa-users',
+                'visible' => true
+            ],
+            [
+                'text' => 'Roles',
+                'route' => 'rols.index',
+                'icon' => 'fas fa-user-tag',
+                'visible' => true
+            ],
+            [
+                'text' => 'Turnos',
+                'route' => 'turnos.index',
+                'icon' => 'fas fa-calendar-alt',
+                'visible' => true
+            ],
+            [
+                'text' => 'Áreas',
+                'route' => 'areas.index',
+                'icon' => 'fas fa-map-marked-alt',
+                'visible' => true
+            ],
+            [
+                'text' => 'Tiendas',
+                'route' => 'tiendas.index',
+                'icon' => 'fas fa-store',
+                'visible' => true
+            ],
+            [
+                'text' => 'Estados',
+                'route' => 'estados.index',
+                'icon' => 'fas fa-info-circle',
+                'visible' => true
+            ]
+        ];
+
+        return view('dashboard', compact('menuItems'));
+    })->name('dashboard');
+
+    // Aquí puedes agregar el resto de tus rutas protegidas
+    Route::resource('usuarios', UsuarioController::class);
+
+    // Si necesitas la ruta de configuración, agrégala así:
+    // Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion');
 });
