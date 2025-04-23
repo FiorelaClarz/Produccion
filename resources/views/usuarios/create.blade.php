@@ -210,7 +210,13 @@
                 dataType: 'json',
                 success: function(data) {
                     console.log("Resultados:", data);
-                    showResults(data);
+                    if (data.length === 0) {
+                        $('#personalResults').html(
+                            '<div class="list-group-item text-muted">No se encontraron coincidencias o el personal ya tiene usuario</div>'
+                        ).show();
+                    } else {
+                        showResults(data);
+                    }
                 },
                 error: function(xhr, status, error) {
                     if (status !== 'abort') {
@@ -370,6 +376,37 @@
                 scrollTop: $('#password-match-error').offset().top - 100
             }, 500);
         }
+    });
+
+    // En el evento click del personal-item
+    $(document).on('click', '.personal-item', function(e) {
+        e.preventDefault();
+        const $item = $(this);
+
+        // Verificar si ya tiene usuario (esto es redundante porque el backend ya filtra, pero es buena práctica)
+        $.get('{{ route("usuarios.verificarPersonal") }}', {
+                id: $item.data('id')
+            })
+            .done(function(response) {
+                if (response.tiene_usuario) {
+                    alert('Este personal ya tiene un usuario asociado.');
+                    $('#personalResults').hide();
+                    $('#nombre_personal').val('').focus();
+                } else {
+                    $('#nombre_personal').val($item.data('nombre'));
+                    $('#dni_personal').val($item.data('dni'));
+                    $('#id_personal_api').val($item.data('id'));
+                    $('#tienda_nombre').val($item.data('tienda-nombre'));
+                    $('#id_tiendas_api').val($item.data('tienda-id'));
+                    $('#area_nombre').val($item.data('area-nombre'));
+                    $('#id_areas').val($item.data('area-id'));
+
+                    $('#personalResults').hide();
+                }
+            })
+            .fail(function() {
+                alert('Error al verificar el personal');
+            });
     });
 
 
