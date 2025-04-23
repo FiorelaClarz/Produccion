@@ -184,9 +184,9 @@ return [
         Illuminate\View\ViewServiceProvider::class,
 
         /*
-         * Package Service Providers...
+         * Package Service Providers...MENU
          */
-
+        App\Providers\MenuServiceProvider::class,
         /*
          * Application Service Providers...
          */
