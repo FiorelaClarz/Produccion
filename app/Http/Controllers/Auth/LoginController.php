@@ -40,33 +40,6 @@ class LoginController extends Controller
         return back()->withErrors([
             'clave' => 'Las credenciales proporcionadas no son correctas.',
         ])->withInput();
-
-        // Buscar el usuario primero para verificar si está activo
-        // $usuario = Usuario::where('dni_personal', $request->dni_personal)
-        //     ->where('is_deleted', false)
-        //     ->first();
-
-        // if (!$usuario) {
-        //     return back()->withErrors([
-        //         'dni_personal' => 'El DNI no está registrado o la cuenta ha sido eliminada.',
-        //     ]);
-        // }
-
-        // if (!$usuario->status) {
-        //     return back()->withErrors([
-        //         'dni_personal' => 'La cuenta está desactivada.',
-        //     ]);
-        // }
-
-        // if (Auth::attempt($credentials, $request->filled('remember'))) {
-        //     $request->session()->regenerate();
-
-        //     return redirect()->intended('dashboard');
-        // }
-
-        // return back()->withErrors([
-        //     'clave' => 'La contraseña proporcionada no es correcta.',
-        // ]);
     }
 
     public function logout(Request $request)
@@ -86,7 +59,7 @@ class LoginController extends Controller
 
         if ($user->id_roles == 1) { // Admin
             return '/admin/dashboard';
-        } elseif ($user->id_roles == 2) { // Supervisor
+        } elseif ($user->id_roles == 2) { // Gerencia
             return '/gerencia/dashboard';
         }
 
