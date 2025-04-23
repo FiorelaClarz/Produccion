@@ -75,6 +75,12 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'estados.index',
                 'icon' => 'fas fa-info-circle',
                 'visible' => true
+            ],
+            [
+                'text' => 'Unidades de medida',
+                'route' => 'umedidas.index',
+                'icon' => 'fas fa-balance-scale',
+                'visible' => true
             ]
         ];
 
