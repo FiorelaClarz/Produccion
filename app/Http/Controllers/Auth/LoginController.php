@@ -20,23 +20,28 @@ class LoginController extends Controller
             'dni_personal' => 'required|string',
             'clave' => 'required|string',
         ]);
-
+    
         $credentials = [
             'dni_personal' => $request->dni_personal,
-            'password' => $request->clave, // Laravel espera un campo 'password' por defecto
+            'password' => $request->clave,
         ];
-
+    
         if (Auth::attempt($credentials, $request->filled('remember'))) {
             $request->session()->regenerate();
-
+    
             // Redireccionar según el rol
-            if (Auth::user()->id_roles == 1) {
-                return redirect()->intended('dashboard');
-            } else {
-                return redirect('/')->with('success', 'Bienvenido');
+            switch (Auth::user()->id_roles) {
+                case 1: // Admin
+                    return redirect()->route('dashboard');
+                case 2: // Gerencia
+                    return redirect()->route('home');
+                case 3: // Rol 3
+                    return redirect()->route('home');
+                default:
+                    return redirect()->route('home');
             }
         }
-
+    
         return back()->withErrors([
             'clave' => 'Las credenciales proporcionadas no son correctas.',
         ])->withInput();
