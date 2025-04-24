@@ -11,54 +11,95 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="id_areas">Área</label>
-                    <select class="form-control" id="id_areas" name="id_areas" required>
+                    <select class="form-control @error('id_areas') is-invalid @enderror" id="id_areas" name="id_areas" required>
                         <option value="">Seleccione un área</option>
                         @foreach($areas as $area)
-                        <option value="{{ $area->id_areas }}">{{ $area->nombre }}</option>
+                        <option value="{{ $area->id_areas }}" {{ old('id_areas') == $area->id_areas ? 'selected' : '' }}>
+                            {{ $area->nombre }}
+                        </option>
                         @endforeach
                     </select>
+                    @error('id_areas')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <div class="form-group">
-                    <label for="producto_nombre">Producto</label>
-                    <input type="text" class="form-control" id="producto_nombre" placeholder="Buscar producto..." required>
-                    <input type="hidden" id="id_productos_api" name="id_productos_api">
-                    <div id="productoResults" class="list-group" style="display:none; position:absolute; z-index:1000; width:100%;"></div>
+                    <label for="producto_nombre">Producto Principal</label>
+                    <div class="position-relative">
+                        <input type="text" class="form-control @error('id_productos_api') is-invalid @enderror"
+                            id="producto_nombre" name="producto_nombre" placeholder="Buscar producto..."
+                            required autocomplete="off"
+                            value="{{ old('producto_nombre') }}">
+                        <input type="hidden" id="id_productos_api" name="id_productos_api" value="{{ old('id_productos_api') }}">
+                        @error('id_productos_api')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <div id="productoResults" class="list-group mt-1"
+                            style="display:none; position:absolute; z-index:1000; width:100%; max-height:300px; overflow-y:auto;"></div>
+                    </div>
+                    <small class="form-text text-muted">Escribe al menos 2 caracteres</small>
                 </div>
 
                 <div class="form-group">
                     <label for="nombre">Nombre Receta</label>
-                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                    <input type="text" class="form-control @error('nombre') is-invalid @enderror"
+                        id="nombre" name="nombre" required readonly
+                        value="{{ old('nombre') }}">
+                    @error('nombre')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
 
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="cant_rendimiento">Rendimiento</label>
-                    <input type="number" step="0.01" class="form-control" id="cant_rendimiento" name="cant_rendimiento" required>
+                    <input type="number" step="0.01" class="form-control @error('cant_rendimiento') is-invalid @enderror"
+                        id="cant_rendimiento" name="cant_rendimiento" required
+                        value="{{ old('cant_rendimiento') }}">
+                    @error('cant_rendimiento')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <div class="form-group">
                     <label for="id_u_medidas">Unidad de Medida</label>
-                    <select class="form-control" id="id_u_medidas" name="id_u_medidas" required>
+                    <select class="form-control @error('id_u_medidas') is-invalid @enderror"
+                        id="id_u_medidas" name="id_u_medidas" required>
                         <option value="">Seleccione una unidad</option>
                         @foreach($unidades as $unidad)
-                        <option value="{{ $unidad->id_u_medidas }}">{{ $unidad->nombre }}</option>
+                        <option value="{{ $unidad->id_u_medidas }}" {{ old('id_u_medidas') == $unidad->id_u_medidas ? 'selected' : '' }}>
+                            {{ $unidad->nombre }}
+                        </option>
                         @endforeach
                     </select>
+                    @error('id_u_medidas')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
 
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="constante_crecimiento">Constante Crecimiento</label>
-                            <input type="number" step="0.01" class="form-control" id="constante_crecimiento" name="constante_crecimiento" required>
+                            <input type="number" step="0.01" class="form-control @error('constante_crecimiento') is-invalid @enderror"
+                                id="constante_crecimiento" name="constante_crecimiento" required
+                                value="{{ old('constante_crecimiento') }}">
+                            @error('constante_crecimiento')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="constante_peso_lata">Constante Peso Lata</label>
-                            <input type="number" step="0.01" class="form-control" id="constante_peso_lata" name="constante_peso_lata" required>
+                            <input type="number" step="0.01" class="form-control @error('constante_peso_lata') is-invalid @enderror"
+                                id="constante_peso_lata" name="constante_peso_lata" required
+                                value="{{ old('constante_peso_lata') }}">
+                            @error('constante_peso_lata')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
                 </div>
@@ -69,25 +110,41 @@
 
         <h3>Ingredientes</h3>
 
+        <div class="alert alert-danger" id="ingredientesError" style="display:none;">
+            Debe agregar al menos un ingrediente
+        </div>
+
+        <div class="alert alert-danger" id="ingredienteDuplicadoError" style="display:none;">
+            Este producto ya ha sido agregado como ingrediente
+        </div>
+
         <div class="row mb-3">
             <div class="col-md-8">
                 <div class="form-group">
                     <label for="ingrediente_nombre">Producto Ingrediente</label>
-                    <input type="text" class="form-control" id="ingrediente_nombre" placeholder="Buscar producto ingrediente...">
-                    <input type="hidden" id="ingrediente_id">
-                    <div id="ingredienteResults" class="list-group" style="display:none; position:absolute; z-index:1000; width:100%;"></div>
+                    <div class="position-relative">
+                        <input type="text" class="form-control @error('ingredientes') is-invalid @enderror"
+                            id="ingrediente_nombre" placeholder="Buscar producto ingrediente..."
+                            autocomplete="off">
+                        <input type="hidden" id="ingrediente_id">
+                        <div id="ingredienteResults" class="list-group mt-1"
+                            style="display:none; position:absolute; z-index:1000; width:100%; max-height:300px; overflow-y:auto;"></div>
+                    </div>
+                    @error('ingredientes')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
             <div class="col-md-2">
                 <div class="form-group">
                     <label for="ingrediente_cantidad">Cantidad</label>
-                    <input type="number" step="0.01" class="form-control" id="ingrediente_cantidad">
+                    <input type="number" step="0.01" class="form-control" id="ingrediente_cantidad" min="0.01" value="1">
                 </div>
             </div>
             <div class="col-md-2">
                 <div class="form-group">
                     <label for="ingrediente_presentacion">Presentación</label>
-                    <input type="number" class="form-control" id="ingrediente_presentacion" value="1">
+                    <input type="number" class="form-control" id="ingrediente_presentacion" min="1" value="1">
                 </div>
             </div>
         </div>
@@ -137,7 +194,7 @@
             </table>
         </div>
 
-        <input type="hidden" name="ingredientes" id="ingredientesData">
+        <input type="hidden" name="ingredientes" id="ingredientesData" value="{{ old('ingredientes') }}">
 
         <div class="form-group">
             <button type="submit" class="btn btn-success">Guardar Receta</button>
@@ -150,275 +207,289 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Configuración AJAX global
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
-
-        // Función mejorada de búsqueda con mejor manejo de errores
-        function buscarProductos(inputElement, resultsContainer) {
-            const term = inputElement.val().trim();
-            console.log("[DEBUG] Iniciando búsqueda con término:", term);
-
-            // Limpiar resultados anteriores
-            resultsContainer.hide().empty();
-
-            if (term.length < 2) {
-                console.log("[DEBUG] Término demasiado corto, mínimo 2 caracteres");
-                return;
-            }
-
-            // Mostrar indicador de carga
-            resultsContainer.html(`
-            <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>Buscando productos...</span>
-                    <div class="spinner-border spinner-border-sm" role="status">
-                        <span class="sr-only">Cargando...</span>
+        // Buscador de producto principal
+        new BuscadorAjax({
+            inputSelector: '#producto_nombre',
+            resultsContainerSelector: '#productoResults',
+            endpoint: '{{ route("recetas.buscarProductos") }}',
+            minChars: 2,
+            template: (producto) => {
+                const costo = parseFloat(producto.costo) || 0;
+                return `
+                    <div class="d-flex justify-content-between">
+                        <span>${producto.text}</span>
+                        <small>${producto.codigo || 'N/A'}</small>
                     </div>
-                </div>
-            </div>
-        `).show();
-
-            // Realizar la petición AJAX
-            $.ajax({
-                url: '{{ route("recetas.buscarProductos") }}',
-                method: 'GET',
-                data: {
-                    term: term
-                },
-                dataType: 'json',
-                success: function(response) {
-                    console.log("[DEBUG] Respuesta recibida:", response);
-
-                    // Limpiar el contenedor
-                    resultsContainer.empty();
-
-                    if (!response || response.length === 0) {
-                        resultsContainer.html(`
-                        <div class="list-group-item text-muted">
-                            No se encontraron resultados para "${term}"
-                        </div>
-                    `).show();
-                        return;
-                    }
-
-                    // Construir HTML con los resultados
-                    let html = '';
-                    response.forEach(function(producto) {
-                        html += `
-                    <a href="#" class="list-group-item list-group-item-action product-item"
-                       data-id="${producto.id}"
-                       data-nombre="${producto.text}"
-                       data-costo="${producto.costo}">
-                       <div class="d-flex justify-content-between">
-                           <span><strong>${producto.text}</strong></span>
-                           <small class="text-muted">${producto.codigo || 'Sin código'}</small>
-                       </div>
-                       <small class="text-success">S/ ${producto.costo.toFixed(2)}</small>
-                    </a>`;
-                    });
-
-                    resultsContainer.html(html).show();
-                },
-                error: function(xhr, status, error) {
-                    console.error("[ERROR] En la búsqueda:", status, error);
-                    console.error("[ERROR] Respuesta completa:", xhr.responseText);
-
-                    resultsContainer.html(`
-                    <div class="list-group-item text-danger">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        Error al realizar la búsqueda
-                    </div>
-                `).show().delay(3000).fadeOut();
-                },
-                complete: function() {
-                    console.log("[DEBUG] Búsqueda completada");
-                }
-            });
-        }
-
-        // Eventos de búsqueda con debounce para mejor performance
-        let searchTimer;
-        $('#producto_nombre, #ingrediente_nombre').on('input', function() {
-            const input = $(this);
-            const resultsContainer = input.attr('id') === 'producto_nombre' ?
-                $('#productoResults') :
-                $('#ingredienteResults');
-
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                buscarProductos(input, resultsContainer);
-            }, 300);
-        });
-
-        // Selección de productos (común para ambos campos)
-        $(document).on('click', '#productoResults .product-item, #ingredienteResults .product-item', function(e) {
-            e.preventDefault();
-            const producto = {
-                id: $(this).data('id'),
-                nombre: $(this).data('nombre'),
-                costo: $(this).data('costo')
-            };
-
-            // Determinar si es producto principal o ingrediente
-            if ($(this).parent().attr('id') === 'productoResults') {
-                $('#producto_nombre').val(producto.nombre);
+                    <small>S/ ${costo.toFixed(2)}</small>
+                `;
+            },
+            onSelect: (producto) => {
+                $('#producto_nombre').val(producto.text);
                 $('#id_productos_api').val(producto.id);
-                $('#nombre').val(producto.nombre);
-                $('#productoResults').hide();
-            } else {
-                $('#ingrediente_nombre').val(producto.nombre);
-                $('#ingrediente_id').val(producto.id);
-                $('#ingredienteResults').hide();
+                $('#nombre').val(producto.text).prop('readonly', false);
+
+                // Verificar si ya existe receta
+                $.get('{{ route("recetas.verificarProducto") }}', {
+                    id_producto: producto.id,
+                    _token: '{{ csrf_token() }}'
+                }).done(response => {
+                    if (response.tiene_receta) {
+                        alert('Ya existe una receta para este producto');
+                        $('#producto_nombre').val('').focus();
+                        $('#id_productos_api').val('');
+                        $('#nombre').val('');
+                    }
+                }).fail(error => {
+                    console.error('Error verificando producto:', error);
+                });
             }
         });
 
-        // [Mantén el resto de tus funciones igual...]
-        // Limpiar campos ingrediente
+        // Buscador de ingredientes
+        new BuscadorAjax({
+            inputSelector: '#ingrediente_nombre',
+            resultsContainerSelector: '#ingredienteResults',
+            endpoint: '{{ route("recetas.buscarProductos") }}',
+            minChars: 2,
+            template: (producto) => {
+                const costo = parseFloat(producto.costo) || 0;
+                return `
+                    <div class="d-flex justify-content-between">
+                        <span>${producto.text}</span>
+                        <small>${producto.codigo || 'N/A'}</small>
+                    </div>
+                    <small>S/ ${costo.toFixed(2)}</small>
+                `;
+            },
+            onSelect: (producto) => {
+                $('#ingrediente_nombre').val(producto.text);
+                $('#ingrediente_id').val(producto.id);
+                
+                // Sugerir unidad de medida si es posible
+                if ($('#ingrediente_u_medida').val() === '') {
+                    const defaultUnidadId = '{{ $unidades->first()->id_u_medidas ?? "" }}';
+                    if (defaultUnidadId) {
+                        $('#ingrediente_u_medida').val(defaultUnidadId);
+                    }
+                }
+            }
+        });
+
+        // Variables globales para ingredientes
+        let ingredientes = [];
+        let totalSubtotal = 0;
+
+        // Limpiar campos de ingrediente
         $('#limpiarIngrediente').click(function() {
             $('#ingrediente_nombre').val('');
             $('#ingrediente_id').val('');
-            $('#ingrediente_cantidad').val('');
+            $('#ingrediente_cantidad').val('1');
             $('#ingrediente_presentacion').val('1');
             $('#ingrediente_u_medida').val('');
+            $('#ingredienteDuplicadoError').hide();
         });
 
         // Agregar ingrediente a la tabla
         $('#agregarIngrediente').click(function() {
             const id = $('#ingrediente_id').val();
             const nombre = $('#ingrediente_nombre').val();
-            const cantidad = $('#ingrediente_cantidad').val();
-            const presentacion = $('#ingrediente_presentacion').val();
+            const cantidad = parseFloat($('#ingrediente_cantidad').val());
+            const presentacion = parseInt($('#ingrediente_presentacion').val());
             const uMedidaId = $('#ingrediente_u_medida').val();
             const uMedidaNombre = $('#ingrediente_u_medida option:selected').text();
 
-            if (!id || !cantidad || !uMedidaId) {
-                alert('Por favor complete todos los campos del ingrediente');
+            // Validaciones
+            if (!id || !nombre) {
+                alert('Por favor seleccione un producto');
                 return;
             }
 
-            $.ajax({
-                url: '{{ route("recetas.agregarIngrediente") }}',
-                method: 'POST',
-                data: {
-                    id_productos_api: id,
-                    cantidad: cantidad,
-                    cant_presentacion: presentacion,
-                    id_u_medidas: uMedidaId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        const data = response.data;
-                        const rowId = 'ingrediente-' + Date.now();
-                        $('#ingredientesTable').append(`
-                    <tr id="${rowId}">
-                        <td>${data.id}</td>
-                        <td>${data.nombre}</td>
-                        <td>${data.cantidad}</td>
-                        <td>${data.cant_presentacion}</td>
-                        <td>${data.u_medida}</td>
-                        <td>S/ ${data.costo_unitario.toFixed(2)}</td>
-                        <td>S/ ${data.subtotal.toFixed(2)}</td>
+            if (!cantidad || cantidad <= 0) {
+                alert('La cantidad debe ser mayor a 0');
+                $('#ingrediente_cantidad').focus();
+                return;
+            }
+
+            if (!presentacion || presentacion <= 0) {
+                alert('La presentación debe ser mayor a 0');
+                $('#ingrediente_presentacion').focus();
+                return;
+            }
+
+            if (!uMedidaId) {
+                alert('Por favor seleccione una unidad de medida');
+                $('#ingrediente_u_medida').focus();
+                return;
+            }
+
+            // Verificar si el ingrediente ya existe
+            if (ingredientes.some(ing => ing.id_productos_api === id)) {
+                $('#ingredienteDuplicadoError').show();
+                return;
+            }
+
+            // Obtener costo del producto
+            const costoItem = $('#ingredienteResults').find('.result-item[data-id="'+id+'"]').data('costo');
+            const costo = parseFloat(costoItem) || 0;
+            const subtotal = cantidad * costo;
+
+            // Agregar a la lista de ingredientes
+            ingredientes.push({
+                id_productos_api: id,
+                nombre: nombre,
+                cantidad: cantidad,
+                cant_presentacion: presentacion,
+                id_u_medidas: uMedidaId,
+                u_medida: uMedidaNombre,
+                costo_unitario: costo,
+                subtotal: subtotal
+            });
+
+            // Actualizar tabla
+            updateIngredientesTable();
+
+            // Limpiar campos
+            $('#limpiarIngrediente').click();
+        });
+
+        // Actualizar tabla de ingredientes
+        function updateIngredientesTable() {
+            const tableBody = $('#ingredientesTable');
+            tableBody.empty();
+            totalSubtotal = 0;
+
+            ingredientes.forEach((ingrediente, index) => {
+                totalSubtotal += ingrediente.subtotal;
+
+                tableBody.append(`
+                    <tr data-index="${index}">
+                        <td>${ingrediente.id_productos_api}</td>
+                        <td>${ingrediente.nombre}</td>
+                        <td>${ingrediente.cantidad.toFixed(2)}</td>
+                        <td>${ingrediente.cant_presentacion}</td>
+                        <td>${ingrediente.u_medida}</td>
+                        <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
+                        <td>S/ ${ingrediente.subtotal.toFixed(2)}</td>
                         <td>
-                            <button type="button" class="btn btn-danger btn-sm eliminar-ingrediente" data-row="${rowId}">
+                            <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
                     </tr>
-                    `);
-
-                        actualizarSubtotal();
-                        $('#limpiarIngrediente').click();
-                    } else {
-                        alert('Error: ' + response.message);
-                    }
-                },
-                error: function(xhr) {
-                    alert('Error en la solicitud. Por favor intente nuevamente.');
-                    console.error(xhr.responseText);
-                }
-            });
-        });
-
-        // Eliminar ingrediente de la tabla
-        $(document).on('click', '.eliminar-ingrediente', function() {
-            $(this).closest('tr').remove();
-            actualizarSubtotal();
-        });
-
-        // Actualizar subtotal
-        function actualizarSubtotal() {
-            let subtotal = 0;
-
-            $('#ingredientesTable tr').each(function() {
-                const subtotalText = $(this).find('td:eq(6)').text().replace('S/ ', '');
-                subtotal += parseFloat(subtotalText);
+                `);
             });
 
-            $('#subtotalTotal').text('S/ ' + subtotal.toFixed(2));
+            // Actualizar total
+            $('#subtotalTotal').text('S/ ' + totalSubtotal.toFixed(2));
 
-            // Preparar datos para el formulario
-            const ingredientes = [];
-            $('#ingredientesTable tr').each(function() {
-                ingredientes.push({
-                    id_productos_api: $(this).find('td:eq(0)').text(),
-                    cantidad: $(this).find('td:eq(2)').text(),
-                    cant_presentacion: $(this).find('td:eq(3)').text(),
-                    id_u_medidas: $('#ingrediente_u_medida option:contains("' + $(this).find('td:eq(4)').text() + '")').val()
-                });
-            });
-
+            // Actualizar campo hidden para el formulario
             $('#ingredientesData').val(JSON.stringify(ingredientes));
+            
+            // Ocultar mensaje de error si hay ingredientes
+            if (ingredientes.length > 0) {
+                $('#ingredientesError').hide();
+            }
         }
 
-        // Ocultar resultados al hacer clic fuera
-        $(document).click(function(e) {
-            if (!$(e.target).closest('#productoResults, #producto_nombre').length) {
-                $('#productoResults').hide();
+        // Eliminar ingrediente
+        $(document).on('click', '.eliminar-ingrediente', function() {
+            const row = $(this).closest('tr');
+            const index = row.data('index');
+            
+            ingredientes.splice(index, 1);
+            updateIngredientesTable();
+        });
+
+        // Validación en tiempo real
+        function validateRecetaForm() {
+            let isValid = true;
+            
+            // Validar producto principal
+            if ($('#id_productos_api').val() === '') {
+                $('#producto_nombre').addClass('is-invalid');
+                isValid = false;
+            } else {
+                $('#producto_nombre').removeClass('is-invalid');
             }
-            if (!$(e.target).closest('#ingredienteResults, #ingrediente_nombre').length) {
-                $('#ingredienteResults').hide();
+
+            // Validar área
+            if ($('#id_areas').val() === '') {
+                $('#id_areas').addClass('is-invalid');
+                isValid = false;
+            } else {
+                $('#id_areas').removeClass('is-invalid');
+            }
+
+            // Validar unidad de medida
+            if ($('#id_u_medidas').val() === '') {
+                $('#id_u_medidas').addClass('is-invalid');
+                isValid = false;
+            } else {
+                $('#id_u_medidas').removeClass('is-invalid');
+            }
+
+            // Validar ingredientes
+            if (ingredientes.length === 0) {
+                $('#ingredientesError').show();
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        // Validar al enviar el formulario
+        $('#recetaForm').on('submit', function(e) {
+            if (!validateRecetaForm()) {
+                e.preventDefault();
+                $('html, body').animate({
+                    scrollTop: $('.is-invalid').first().offset().top - 100
+                }, 500);
+            }
+        });
+
+        // Validar campos al cambiar
+        $('#id_areas, #id_u_medidas').on('change', function() {
+            if ($(this).val() !== '') {
+                $(this).removeClass('is-invalid');
             }
         });
     });
 </script>
+
 <style>
-    /* Estilos para los resultados de búsqueda */
     #productoResults,
     #ingredienteResults {
         position: absolute;
-        z-index: 1050;
-        /* Mayor que el z-index por defecto de Bootstrap */
+        z-index: 1000;
         width: calc(100% - 30px);
-        /* Ajustar al ancho del input */
-        margin-top: 2px;
+        max-height: 300px;
+        overflow-y: auto;
+        background: white;
         border: 1px solid #ced4da;
         border-radius: 0.25rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        background: white;
     }
 
-    /* Items de resultados */
-    .product-item {
-        transition: all 0.2s;
-        border-left: none;
-        border-right: none;
+    .result-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
     }
 
-    .product-item:hover {
+    .result-item:hover {
         background-color: #f8f9fa;
-        transform: translateX(2px);
     }
 
-    /* Indicador de carga */
-    .spinner-border {
-        width: 1rem;
-        height: 1rem;
-        border-width: 0.15em;
+    .form-group {
+        position: relative;
+    }
+
+    #ingredientesError,
+    #ingredienteDuplicadoError {
+        margin-bottom: 1rem;
+    }
+
+    .eliminar-ingrediente {
+        padding: 0.25rem 0.5rem;
     }
 </style>
-
 @endpush
