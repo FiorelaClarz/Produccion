@@ -176,6 +176,108 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
+    @stack('scripts')
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <!-- Agrega el BuscadorAjax aquí -->
+    <script>
+        class BuscadorAjax {
+            constructor(config) {
+                this.config = {
+                    inputSelector: '',
+                    resultsContainerSelector: '',
+                    minChars: 2,
+                    endpoint: '',
+                    template: (item) => '',
+                    onSelect: (item) => {},
+                    ...config
+                };
+
+                this.init();
+            }
+
+            init() {
+                const {
+                    inputSelector,
+                    resultsContainerSelector
+                } = this.config;
+                this.$input = $(inputSelector);
+                this.$resultsContainer = $(resultsContainerSelector);
+
+                this.setupEvents();
+            }
+
+            setupEvents() {
+                let searchTimeout;
+
+                this.$input.on('input', () => {
+                    clearTimeout(searchTimeout);
+                    const term = this.$input.val().trim();
+
+                    if (term.length >= this.config.minChars) {
+                        searchTimeout = setTimeout(() => this.search(term), 300);
+                    } else {
+                        this.$resultsContainer.hide().empty();
+                    }
+                });
+
+                $(document).on('click', (e) => {
+                    if (!$(e.target).closest([this.config.inputSelector, this.config.resultsContainerSelector].join(',')).length) {
+                        this.$resultsContainer.hide();
+                    }
+                });
+            }
+
+            async search(term) {
+                const {
+                    endpoint,
+                    template
+                } = this.config;
+
+                this.$resultsContainer.html('<div class="list-group-item">Buscando...</div>').show();
+
+                try {
+                    const response = await $.ajax({
+                        url: endpoint,
+                        type: 'GET',
+                        data: {
+                            term
+                        },
+                        dataType: 'json'
+                    });
+
+                    if (response.length > 0) {
+                        this.$resultsContainer.empty();
+                        response.forEach((item, index) => {
+                            this.$resultsContainer.append(`
+                                <a href="#" class="list-group-item list-group-item-action result-item" data-index="${index}">
+                                    ${template(item)}
+                                </a>
+                            `);
+                        });
+                        this.$resultsContainer.show();
+
+                        // Configurar evento de selección
+                        this.$resultsContainer.find('.result-item').on('click', (e) => {
+                            e.preventDefault();
+                            const index = $(e.currentTarget).data('index');
+                            this.config.onSelect(response[index]);
+                            this.$resultsContainer.hide();
+                        });
+                    } else {
+                        this.$resultsContainer.html('<div class="list-group-item">No se encontraron resultados</div>').show();
+                    }
+                } catch (error) {
+                    console.error('Error en búsqueda:', error);
+                    this.$resultsContainer.html('<div class="list-group-item text-danger">Error en la búsqueda</div>').show();
+                }
+            }
+        }
+    </script>
+
 </body>
 
 </html>
