@@ -133,11 +133,11 @@ Route::prefix('recetas')->group(function () {
     Route::get('/', [RecetaController::class, 'index'])->name('recetas.index');
     Route::get('/create', [RecetaController::class, 'create'])->name('recetas.create');
     Route::post('/', [RecetaController::class, 'store'])->name('recetas.store');
-    
+
     // Rutas AJAX primero
     Route::get('/buscar-productos', [RecetaController::class, 'buscarProductos'])->name('recetas.buscarProductos');
     Route::post('/agregar-ingrediente', [RecetaController::class, 'agregarIngrediente'])->name('recetas.agregarIngrediente');
-    
+
     // Rutas con parámetros
     Route::get('/{id}', [RecetaController::class, 'show'])->name('recetas.show');
     Route::get('/{id}/edit', [RecetaController::class, 'edit'])->name('recetas.edit');
@@ -145,22 +145,10 @@ Route::prefix('recetas')->group(function () {
     Route::delete('/{id}', [RecetaController::class, 'destroy'])->name('recetas.destroy');
 });
 
-// Route::get('/test-busqueda-productos', function (Request $request) {
-//     $term = $request->input('term', '');
+Route::get('recetas/verificar-producto', [RecetaController::class, 'verificarProducto'])
+    ->name('recetas.verificarProducto');
 
-//     $productos = Producto::where('nombre', 'ILIKE', '%' . $term . '%')
-//         ->whereNull('deleted_at')
-//         ->take(5)
-//         ->get(['id_item as id', 'nombre as text', 'costo']);
-
-//     return response()->json([
-//         'success' => true,
-//         'term' => $term,
-//         'count' => $productos->count(),
-//         'results' => $productos,
-//         'sql' => Producto::where('nombre', 'ILIKE', '%' . $term . '%')
-//             ->whereNull('deleted_at')
-//             ->take(5)
-//             ->toSql()
-//     ]);
-// });
+// Para mostrar recetas
+Route::get('recetas/{id}', [RecetaController::class, 'show'])
+    ->name('recetas.show')
+    ->where('id', '[0-9]+');
