@@ -197,7 +197,6 @@ class UsuarioController extends Controller
                 ->map(function ($item) {
                     return [
                         'id' => $item->id,
-                        'text' => $item->nombre,
                         'nombre' => $item->nombre,
                         'dni_personal' => $item->dni_personal,
                         'tienda' => optional($item->tienda)->nombre ?? 'Sin tienda',
@@ -213,51 +212,6 @@ class UsuarioController extends Controller
         }
     }
 
-    // public function buscarPersonal(Request $request)
-    // {
-    //     $term = $request->get('term', '');
-
-    //     if (strlen($term) < 2) {
-    //         return response()->json([]);
-    //     }
-
-    //     try {
-    //         $results = PersonalApi::select(
-    //             'id_personal_api as id',
-    //             'nombre',
-    //             'dni_personal',
-    //             'id_tiendas_api',
-    //             'id_areas'
-    //         )
-    //             ->with([
-    //                 'tienda:id_tiendas,nombre',
-    //                 'area:id_areas,nombre'
-    //             ])
-    //             ->where(function ($query) use ($term) {
-    //                 $query->where('nombre', 'ILIKE', "%{$term}%")
-    //                     ->orWhere('dni_personal', 'ILIKE', "%{$term}%")
-    //                     ->orWhere('codigo_personal', 'ILIKE', "%{$term}%");
-    //             })
-    //             ->limit(10)
-    //             ->get()
-    //             ->map(function ($item) {
-    //                 return [
-    //                     'id' => $item->id,
-    //                     'text' => $item->nombre,
-    //                     'nombre' => $item->nombre,
-    //                     'dni_personal' => $item->dni_personal, // Agregar este campo
-    //                     'tienda' => optional($item->tienda)->nombre ?? 'Sin tienda',
-    //                     'tienda_id' => $item->id_tiendas_api,
-    //                     'area' => optional($item->area)->nombre ?? 'Sin área',
-    //                     'area_id' => $item->id_areas
-    //                 ];
-    //             });
-
-    //         return response()->json($results);
-    //     } catch (\Exception $e) {
-    //         return response()->json(['error' => $e->getMessage()], 500);
-    //     }
-    // }
 
     public function getPersonalData($id)
     {
