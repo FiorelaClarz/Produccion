@@ -207,77 +207,140 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Buscador de producto principal
-        new BuscadorAjax({
-            inputSelector: '#producto_nombre',
-            resultsContainerSelector: '#productoResults',
-            endpoint: '{{ route("recetas.buscarProductos") }}',
-            minChars: 2,
-            template: (producto) => {
-                const costo = parseFloat(producto.costo) || 0;
-                return `
-                    <div class="d-flex justify-content-between">
-                        <span>${producto.text}</span>
-                        <small>${producto.codigo || 'N/A'}</small>
-                    </div>
-                    <small>S/ ${costo.toFixed(2)}</small>
-                `;
-            },
-            onSelect: (producto) => {
-                $('#producto_nombre').val(producto.text);
-                $('#id_productos_api').val(producto.id);
-                $('#nombre').val(producto.text).prop('readonly', false);
+        // Variables globales
+        let searchXHR = null;
+        let ingredientes = [];
+        let totalSubtotal = 0;
 
-                // Verificar si ya existe receta
-                $.get('{{ route("recetas.verificarProducto") }}', {
-                    id_producto: producto.id,
-                    _token: '{{ csrf_token() }}'
-                }).done(response => {
+        // Función para mostrar resultados de búsqueda
+        function showResults(data, container) {
+            container.empty();
+
+            if (data.length > 0) {
+                data.forEach(item => {
+                    // Convertir costo a número
+                    const costo = parseFloat(item.costo) || 0;
+
+                    container.append(`
+                <a href="#" class="list-group-item list-group-item-action product-item"
+                   data-id="${item.id}"
+                   data-nombre="${item.text}"
+                   data-codigo="${item.codigo || 'N/A'}"
+                   data-costo="${costo}">
+                   <div class="d-flex justify-content-between">
+                       <span>${item.text}</span>
+                       <small>${item.codigo || 'N/A'}</small>
+                   </div>
+                   <small>S/ ${costo.toFixed(2)}</small>
+                </a>
+            `);
+                });
+                container.show();
+            } else {
+                container.append('<div class="list-group-item">No se encontraron coincidencias</div>').show();
+            }
+        }
+        // Función para buscar productos
+        function buscarProductos(term, container) {
+            if (term.length < 2) {
+                container.hide().empty();
+                return;
+            }
+
+            container.html('<div class="list-group-item">Buscando...</div>').show();
+
+            if (searchXHR) searchXHR.abort();
+
+            searchXHR = $.ajax({
+                url: '{{ route("recetas.buscarProductos") }}',
+                type: 'GET',
+                data: {
+                    term: term
+                },
+                dataType: 'json',
+                success: function(data) {
+                    try {
+                        if (!Array.isArray(data)) {
+                            throw new Error('Respuesta no es un array');
+                        }
+
+                        if (data.length === 0) {
+                            container.html('<div class="list-group-item text-muted">No se encontraron coincidencias</div>').show();
+                        } else {
+                            showResults(data, container);
+                        }
+                    } catch (error) {
+                        console.error('Error procesando resultados:', error);
+                        container.html('<div class="list-group-item text-danger">Error al mostrar resultados</div>').show();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    if (status !== 'abort') {
+                        console.error("Error en la búsqueda:", error);
+                        container.html('<div class="list-group-item text-danger">Error en la búsqueda</div>').show();
+                    }
+                }
+            });
+        }
+
+        // Eventos de búsqueda con debounce
+        let searchTimeout = null;
+        $('#producto_nombre, #ingrediente_nombre').on('input', function() {
+            const term = $(this).val().trim();
+            const container = $(this).attr('id') === 'producto_nombre' ?
+                $('#productoResults') :
+                $('#ingredienteResults');
+
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => buscarProductos(term, container), 300);
+        });
+
+        // Validación de datos en el frontend
+        $(document).on('click', '#productoResults .product-item', function(e) {
+            e.preventDefault();
+            const $item = $(this);
+
+            // Validar datos
+            const producto = {
+                id: $item.data('id'),
+                nombre: $item.data('nombre'),
+                costo: parseFloat($item.data('costo')) || 0,
+                codigo: $item.data('codigo')
+            };
+
+            if (!producto.id || !producto.nombre) {
+                console.error('Datos de producto incompletos');
+                return;
+            }
+
+            $('#producto_nombre').val(producto.nombre);
+            $('#id_productos_api').val(producto.id);
+            $('#nombre').val(producto.nombre).prop('readonly', false);
+            $('#productoResults').hide();
+
+            // Verificar si ya existe receta para este producto
+            $.get('{{ route("recetas.verificarProducto") }}', {
+                    id_producto: producto.id // Asegúrate de enviar el ID numérico
+                })
+                .done(function(response) {
                     if (response.tiene_receta) {
                         alert('Ya existe una receta para este producto');
                         $('#producto_nombre').val('').focus();
                         $('#id_productos_api').val('');
                         $('#nombre').val('');
                     }
-                }).fail(error => {
-                    console.error('Error verificando producto:', error);
                 });
-            }
         });
 
-        // Buscador de ingredientes
-        new BuscadorAjax({
-            inputSelector: '#ingrediente_nombre',
-            resultsContainerSelector: '#ingredienteResults',
-            endpoint: '{{ route("recetas.buscarProductos") }}',
-            minChars: 2,
-            template: (producto) => {
-                const costo = parseFloat(producto.costo) || 0;
-                return `
-                    <div class="d-flex justify-content-between">
-                        <span>${producto.text}</span>
-                        <small>${producto.codigo || 'N/A'}</small>
-                    </div>
-                    <small>S/ ${costo.toFixed(2)}</small>
-                `;
-            },
-            onSelect: (producto) => {
-                $('#ingrediente_nombre').val(producto.text);
-                $('#ingrediente_id').val(producto.id);
-                
-                // Sugerir unidad de medida si es posible
-                if ($('#ingrediente_u_medida').val() === '') {
-                    const defaultUnidadId = '{{ $unidades->first()->id_u_medidas ?? "" }}';
-                    if (defaultUnidadId) {
-                        $('#ingrediente_u_medida').val(defaultUnidadId);
-                    }
-                }
-            }
-        });
+        // Selección de ingrediente
+        $(document).on('click', '#ingredienteResults .product-item', function(e) {
+            e.preventDefault();
+            const producto = $(this).data();
 
-        // Variables globales para ingredientes
-        let ingredientes = [];
-        let totalSubtotal = 0;
+            $('#ingrediente_nombre').val(producto.nombre);
+            $('#ingrediente_id').val(producto.id);
+            $('#ingredienteResults').hide();
+        });
 
         // Limpiar campos de ingrediente
         $('#limpiarIngrediente').click(function() {
@@ -299,26 +362,18 @@
             const uMedidaNombre = $('#ingrediente_u_medida option:selected').text();
 
             // Validaciones
-            if (!id || !nombre) {
-                alert('Por favor seleccione un producto');
+            if (!id || !nombre || !cantidad || !presentacion || !uMedidaId) {
+                alert('Por favor complete todos los campos del ingrediente');
                 return;
             }
 
-            if (!cantidad || cantidad <= 0) {
+            if (cantidad <= 0) {
                 alert('La cantidad debe ser mayor a 0');
-                $('#ingrediente_cantidad').focus();
                 return;
             }
 
-            if (!presentacion || presentacion <= 0) {
+            if (presentacion <= 0) {
                 alert('La presentación debe ser mayor a 0');
-                $('#ingrediente_presentacion').focus();
-                return;
-            }
-
-            if (!uMedidaId) {
-                alert('Por favor seleccione una unidad de medida');
-                $('#ingrediente_u_medida').focus();
                 return;
             }
 
@@ -326,11 +381,12 @@
             if (ingredientes.some(ing => ing.id_productos_api === id)) {
                 $('#ingredienteDuplicadoError').show();
                 return;
+            } else {
+                $('#ingredienteDuplicadoError').hide();
             }
 
-            // Obtener costo del producto
-            const costoItem = $('#ingredienteResults').find('.result-item[data-id="'+id+'"]').data('costo');
-            const costo = parseFloat(costoItem) || 0;
+            // Obtener costo del producto (simulado - en producción deberías hacer una petición AJAX)
+            const costo = parseFloat($('#ingredienteResults .product-item[data-id="' + id + '"]').data('costo')) || 0;
             const subtotal = cantidad * costo;
 
             // Agregar a la lista de ingredientes
@@ -384,18 +440,13 @@
 
             // Actualizar campo hidden para el formulario
             $('#ingredientesData').val(JSON.stringify(ingredientes));
-            
-            // Ocultar mensaje de error si hay ingredientes
-            if (ingredientes.length > 0) {
-                $('#ingredientesError').hide();
-            }
         }
 
         // Eliminar ingrediente
         $(document).on('click', '.eliminar-ingrediente', function() {
             const row = $(this).closest('tr');
             const index = row.data('index');
-            
+
             ingredientes.splice(index, 1);
             updateIngredientesTable();
         });
@@ -403,29 +454,14 @@
         // Validación en tiempo real
         function validateRecetaForm() {
             let isValid = true;
-            
+            $('#ingredientesError').hide();
+
             // Validar producto principal
             if ($('#id_productos_api').val() === '') {
                 $('#producto_nombre').addClass('is-invalid');
                 isValid = false;
             } else {
                 $('#producto_nombre').removeClass('is-invalid');
-            }
-
-            // Validar área
-            if ($('#id_areas').val() === '') {
-                $('#id_areas').addClass('is-invalid');
-                isValid = false;
-            } else {
-                $('#id_areas').removeClass('is-invalid');
-            }
-
-            // Validar unidad de medida
-            if ($('#id_u_medidas').val() === '') {
-                $('#id_u_medidas').addClass('is-invalid');
-                isValid = false;
-            } else {
-                $('#id_u_medidas').removeClass('is-invalid');
             }
 
             // Validar ingredientes
@@ -447,10 +483,14 @@
             }
         });
 
-        // Validar campos al cambiar
-        $('#id_areas, #id_u_medidas').on('change', function() {
-            if ($(this).val() !== '') {
-                $(this).removeClass('is-invalid');
+        // Ocultar resultados al hacer clic fuera
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#producto_nombre, #productoResults').length) {
+                $('#productoResults').hide();
+            }
+
+            if (!$(e.target).closest('#ingrediente_nombre, #ingredienteResults').length) {
+                $('#ingredienteResults').hide();
             }
         });
     });
@@ -470,12 +510,12 @@
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
 
-    .result-item {
+    .product-item {
         cursor: pointer;
         transition: background-color 0.2s;
     }
 
-    .result-item:hover {
+    .product-item:hover {
         background-color: #f8f9fa;
     }
 

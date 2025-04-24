@@ -10,6 +10,7 @@
             <form action="{{ route('usuarios.store') }}" method="POST" autocomplete="off">
                 @csrf
 
+
                 <div class="form-group row">
                     <label for="nombre_personal" class="col-md-3 col-form-label">Nombre del Personal</label>
                     <div class="col-md-9">
@@ -35,7 +36,6 @@
                         @enderror
                     </div>
                 </div>
-
                 <div class="form-group row">
                     <label class="col-md-3 col-form-label">Tienda</label>
                     <div class="col-md-9">
@@ -159,34 +159,107 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-        // Buscador de personal
-        new BuscadorAjax({
-            inputSelector: '#nombre_personal',
-            resultsContainerSelector: '#personalResults',
-            endpoint: '{{ route("usuarios.buscarPersonal") }}',
-            minChars: 2,
-            template: (personal) => `
-                <strong>${personal.nombre || personal.text}</strong><br>
-                <small>${personal.tienda} - ${personal.area}</small>
-            `,
-            onSelect: (personal) => {
-                // Verificar si ya tiene usuario
-                $.get('{{ route("usuarios.verificarPersonal") }}', {
-                    id: personal.id
-                }).done(response => {
-                    if (response.tiene_usuario) {
-                        alert('Este personal ya tiene un usuario asociado.');
-                        $('#nombre_personal').val('').focus();
-                    } else {
-                        $('#nombre_personal').val(personal.nombre || personal.text);
-                        $('#dni_personal').val(personal.dni_personal);
-                        $('#id_personal_api').val(personal.id);
-                        $('#tienda_nombre').val(personal.tienda);
-                        $('#id_tiendas_api').val(personal.tienda_id);
-                        $('#area_nombre').val(personal.area);
-                        $('#id_areas').val(personal.area_id);
-                    }
+        // Configuración de búsqueda
+        let searchXHR = null;
+
+        // Función para mostrar resultados
+        function showResults(data) {
+            const container = $('#personalResults').empty();
+
+            if (data.length > 0) {
+                data.forEach(item => {
+                    container.append(`
+                    <a href="#" class="list-group-item list-group-item-action personal-item"
+                       data-id="${item.id}"
+                       data-nombre="${item.nombre || item.text}"
+                       data-dni="${item.dni_personal}"
+                       data-tienda-id="${item.tienda_id}"
+                       data-tienda-nombre="${item.tienda}"
+                       data-area-id="${item.area_id}"
+                       data-area-nombre="${item.area}">
+                        <strong>${item.nombre || item.text}</strong><br>
+                        <small>${item.tienda} - ${item.area}</small>
+                    </a>
+                `);
                 });
+                container.show();
+            } else {
+                container.append('<div class="list-group-item">No se encontraron coincidencias</div>').show();
+            }
+        }
+
+        // Función para buscar personal
+        function searchPersonal(term) {
+            if (term.length < 2) {
+                $('#personalResults').hide().empty();
+                return;
+            }
+
+            console.log("Buscando:", term);
+            $('#personalResults').html('<div class="list-group-item">Buscando...</div>').show();
+
+            // Cancelar petición anterior si existe
+            if (searchXHR) searchXHR.abort();
+
+            searchXHR = $.ajax({
+                url: '{{ route("usuarios.buscarPersonal") }}',
+                type: 'GET',
+                data: {
+                    term: term
+                },
+                dataType: 'json',
+                success: function(data) {
+                    console.log("Resultados:", data);
+                    if (data.length === 0) {
+                        $('#personalResults').html(
+                            '<div class="list-group-item text-muted">No se encontraron coincidencias o el personal ya tiene usuario</div>'
+                        ).show();
+                    } else {
+                        showResults(data);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    if (status !== 'abort') {
+                        console.error("Error:", error);
+                        $('#personalResults').html(
+                            '<div class="list-group-item text-danger">Error en la búsqueda</div>'
+                        ).show();
+                    }
+                }
+            });
+        }
+
+        // Evento de búsqueda con debounce
+        let searchTimeout = null;
+        $('#nombre_personal').on('input', function() {
+            clearTimeout(searchTimeout);
+            const term = $(this).val().trim();
+
+            searchTimeout = setTimeout(() => {
+                searchPersonal(term);
+            }, 300);
+        });
+
+        // Seleccionar resultado
+        $(document).on('click', '.personal-item', function(e) {
+            e.preventDefault();
+            const $item = $(this);
+
+            $('#nombre_personal').val($item.data('nombre'));
+            $('#dni_personal').val($item.data('dni'));
+            $('#id_personal_api').val($item.data('id'));
+            $('#tienda_nombre').val($item.data('tienda-nombre'));
+            $('#id_tiendas_api').val($item.data('tienda-id'));
+            $('#area_nombre').val($item.data('area-nombre'));
+            $('#id_areas').val($item.data('area-id'));
+
+            $('#personalResults').hide();
+        });
+
+        // Ocultar resultados al hacer clic fuera
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#nombre_personal, #personalResults').length) {
+                $('#personalResults').hide();
             }
         });
 
@@ -213,65 +286,8 @@
             $('#area_nombre').val(selected.text());
             $('#id_areas').val(selected.val());
         });
-
-        // Función para mostrar/ocultar contraseña
-        $(document).on('click', '.toggle-password', function() {
-            const target = $(this).data('target');
-            const input = $(target);
-            const icon = $(this).find('i');
-
-            if (input.attr('type') === 'password') {
-                input.attr('type', 'text');
-                icon.removeClass('fa-eye').addClass('fa-eye-slash');
-            } else {
-                input.attr('type', 'password');
-                icon.removeClass('fa-eye-slash').addClass('fa-eye');
-            }
-        });
-
-        // Validación en tiempo real de coincidencia de contraseñas
-        $('#clave, #clave_confirmation').on('keyup', function() {
-            const password = $('#clave').val();
-            const confirmPassword = $('#clave_confirmation').val();
-            const errorDiv = $('#password-match-error');
-
-            if (password && confirmPassword && password !== confirmPassword) {
-                errorDiv.show();
-            } else {
-                errorDiv.hide();
-            }
-        });
-
-        // Validación antes de enviar el formulario
-        $('form').on('submit', function(e) {
-            const password = $('#clave').val();
-            const confirmPassword = $('#clave_confirmation').val();
-
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                $('#password-match-error').show();
-                $('html, body').animate({
-                    scrollTop: $('#password-match-error').offset().top - 100
-                }, 500);
-            }
-        });
-
-        // Validar al enviar el formulario
-        $('form').on('submit', function(e) {
-            if (!validateForm()) {
-                e.preventDefault();
-                // Desplazarse al primer error
-                $('html, body').animate({
-                    scrollTop: $('.is-invalid').first().offset().top - 100
-                }, 500);
-            }
-        });
-
-        // Validar al cambiar campos
-        $('#nombre_personal, #dni_personal, #id_tiendas_api, #id_areas, #id_roles').on('change input', function() {
-            validateForm();
-        });
     });
+
 
     // Validación en tiempo real
     function validateForm() {
@@ -319,8 +335,97 @@
 
         return isValid;
     }
-</script>
 
+    // Función para mostrar/ocultar contraseña
+    $(document).on('click', '.toggle-password', function() {
+        const target = $(this).data('target');
+        const input = $(target);
+        const icon = $(this).find('i');
+
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye');
+        }
+    });
+
+    // Validación en tiempo real de coincidencia de contraseñas
+    $('#clave, #clave_confirmation').on('keyup', function() {
+        const password = $('#clave').val();
+        const confirmPassword = $('#clave_confirmation').val();
+        const errorDiv = $('#password-match-error');
+
+        if (password && confirmPassword && password !== confirmPassword) {
+            errorDiv.show();
+        } else {
+            errorDiv.hide();
+        }
+    });
+
+    // Validación antes de enviar el formulario
+    $('form').on('submit', function(e) {
+        const password = $('#clave').val();
+        const confirmPassword = $('#clave_confirmation').val();
+
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            $('#password-match-error').show();
+            $('html, body').animate({
+                scrollTop: $('#password-match-error').offset().top - 100
+            }, 500);
+        }
+    });
+
+    // En el evento click del personal-item
+    $(document).on('click', '.personal-item', function(e) {
+        e.preventDefault();
+        const $item = $(this);
+
+        // Verificar si ya tiene usuario (esto es redundante porque el backend ya filtra, pero es buena práctica)
+        $.get('{{ route("usuarios.verificarPersonal") }}', {
+                id: $item.data('id')
+            })
+            .done(function(response) {
+                if (response.tiene_usuario) {
+                    alert('Este personal ya tiene un usuario asociado.');
+                    $('#personalResults').hide();
+                    $('#nombre_personal').val('').focus();
+                } else {
+                    $('#nombre_personal').val($item.data('nombre'));
+                    $('#dni_personal').val($item.data('dni'));
+                    $('#id_personal_api').val($item.data('id'));
+                    $('#tienda_nombre').val($item.data('tienda-nombre'));
+                    $('#id_tiendas_api').val($item.data('tienda-id'));
+                    $('#area_nombre').val($item.data('area-nombre'));
+                    $('#id_areas').val($item.data('area-id'));
+
+                    $('#personalResults').hide();
+                }
+            })
+            .fail(function() {
+                alert('Error al verificar el personal');
+            });
+    });
+
+
+    // Validar al enviar el formulario
+    $('form').on('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+            // Desplazarse al primer error
+            $('html, body').animate({
+                scrollTop: $('.is-invalid').first().offset().top - 100
+            }, 500);
+        }
+    });
+
+    // Validar al cambiar campos
+    $('#nombre_personal, #dni_personal, #id_tiendas_api, #id_areas, #id_roles').on('change input', function() {
+        validateForm();
+    });
+</script>
 <style>
     #personalResults {
         position: absolute;
