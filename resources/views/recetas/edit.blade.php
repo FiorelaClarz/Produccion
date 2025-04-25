@@ -4,12 +4,14 @@
 <div class="container">
     <h1>Editar Receta</h1>
 
+    <!-- Formulario para editar receta existente -->
     <form id="recetaForm" action="{{ route('recetas.update', $receta->id_recetas) }}" method="POST">
         @csrf
-        @method('PUT')
+        @method('PUT') <!-- Método HTTP PUT para actualización -->
 
         <div class="row mb-4">
             <div class="col-md-6">
+                <!-- Selección de área -->
                 <div class="form-group">
                     <label for="id_areas">Área</label>
                     <select class="form-control @error('id_areas') is-invalid @enderror" id="id_areas" name="id_areas" required>
@@ -25,6 +27,7 @@
                     @enderror
                 </div>
 
+                <!-- Producto principal (solo lectura ya que no se puede cambiar) -->
                 <div class="form-group">
                     <label for="producto_nombre">Producto Principal</label>
                     <div class="position-relative">
@@ -41,6 +44,7 @@
                     </div>
                 </div>
 
+                <!-- Nombre de la receta (editable) -->
                 <div class="form-group">
                     <label for="nombre">Nombre Receta</label>
                     <input type="text" class="form-control @error('nombre') is-invalid @enderror"
@@ -53,6 +57,7 @@
             </div>
 
             <div class="col-md-6">
+                <!-- Rendimiento de la receta -->
                 <div class="form-group">
                     <label for="cant_rendimiento">Rendimiento</label>
                     <input type="number" step="0.01" class="form-control @error('cant_rendimiento') is-invalid @enderror"
@@ -63,6 +68,7 @@
                     @enderror
                 </div>
 
+                <!-- Unidad de medida del rendimiento -->
                 <div class="form-group">
                     <label for="id_u_medidas">Unidad de Medida</label>
                     <select class="form-control @error('id_u_medidas') is-invalid @enderror"
@@ -81,6 +87,7 @@
 
                 <div class="row">
                     <div class="col-md-6">
+                        <!-- Constante de crecimiento -->
                         <div class="form-group">
                             <label for="constante_crecimiento">Constante Crecimiento</label>
                             <input type="number" step="0.01" class="form-control @error('constante_crecimiento') is-invalid @enderror"
@@ -92,6 +99,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
+                        <!-- Constante de peso lata (solo visible para área de pan) -->
                         <div class="form-group" id="pesoLataContainer" style="{{ $receta->id_areas == 1 ? '' : 'display: none;' }}">
                             <label for="constante_peso_lata">Constante Peso Lata</label>
                             <input type="number" step="0.01" class="form-control @error('constante_peso_lata') is-invalid @enderror"
@@ -109,8 +117,10 @@
 
         <hr>
 
+        <!-- Sección de ingredientes -->
         <h3>Ingredientes</h3>
 
+        <!-- Mensajes de error para ingredientes -->
         <div class="alert alert-danger" id="ingredientesError" style="display:none;">
             Debe agregar al menos un ingrediente
         </div>
@@ -123,6 +133,7 @@
             Las cantidades ingresadas deben estar en la misma unidad de medida que la presentación del producto
         </div>
 
+        <!-- Formulario para agregar nuevos ingredientes -->
         <div class="row mb-3">
             <div class="col-md-8">
                 <div class="form-group">
@@ -175,6 +186,7 @@
             </div>
         </div>
 
+        <!-- Tabla de ingredientes -->
         <div class="table-responsive mb-4">
             <table class="table table-striped">
                 <thead>
@@ -190,7 +202,7 @@
                     </tr>
                 </thead>
                 <tbody id="ingredientesTable">
-                    <!-- Aquí se agregarán los ingredientes dinámicamente -->
+                    <!-- Aquí se cargarán los ingredientes dinámicamente mediante JavaScript -->
                 </tbody>
                 <tfoot>
                     <tr>
@@ -202,9 +214,11 @@
             </table>
         </div>
 
+        <!-- Campos ocultos para enviar datos al servidor -->
         <input type="hidden" name="ingredientes" id="ingredientesData" value="">
         <input type="hidden" id="editingIndex" value="-1">
 
+        <!-- Botones de acción -->
         <div class="form-group">
             <button type="submit" class="btn btn-success">Actualizar Receta</button>
             <a href="{{ route('recetas.index') }}" class="btn btn-danger">Cancelar</a>
@@ -217,12 +231,12 @@
     $(document).ready(function() {
         // Variables globales
         let searchXHR = null;
-        let ingredientes = [];
-        let ingredientesOriginales = [];
-        let totalSubtotal = 0;
-        let currentProductCost = 0;
+        let ingredientes = []; // Almacena los ingredientes actuales
+        let ingredientesOriginales = []; // Almacena los ingredientes originales para comparación
+        let totalSubtotal = 0; // Total de costos de ingredientes
+        let currentProductCost = 0; // Costo del producto seleccionado actualmente
 
-        // Cargar ingredientes existentes con manejo de posibles valores nulos
+        // Cargar ingredientes existentes desde la receta
         @foreach($receta->detalles as $detalle)
             ingredientes.push({
                 id_productos_api: {{ $detalle->id_productos_api ?? 0 }},
@@ -236,17 +250,21 @@
                 esNuevo: false, // Indica que es un ingrediente existente
                 fueModificado: false // Indica si ha sido modificado
             });
+            
+            // Guardar copia de los valores originales para comparación
             ingredientesOriginales.push({
                 id_productos_api: {{ $detalle->id_productos_api ?? 0 }},
                 cantidad: {{ $detalle->cantidad ?? 0 }},
                 cant_presentacion: {{ $detalle->cant_presentacion ?? 1 }},
                 id_u_medidas: {{ $detalle->id_u_medidas ?? 0 }}
             });
+            
+            // Sumar al total
             totalSubtotal += {{ $detalle->subtotal_receta ?? 0 }};
         @endforeach
 
-                // Actualizar tabla al cargar
-                updateIngredientesTable();
+        // Actualizar tabla al cargar la página
+        updateIngredientesTable();
 
         // Mostrar/ocultar campo de peso lata según área seleccionada
         $('#id_areas').change(function() {
@@ -261,7 +279,7 @@
             }
         });
 
-        // Función para mostrar resultados de búsqueda
+        // Función para mostrar resultados de búsqueda de productos
         function showResults(data, container) {
             container.empty();
 
@@ -290,7 +308,7 @@
             }
         }
 
-        // Función para buscar productos
+        // Función para buscar productos mediante AJAX
         function buscarProductos(term, container) {
             if (term.length < 2) {
                 container.hide().empty();
@@ -304,9 +322,7 @@
             searchXHR = $.ajax({
                 url: '{{ route("recetas.buscarProductos") }}',
                 type: 'GET',
-                data: {
-                    term: term
-                },
+                data: { term: term },
                 dataType: 'json',
                 success: function(data) {
                     try {
@@ -333,7 +349,7 @@
             });
         }
 
-        // Eventos de búsqueda con debounce
+        // Evento de búsqueda con debounce para mejor performance
         let searchTimeout = null;
         $('#ingrediente_nombre').on('input', function() {
             const term = $(this).val().trim();
@@ -343,7 +359,7 @@
             searchTimeout = setTimeout(() => buscarProductos(term, container), 300);
         });
 
-        // Selección de ingrediente
+        // Selección de ingrediente desde los resultados de búsqueda
         $(document).on('click', '#ingredienteResults .product-item', function(e) {
             e.preventDefault();
             const producto = $(this).data();
@@ -355,7 +371,7 @@
             // Guardar el costo del producto seleccionado
             currentProductCost = parseFloat(producto.costo) || 0;
 
-            // Ocultar alerta de unidad de medida al seleccionar nuevo producto
+            // Ocultar alerta de unidad de medida
             $('#unidadMedidaError').hide();
         });
 
@@ -390,7 +406,7 @@
             }
         });
 
-        // Agregar o actualizar ingrediente a la tabla
+        // Agregar o actualizar ingrediente
         $('#agregarIngrediente').click(function() {
             const id = $('#ingrediente_id').val();
             const nombre = $('#ingrediente_nombre').val();
@@ -483,7 +499,7 @@
             $('#limpiarIngrediente').click();
         });
 
-        // Actualizar tabla de ingredientes
+        // Actualizar tabla de ingredientes y calcular totales
         function updateIngredientesTable() {
             const tableBody = $('#ingredientesTable');
             tableBody.empty();
@@ -525,7 +541,7 @@
             // Actualizar total
             $('#subtotalTotal').text('S/ ' + totalSubtotal.toFixed(2));
 
-            /// Preparar datos para enviar
+            // Preparar datos para enviar al servidor
             const datosParaEnviar = ingredientes.map(ing => ({
                 id_productos_api: ing.id_productos_api,
                 cantidad: ing.cantidad,
@@ -538,7 +554,7 @@
             $('#ingredientesData').val(JSON.stringify(datosParaEnviar));
         }
 
-        // Editar ingrediente
+        // Editar ingrediente existente
         $(document).on('click', '.editar-ingrediente', function() {
             const row = $(this).closest('tr');
             const index = row.data('index');
@@ -575,7 +591,7 @@
             updateIngredientesTable();
         });
 
-        // Validación en tiempo real del formulario principal
+        // Validación del formulario principal
         function validateFormFields() {
             let isValid = true;
 
@@ -593,7 +609,7 @@
             return isValid;
         }
 
-        // Validación en tiempo real
+        // Validación completa del formulario
         function validateRecetaForm() {
             let isValid = true;
             $('#ingredientesError').hide();
@@ -635,13 +651,11 @@
                 $('#ingredienteResults').hide();
             }
         });
-
-
-
     });
 </script>
 
 <style>
+    /* Estilos para los resultados de búsqueda */
     #productoResults,
     #ingredienteResults {
         position: absolute;
@@ -655,6 +669,7 @@
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
 
+    /* Estilos para items de productos */
     .product-item {
         cursor: pointer;
         transition: background-color 0.2s;
@@ -664,29 +679,35 @@
         background-color: #f8f9fa;
     }
 
+    /* Posicionamiento relativo para grupos de formulario */
     .form-group {
         position: relative;
     }
 
+    /* Estilos para mensajes de error */
     #ingredientesError,
     #ingredienteDuplicadoError,
     #unidadMedidaError {
         margin-bottom: 1rem;
     }
 
+    /* Estilos para botones de acciones */
     .eliminar-ingrediente,
     .editar-ingrediente {
         padding: 0.25rem 0.5rem;
     }
 
+    /* Transición para contenedor de peso lata */
     #pesoLataContainer {
         transition: all 0.3s ease;
     }
 
+    /* Estilos para mensajes de error pequeños */
     .text-danger {
         font-size: 0.875em;
     }
 
+    /* Clase para campos inválidos */
     .is-invalid {
         border-color: #dc3545;
     }
