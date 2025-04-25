@@ -4,11 +4,13 @@
 <div class="container">
     <h1>Crear Nueva Receta</h1>
 
+    <!-- Formulario principal para crear recetas -->
     <form id="recetaForm" action="{{ route('recetas.store') }}" method="POST">
-        @csrf
+        @csrf <!-- Token CSRF para protección contra ataques -->
 
         <div class="row mb-4">
             <div class="col-md-6">
+                <!-- Selección de área -->
                 <div class="form-group">
                     <label for="id_areas">Área</label>
                     <select class="form-control @error('id_areas') is-invalid @enderror" id="id_areas" name="id_areas" required>
@@ -24,6 +26,7 @@
                     @enderror
                 </div>
 
+                <!-- Búsqueda de producto principal con autocompletado -->
                 <div class="form-group">
                     <label for="producto_nombre">Producto Principal</label>
                     <div class="position-relative">
@@ -41,6 +44,7 @@
                     <small class="form-text text-muted">Escribe al menos 2 caracteres</small>
                 </div>
 
+                <!-- Nombre de la receta (se autocompleta con el nombre del producto) -->
                 <div class="form-group">
                     <label for="nombre">Nombre Receta</label>
                     <input type="text" class="form-control @error('nombre') is-invalid @enderror"
@@ -53,6 +57,7 @@
             </div>
 
             <div class="col-md-6">
+                <!-- Rendimiento de la receta -->
                 <div class="form-group">
                     <label for="cant_rendimiento">Rendimiento</label>
                     <input type="number" step="0.01" class="form-control @error('cant_rendimiento') is-invalid @enderror"
@@ -63,6 +68,7 @@
                     @enderror
                 </div>
 
+                <!-- Unidad de medida del rendimiento -->
                 <div class="form-group">
                     <label for="id_u_medidas">Unidad de Medida</label>
                     <select class="form-control @error('id_u_medidas') is-invalid @enderror"
@@ -81,6 +87,7 @@
 
                 <div class="row">
                     <div class="col-md-6">
+                        <!-- Constante de crecimiento (para cálculos de costos) -->
                         <div class="form-group">
                             <label for="constante_crecimiento">Constante Crecimiento</label>
                             <input type="number" step="0.01" class="form-control @error('constante_crecimiento') is-invalid @enderror"
@@ -92,6 +99,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
+                        <!-- Constante de peso lata (solo visible para área de pan) -->
                         <div class="form-group" id="pesoLataContainer" style="display: none;">
                             <label for="constante_peso_lata">Constante Peso Lata</label>
                             <input type="number" step="0.01" class="form-control @error('constante_peso_lata') is-invalid @enderror"
@@ -107,8 +115,10 @@
 
         <hr>
 
+        <!-- Sección de ingredientes -->
         <h3>Ingredientes</h3>
 
+        <!-- Mensajes de error para ingredientes -->
         <div class="alert alert-danger" id="ingredientesError" style="display:none;">
             Debe agregar al menos un ingrediente
         </div>
@@ -121,6 +131,7 @@
             Las cantidades ingresadas deben estar en la misma unidad de medida que la presentación del producto
         </div>
 
+        <!-- Formulario para agregar ingredientes -->
         <div class="row mb-3">
             <div class="col-md-8">
                 <div class="form-group">
@@ -173,6 +184,7 @@
             </div>
         </div>
 
+        <!-- Tabla de ingredientes agregados -->
         <div class="table-responsive mb-4">
             <table class="table table-striped">
                 <thead>
@@ -188,7 +200,7 @@
                     </tr>
                 </thead>
                 <tbody id="ingredientesTable">
-                    <!-- Aquí se agregarán los ingredientes dinámicamente -->
+                    <!-- Aquí se agregarán los ingredientes dinámicamente mediante JavaScript -->
                 </tbody>
                 <tfoot>
                     <tr>
@@ -200,10 +212,11 @@
             </table>
         </div>
 
-        <!-- <input type="hidden" name="ingredientes" id="ingredientesData" value="{{ is_array(old('ingredientes')) ? json_encode(old('ingredientes')) : '' }}"> -->
+        <!-- Campos ocultos para enviar datos al servidor -->
         <input type="hidden" name="ingredientes" id="ingredientesData" value="">
         <input type="hidden" id="editingIndex" value="-1">
 
+        <!-- Botones de acción -->
         <div class="form-group">
             <button type="submit" class="btn btn-success">Guardar Receta</button>
             <a href="{{ route('recetas.index') }}" class="btn btn-danger">Cancelar</a>
@@ -211,7 +224,7 @@
     </form>
 </div>
 
-<!-- Coloca esto al final del contenido, antes de @endsection -->
+<!-- Modal para continuar después de guardar -->
 <div class="modal fade" id="continueModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -232,26 +245,25 @@
     </div>
 </div>
 
-
 @push('scripts')
-
 <script>
     $(document).ready(function() {
-        // Variables globales
+        // Variables globales para manejar los ingredientes y búsquedas
         let searchXHR = null;
-        let ingredientes = <?php echo json_encode(old('ingredientes', [])); ?>; // Usar los ingredientes antiguos o array vacío  let totalSubtotal = 0;
+        let ingredientes = <?php echo json_encode(old('ingredientes', [])); ?>;
+        let totalSubtotal = 0;
         let currentProductCost = 0;
 
         // Mostrar/ocultar campo de peso lata según área seleccionada
         $('#id_areas').change(function() {
             const areaId = $(this).val();
-            if (areaId == 1) { // 1 es el ID para "pan" según la imagen
+            if (areaId == 1) { // 1 es el ID para "pan"
                 $('#pesoLataContainer').show();
                 $('#constante_peso_lata').prop('required', true);
             } else {
                 $('#pesoLataContainer').hide();
                 $('#constante_peso_lata').prop('required', false);
-                $('#constante_peso_lata').val('0'); // Establecer valor por defecto a 0
+                $('#constante_peso_lata').val('0');
             }
         });
 
@@ -264,7 +276,6 @@
 
             if (data.length > 0) {
                 data.forEach(item => {
-                    // Convertir costo a número
                     const costo = parseFloat(item.costo) || 0;
 
                     container.append(`
@@ -288,7 +299,7 @@
             }
         }
 
-        // Función para buscar productos
+        // Función para buscar productos con AJAX
         function buscarProductos(term, container) {
             if (term.length < 2) {
                 container.hide().empty();
@@ -302,9 +313,7 @@
             searchXHR = $.ajax({
                 url: '{{ route("recetas.buscarProductos") }}',
                 type: 'GET',
-                data: {
-                    term: term
-                },
+                data: { term: term },
                 dataType: 'json',
                 success: function(data) {
                     try {
@@ -331,7 +340,7 @@
             });
         }
 
-        // Eventos de búsqueda con debounce
+        // Eventos de búsqueda con debounce para mejor performance
         let searchTimeout = null;
         $('#producto_nombre, #ingrediente_nombre').on('input', function() {
             const term = $(this).val().trim();
@@ -343,12 +352,11 @@
             searchTimeout = setTimeout(() => buscarProductos(term, container), 300);
         });
 
-        // Validación de datos en el frontend
+        // Selección de producto principal
         $(document).on('click', '#productoResults .product-item', function(e) {
             e.preventDefault();
             const $item = $(this);
 
-            // Validar datos
             const producto = {
                 id: $item.data('id'),
                 nombre: $item.data('nombre'),
@@ -368,7 +376,7 @@
 
             // Verificar si ya existe receta para este producto
             $.get('{{ route("recetas.verificarProducto") }}', {
-                    id_producto: producto.id // Asegúrate de enviar el ID numérico
+                    id_producto: producto.id
                 })
                 .done(function(response) {
                     if (response.tiene_receta) {
@@ -389,10 +397,7 @@
             $('#ingrediente_id').val(producto.id);
             $('#ingredienteResults').hide();
 
-            // Guardar el costo del producto seleccionado
             currentProductCost = parseFloat(producto.costo) || 0;
-
-            // Ocultar alerta de unidad de medida al seleccionar nuevo producto
             $('#unidadMedidaError').hide();
         });
 
@@ -408,7 +413,6 @@
             $('#editingIndex').val('-1');
             $('#agregarIngrediente').text('Agregar');
 
-            // Ocultar mensajes de error
             $('#cantidadError').hide();
             $('#presentacionError').hide();
             $('#uMedidaError').hide();
@@ -483,7 +487,7 @@
                     cant_presentacion: presentacion,
                     id_u_medidas: uMedidaId,
                     u_medida: uMedidaNombre,
-                    costo_unitario: ingredientes[editingIndex].costo_unitario, // Mantener el costo original
+                    costo_unitario: ingredientes[editingIndex].costo_unitario,
                     subtotal: subtotal
                 };
             } else {
@@ -515,13 +519,12 @@
             $('#limpiarIngrediente').click();
         });
 
-        // Actualizar tabla de ingredientes
+        // Actualizar tabla de ingredientes y calcular totales
         function updateIngredientesTable() {
             const tableBody = $('#ingredientesTable');
             tableBody.empty();
             totalSubtotal = 0;
 
-            // Verificar si hay ingredientes para mostrar
             if (ingredientes.length === 0) {
                 tableBody.append('<tr><td colspan="8" class="text-center">No hay ingredientes agregados</td></tr>');
                 $('#subtotalTotal').text('S/ 0.00');
@@ -534,31 +537,30 @@
                 totalSubtotal += ingrediente.subtotal;
 
                 tableBody.append(`
-            <tr data-index="${index}">
-                <td>${ingrediente.id_productos_api}</td>
-                <td>${ingrediente.nombre}</td>
-                <td>${ingrediente.cantidad.toFixed(2)}</td>
-                <td>${ingrediente.cant_presentacion}</td>
-                <td>${ingrediente.u_medida}</td>
-                <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
-                <td>S/ ${ingrediente.subtotal.toFixed(2)}</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-primary editar-ingrediente mr-1">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `);
+                    <tr data-index="${index}">
+                        <td>${ingrediente.id_productos_api}</td>
+                        <td>${ingrediente.nombre}</td>
+                        <td>${ingrediente.cantidad.toFixed(2)}</td>
+                        <td>${ingrediente.cant_presentacion}</td>
+                        <td>${ingrediente.u_medida}</td>
+                        <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
+                        <td>S/ ${ingrediente.subtotal.toFixed(2)}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary editar-ingrediente mr-1">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
             });
 
             // Actualizar total
             $('#subtotalTotal').text('S/ ' + totalSubtotal.toFixed(2));
 
-
-            // Preparar datos para enviar
+            // Preparar datos para enviar al servidor
             const datosParaEnviar = ingredientes.map(ing => ({
                 id_productos_api: ing.id_productos_api,
                 cantidad: ing.cantidad,
@@ -566,13 +568,9 @@
                 id_u_medidas: ing.id_u_medidas
             }));
             $('#ingredientesData').val(JSON.stringify(datosParaEnviar));
-            // Actualizar campo hidden para el formulario
-            // $('#ingredientesData').val(JSON.stringify(ingredientes));
-
-
         }
 
-        // Editar ingrediente
+        // Editar ingrediente existente
         $(document).on('click', '.editar-ingrediente', function() {
             const row = $(this).closest('tr');
             const index = row.data('index');
@@ -585,13 +583,8 @@
             $('#ingrediente_presentacion').val(ingrediente.cant_presentacion);
             $('#ingrediente_u_medida').val(ingrediente.id_u_medidas);
 
-            // Guardar el costo del producto que se está editando
             currentProductCost = ingrediente.costo_unitario;
-
-            // Cambiar texto del botón a "Actualizar"
             $('#agregarIngrediente').text('Actualizar');
-
-            // Guardar índice del ingrediente que estamos editando
             $('#editingIndex').val(index);
 
             // Scroll al formulario de ingredientes
@@ -627,7 +620,7 @@
             return isValid;
         }
 
-        // Validación en tiempo real
+        // Validación completa del formulario de receta
         function validateRecetaForm() {
             let isValid = true;
             $('#ingredientesError').hide();
@@ -681,6 +674,7 @@
                 $('#ingredienteResults').hide();
             }
         });
+        
         // Mostrar modal si existe la variable de sesión
         @if(session('show_continue_modal'))
         $('#continueModal').modal('show');
@@ -688,9 +682,8 @@
     });
 </script>
 
-
-
 <style>
+    /* Estilos para los resultados de búsqueda */
     #productoResults,
     #ingredienteResults {
         position: absolute;
@@ -717,25 +710,30 @@
         position: relative;
     }
 
+    /* Estilos para mensajes de error */
     #ingredientesError,
     #ingredienteDuplicadoError,
     #unidadMedidaError {
         margin-bottom: 1rem;
     }
 
+    /* Estilos para botones de acciones */
     .eliminar-ingrediente,
     .editar-ingrediente {
         padding: 0.25rem 0.5rem;
     }
 
+    /* Transición para el contenedor de peso lata */
     #pesoLataContainer {
         transition: all 0.3s ease;
     }
 
+    /* Estilos para mensajes de error pequeños */
     .text-danger {
         font-size: 0.875em;
     }
 
+    /* Clase para campos inválidos */
     .is-invalid {
         border-color: #dc3545;
     }
