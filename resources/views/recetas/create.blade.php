@@ -92,11 +92,10 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="form-group">
+                        <div class="form-group" id="pesoLataContainer" style="display: none;">
                             <label for="constante_peso_lata">Constante Peso Lata</label>
                             <input type="number" step="0.01" class="form-control @error('constante_peso_lata') is-invalid @enderror"
-                                id="constante_peso_lata" name="constante_peso_lata" required
-                                value="{{ old('constante_peso_lata') }}">
+                                id="constante_peso_lata" name="constante_peso_lata" value="0">
                             @error('constante_peso_lata')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -118,6 +117,10 @@
             Este producto ya ha sido agregado como ingrediente
         </div>
 
+        <div class="alert alert-danger" id="unidadMedidaError" style="display:none;">
+            Las cantidades ingresadas deben estar en la misma unidad de medida que la presentación del producto
+        </div>
+
         <div class="row mb-3">
             <div class="col-md-8">
                 <div class="form-group">
@@ -137,14 +140,16 @@
             </div>
             <div class="col-md-2">
                 <div class="form-group">
-                    <label for="ingrediente_cantidad">Cantidad</label>
+                    <label for="ingrediente_cantidad">Cantidad a usar</label>
                     <input type="number" step="0.01" class="form-control" id="ingrediente_cantidad" min="0.01" value="1">
+                    <small class="text-danger" id="cantidadError" style="display:none;">Este campo es requerido</small>
                 </div>
             </div>
             <div class="col-md-2">
                 <div class="form-group">
-                    <label for="ingrediente_presentacion">Presentación</label>
+                    <label for="ingrediente_presentacion">Cantidad de Presentación</label>
                     <input type="number" class="form-control" id="ingrediente_presentacion" min="1" value="1">
+                    <small class="text-danger" id="presentacionError" style="display:none;">Este campo es requerido</small>
                 </div>
             </div>
         </div>
@@ -159,6 +164,7 @@
                         <option value="{{ $unidad->id_u_medidas }}">{{ $unidad->nombre }}</option>
                         @endforeach
                     </select>
+                    <small class="text-danger" id="uMedidaError" style="display:none;">Este campo es requerido</small>
                 </div>
             </div>
             <div class="col-md-4 d-flex align-items-end">
@@ -194,7 +200,9 @@
             </table>
         </div>
 
-        <input type="hidden" name="ingredientes" id="ingredientesData" value="{{ old('ingredientes') }}">
+        <!-- <input type="hidden" name="ingredientes" id="ingredientesData" value="{{ is_array(old('ingredientes')) ? json_encode(old('ingredientes')) : '' }}"> -->
+        <input type="hidden" name="ingredientes" id="ingredientesData" value="">
+        <input type="hidden" id="editingIndex" value="-1">
 
         <div class="form-group">
             <button type="submit" class="btn btn-success">Guardar Receta</button>
@@ -202,15 +210,53 @@
         </div>
     </form>
 </div>
-@endsection
+
+<!-- Coloca esto al final del contenido, antes de @endsection -->
+<div class="modal fade" id="continueModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Receta Guardada</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>¿Deseas agregar otra receta?</p>
+            </div>
+            <div class="modal-footer">
+                <a href="{{ route('recetas.create') }}" class="btn btn-primary">Sí, agregar otra</a>
+                <a href="{{ route('recetas.index') }}" class="btn btn-secondary">No, ver listado</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 @push('scripts')
+
 <script>
     $(document).ready(function() {
         // Variables globales
         let searchXHR = null;
-        let ingredientes = [];
-        let totalSubtotal = 0;
+        let ingredientes = <?php echo json_encode(old('ingredientes', [])); ?>; // Usar los ingredientes antiguos o array vacío  let totalSubtotal = 0;
+        let currentProductCost = 0;
+
+        // Mostrar/ocultar campo de peso lata según área seleccionada
+        $('#id_areas').change(function() {
+            const areaId = $(this).val();
+            if (areaId == 1) { // 1 es el ID para "pan" según la imagen
+                $('#pesoLataContainer').show();
+                $('#constante_peso_lata').prop('required', true);
+            } else {
+                $('#pesoLataContainer').hide();
+                $('#constante_peso_lata').prop('required', false);
+                $('#constante_peso_lata').val('0'); // Establecer valor por defecto a 0
+            }
+        });
+
+        // Trigger change event on page load in case there's a selected value
+        $('#id_areas').trigger('change');
 
         // Función para mostrar resultados de búsqueda
         function showResults(data, container) {
@@ -222,24 +268,26 @@
                     const costo = parseFloat(item.costo) || 0;
 
                     container.append(`
-                <a href="#" class="list-group-item list-group-item-action product-item"
-                   data-id="${item.id}"
-                   data-nombre="${item.text}"
-                   data-codigo="${item.codigo || 'N/A'}"
-                   data-costo="${costo}">
-                   <div class="d-flex justify-content-between">
-                       <span>${item.text}</span>
-                       <small>${item.codigo || 'N/A'}</small>
-                   </div>
-                   <small>S/ ${costo.toFixed(2)}</small>
-                </a>
-            `);
+                        <a href="#" class="list-group-item list-group-item-action product-item"
+                           data-id="${item.id}"
+                           data-nombre="${item.text}"
+                           data-codigo="${item.codigo || 'N/A'}"
+                           data-costo="${costo}"
+                           data-u-medida="${item.id_u_medidas || ''}">
+                           <div class="d-flex justify-content-between">
+                               <span>${item.text}</span>
+                               <small>${item.codigo || 'N/A'}</small>
+                           </div>
+                           <small>S/ ${costo.toFixed(2)}</small>
+                        </a>
+                    `);
                 });
                 container.show();
             } else {
                 container.append('<div class="list-group-item">No se encontraron coincidencias</div>').show();
             }
         }
+
         // Función para buscar productos
         function buscarProductos(term, container) {
             if (term.length < 2) {
@@ -340,6 +388,12 @@
             $('#ingrediente_nombre').val(producto.nombre);
             $('#ingrediente_id').val(producto.id);
             $('#ingredienteResults').hide();
+
+            // Guardar el costo del producto seleccionado
+            currentProductCost = parseFloat(producto.costo) || 0;
+
+            // Ocultar alerta de unidad de medida al seleccionar nuevo producto
+            $('#unidadMedidaError').hide();
         });
 
         // Limpiar campos de ingrediente
@@ -350,9 +404,30 @@
             $('#ingrediente_presentacion').val('1');
             $('#ingrediente_u_medida').val('');
             $('#ingredienteDuplicadoError').hide();
+            $('#unidadMedidaError').hide();
+            $('#editingIndex').val('-1');
+            $('#agregarIngrediente').text('Agregar');
+
+            // Ocultar mensajes de error
+            $('#cantidadError').hide();
+            $('#presentacionError').hide();
+            $('#uMedidaError').hide();
         });
 
-        // Agregar ingrediente a la tabla
+        // Validar campos requeridos en tiempo real
+        $('#ingrediente_cantidad, #ingrediente_presentacion, #ingrediente_u_medida').on('input change', function() {
+            const id = $(this).attr('id');
+            const value = $(this).val();
+
+            if (value === '' || (id === 'ingrediente_cantidad' && parseFloat(value) <= 0) ||
+                (id === 'ingrediente_presentacion' && parseInt(value) <= 0)) {
+                $('#' + id + 'Error').show();
+            } else {
+                $('#' + id + 'Error').hide();
+            }
+        });
+
+        // Agregar o actualizar ingrediente a la tabla
         $('#agregarIngrediente').click(function() {
             const id = $('#ingrediente_id').val();
             const nombre = $('#ingrediente_nombre').val();
@@ -360,46 +435,78 @@
             const presentacion = parseInt($('#ingrediente_presentacion').val());
             const uMedidaId = $('#ingrediente_u_medida').val();
             const uMedidaNombre = $('#ingrediente_u_medida option:selected').text();
+            const editingIndex = $('#editingIndex').val();
 
             // Validaciones
-            if (!id || !nombre || !cantidad || !presentacion || !uMedidaId) {
-                alert('Por favor complete todos los campos del ingrediente');
-                return;
+            let isValid = true;
+
+            if (!id || !nombre) {
+                alert('Por favor seleccione un producto ingrediente');
+                isValid = false;
             }
 
-            if (cantidad <= 0) {
-                alert('La cantidad debe ser mayor a 0');
-                return;
-            }
-
-            if (presentacion <= 0) {
-                alert('La presentación debe ser mayor a 0');
-                return;
-            }
-
-            // Verificar si el ingrediente ya existe
-            if (ingredientes.some(ing => ing.id_productos_api === id)) {
-                $('#ingredienteDuplicadoError').show();
-                return;
+            if (!cantidad || cantidad <= 0) {
+                $('#cantidadError').show();
+                isValid = false;
             } else {
-                $('#ingredienteDuplicadoError').hide();
+                $('#cantidadError').hide();
             }
 
-            // Obtener costo del producto (simulado - en producción deberías hacer una petición AJAX)
-            const costo = parseFloat($('#ingredienteResults .product-item[data-id="' + id + '"]').data('costo')) || 0;
-            const subtotal = cantidad * costo;
+            if (!presentacion || presentacion <= 0) {
+                $('#presentacionError').show();
+                isValid = false;
+            } else {
+                $('#presentacionError').hide();
+            }
 
-            // Agregar a la lista de ingredientes
-            ingredientes.push({
-                id_productos_api: id,
-                nombre: nombre,
-                cantidad: cantidad,
-                cant_presentacion: presentacion,
-                id_u_medidas: uMedidaId,
-                u_medida: uMedidaNombre,
-                costo_unitario: costo,
-                subtotal: subtotal
-            });
+            if (!uMedidaId) {
+                $('#uMedidaError').show();
+                isValid = false;
+            } else {
+                $('#uMedidaError').hide();
+            }
+
+            if (!isValid) {
+                return;
+            }
+
+            // Calcular subtotal según la fórmula: (cantidad / cant_presentacion) * costo_unitario
+            const subtotal = (cantidad / presentacion) * currentProductCost;
+
+            // Verificar si estamos editando o agregando nuevo
+            if (editingIndex >= 0) {
+                // Actualizar ingrediente existente (mantener el costo original)
+                ingredientes[editingIndex] = {
+                    id_productos_api: id,
+                    nombre: nombre,
+                    cantidad: cantidad,
+                    cant_presentacion: presentacion,
+                    id_u_medidas: uMedidaId,
+                    u_medida: uMedidaNombre,
+                    costo_unitario: ingredientes[editingIndex].costo_unitario, // Mantener el costo original
+                    subtotal: subtotal
+                };
+            } else {
+                // Verificar si el ingrediente ya existe
+                if (ingredientes.some(ing => ing.id_productos_api === id)) {
+                    $('#ingredienteDuplicadoError').show();
+                    return;
+                } else {
+                    $('#ingredienteDuplicadoError').hide();
+                }
+
+                // Agregar nuevo ingrediente
+                ingredientes.push({
+                    id_productos_api: id,
+                    nombre: nombre,
+                    cantidad: cantidad,
+                    cant_presentacion: presentacion,
+                    id_u_medidas: uMedidaId,
+                    u_medida: uMedidaNombre,
+                    costo_unitario: currentProductCost,
+                    subtotal: subtotal
+                });
+            }
 
             // Actualizar tabla
             updateIngredientesTable();
@@ -414,33 +521,84 @@
             tableBody.empty();
             totalSubtotal = 0;
 
+            // Verificar si hay ingredientes para mostrar
+            if (ingredientes.length === 0) {
+                tableBody.append('<tr><td colspan="8" class="text-center">No hay ingredientes agregados</td></tr>');
+                $('#subtotalTotal').text('S/ 0.00');
+                $('#ingredientesData').val(JSON.stringify([]));
+                return;
+            }
+
+            // Mostrar los ingredientes
             ingredientes.forEach((ingrediente, index) => {
                 totalSubtotal += ingrediente.subtotal;
 
                 tableBody.append(`
-                    <tr data-index="${index}">
-                        <td>${ingrediente.id_productos_api}</td>
-                        <td>${ingrediente.nombre}</td>
-                        <td>${ingrediente.cantidad.toFixed(2)}</td>
-                        <td>${ingrediente.cant_presentacion}</td>
-                        <td>${ingrediente.u_medida}</td>
-                        <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
-                        <td>S/ ${ingrediente.subtotal.toFixed(2)}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `);
+            <tr data-index="${index}">
+                <td>${ingrediente.id_productos_api}</td>
+                <td>${ingrediente.nombre}</td>
+                <td>${ingrediente.cantidad.toFixed(2)}</td>
+                <td>${ingrediente.cant_presentacion}</td>
+                <td>${ingrediente.u_medida}</td>
+                <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
+                <td>S/ ${ingrediente.subtotal.toFixed(2)}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-primary editar-ingrediente mr-1">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
             });
 
             // Actualizar total
             $('#subtotalTotal').text('S/ ' + totalSubtotal.toFixed(2));
 
+
+            // Preparar datos para enviar
+            const datosParaEnviar = ingredientes.map(ing => ({
+                id_productos_api: ing.id_productos_api,
+                cantidad: ing.cantidad,
+                cant_presentacion: ing.cant_presentacion,
+                id_u_medidas: ing.id_u_medidas
+            }));
+            $('#ingredientesData').val(JSON.stringify(datosParaEnviar));
             // Actualizar campo hidden para el formulario
-            $('#ingredientesData').val(JSON.stringify(ingredientes));
+            // $('#ingredientesData').val(JSON.stringify(ingredientes));
+
+
         }
+
+        // Editar ingrediente
+        $(document).on('click', '.editar-ingrediente', function() {
+            const row = $(this).closest('tr');
+            const index = row.data('index');
+            const ingrediente = ingredientes[index];
+
+            // Llenar formulario con los datos del ingrediente
+            $('#ingrediente_nombre').val(ingrediente.nombre);
+            $('#ingrediente_id').val(ingrediente.id_productos_api);
+            $('#ingrediente_cantidad').val(ingrediente.cantidad);
+            $('#ingrediente_presentacion').val(ingrediente.cant_presentacion);
+            $('#ingrediente_u_medida').val(ingrediente.id_u_medidas);
+
+            // Guardar el costo del producto que se está editando
+            currentProductCost = ingrediente.costo_unitario;
+
+            // Cambiar texto del botón a "Actualizar"
+            $('#agregarIngrediente').text('Actualizar');
+
+            // Guardar índice del ingrediente que estamos editando
+            $('#editingIndex').val(index);
+
+            // Scroll al formulario de ingredientes
+            $('html, body').animate({
+                scrollTop: $('#ingrediente_nombre').offset().top - 100
+            }, 500);
+        });
 
         // Eliminar ingrediente
         $(document).on('click', '.eliminar-ingrediente', function() {
@@ -451,10 +609,31 @@
             updateIngredientesTable();
         });
 
+        // Validación en tiempo real del formulario principal
+        function validateFormFields() {
+            let isValid = true;
+
+            // Validar campos requeridos
+            $('[required]').each(function() {
+                const $field = $(this);
+                if ($field.val() === '') {
+                    $field.addClass('is-invalid');
+                    isValid = false;
+                } else {
+                    $field.removeClass('is-invalid');
+                }
+            });
+
+            return isValid;
+        }
+
         // Validación en tiempo real
         function validateRecetaForm() {
             let isValid = true;
             $('#ingredientesError').hide();
+
+            // Validar campos del formulario
+            isValid = validateFormFields();
 
             // Validar producto principal
             if ($('#id_productos_api').val() === '') {
@@ -483,6 +662,15 @@
             }
         });
 
+        // Validación en tiempo real para campos requeridos
+        $('input[required], select[required]').on('input change', function() {
+            if ($(this).val() === '') {
+                $(this).addClass('is-invalid');
+            } else {
+                $(this).removeClass('is-invalid');
+            }
+        });
+
         // Ocultar resultados al hacer clic fuera
         $(document).on('click', function(e) {
             if (!$(e.target).closest('#producto_nombre, #productoResults').length) {
@@ -493,8 +681,14 @@
                 $('#ingredienteResults').hide();
             }
         });
+        // Mostrar modal si existe la variable de sesión
+        @if(session('show_continue_modal'))
+        $('#continueModal').modal('show');
+        @endif
     });
 </script>
+
+
 
 <style>
     #productoResults,
@@ -524,12 +718,26 @@
     }
 
     #ingredientesError,
-    #ingredienteDuplicadoError {
+    #ingredienteDuplicadoError,
+    #unidadMedidaError {
         margin-bottom: 1rem;
     }
 
-    .eliminar-ingrediente {
+    .eliminar-ingrediente,
+    .editar-ingrediente {
         padding: 0.25rem 0.5rem;
+    }
+
+    #pesoLataContainer {
+        transition: all 0.3s ease;
+    }
+
+    .text-danger {
+        font-size: 0.875em;
+    }
+
+    .is-invalid {
+        border-color: #dc3545;
     }
 </style>
 @endpush
