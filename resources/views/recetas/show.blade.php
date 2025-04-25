@@ -75,8 +75,8 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="5" class="text-right"><strong>Subtotal:</strong></td>
-                            <td colspan="2">S/ {{ number_format($receta->detalles->sum('subtotal_receta'), 2) }}</td>
+                            <td colspan="6" class="text-right"><strong>Subtotal:</strong></td>
+                            <td colspan="1">S/ {{ number_format($receta->detalles->sum('subtotal_receta'), 2) }}</td>
                         </tr>
                     </tfoot>
                 </table>
