@@ -126,29 +126,32 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('estados', EstadoController::class);
     Route::resource('areas', AreaController::class);
     Route::resource('tiendas', TiendaController::class);
+
+    Route::prefix('recetas')->group(function () {
+        Route::get('/', [RecetaController::class, 'index'])->name('recetas.index');
+        Route::get('/create', [RecetaController::class, 'create'])->name('recetas.create');
+        Route::post('/', [RecetaController::class, 'store'])->name('recetas.store');
+
+        // Rutas AJAX primero
+        Route::get('/buscar-productos', [RecetaController::class, 'buscarProductos'])->name('recetas.buscarProductos');
+        Route::post('/agregar-ingrediente', [RecetaController::class, 'agregarIngrediente'])->name('recetas.agregarIngrediente');
+
+        // Rutas con parámetros
+        Route::get('/{id}', [RecetaController::class, 'show'])->name('recetas.show');
+        Route::get('/{id}/edit', [RecetaController::class, 'edit'])->name('recetas.edit');
+        Route::put('/{id}', [RecetaController::class, 'update'])->name('recetas.update');
+        Route::delete('/{id}', [RecetaController::class, 'destroy'])->name('recetas.destroy');
+    });
+
+    Route::get('recetas/verificar-producto', [RecetaController::class, 'verificarProducto'])
+        ->name('recetas.verificarProducto');
+
+    // Para mostrar recetas
+    Route::get('recetas/{id}', [RecetaController::class, 'show'])
+        ->name('recetas.show')
+        ->where('id', '[0-9]+');
+
+    // Agregar esta ruta
+    Route::patch('/recetas/{id}/toggle-status', [RecetaController::class, 'toggleStatus'])
+        ->name('recetas.toggle-status');
 });
-
-
-Route::prefix('recetas')->group(function () {
-    Route::get('/', [RecetaController::class, 'index'])->name('recetas.index');
-    Route::get('/create', [RecetaController::class, 'create'])->name('recetas.create');
-    Route::post('/', [RecetaController::class, 'store'])->name('recetas.store');
-
-    // Rutas AJAX primero
-    Route::get('/buscar-productos', [RecetaController::class, 'buscarProductos'])->name('recetas.buscarProductos');
-    Route::post('/agregar-ingrediente', [RecetaController::class, 'agregarIngrediente'])->name('recetas.agregarIngrediente');
-
-    // Rutas con parámetros
-    Route::get('/{id}', [RecetaController::class, 'show'])->name('recetas.show');
-    Route::get('/{id}/edit', [RecetaController::class, 'edit'])->name('recetas.edit');
-    Route::put('/{id}', [RecetaController::class, 'update'])->name('recetas.update');
-    Route::delete('/{id}', [RecetaController::class, 'destroy'])->name('recetas.destroy');
-});
-
-Route::get('recetas/verificar-producto', [RecetaController::class, 'verificarProducto'])
-    ->name('recetas.verificarProducto');
-
-// Para mostrar recetas
-Route::get('recetas/{id}', [RecetaController::class, 'show'])
-    ->name('recetas.show')
-    ->where('id', '[0-9]+');
