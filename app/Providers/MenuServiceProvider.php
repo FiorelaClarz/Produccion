@@ -16,12 +16,12 @@ class MenuServiceProvider extends ServiceProvider
     {
         view()->composer('*', function ($view) {
             $menuItems = [];
-            
+
             if (Auth::check()) {
                 $user = Auth::user();
                 $menuItems = $this->getMenuItemsForRole($user->id_roles);
             }
-            
+
             $view->with('menuItems', $menuItems);
         });
     }
@@ -87,6 +87,35 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'recetas.index',
                 'icon' => 'fas fa-utensils', // Icono de recetas
                 'visible' => true
+            ],
+            [
+                'text' => 'Equipos',
+                'route' => 'equipos.index',
+                'icon' => 'fas fa-users-cog',
+                'visible' => true
+            ],
+            [
+                'text' => 'Pedidos',
+                'route' => 'pedidos.index',
+                'icon' => 'fas fa-clipboard-list',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todos los Pedidos',
+                        'route' => 'pedidos.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Nuevo Pedido',
+                        'route' => 'pedidos.create',
+                        'icon' => 'fas fa-plus-circle'
+                    ],
+                    [
+                        'text' => 'Horas Límite',
+                        'route' => 'hora-limites.index',
+                        'icon' => 'fas fa-clock'
+                    ]
+                ]
             ]
         ];
 
@@ -107,7 +136,7 @@ class MenuServiceProvider extends ServiceProvider
         ];
 
         // Menú para Rol 3
-        $rol3Menu = [
+        $personal = [
             [
                 'text' => 'Roles',
                 'route' => 'rols.index',
@@ -119,6 +148,33 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'turnos.index',
                 'icon' => 'fas fa-calendar-alt',
                 'visible' => true
+            ],
+            [
+                'text' => 'Equipos',
+                'route' => 'equipos.index',
+                'icon' => 'fas fa-users-cog',
+                'visible' => true
+            ]
+        ];
+        // Menú para Rol 3
+        $operador = [
+            [
+                'text' => 'Roles',
+                'route' => 'rols.index',
+                'icon' => 'fas fa-user-tag',
+                'visible' => true
+            ],
+            [
+                'text' => 'Turnos',
+                'route' => 'turnos.index',
+                'icon' => 'fas fa-calendar-alt',
+                'visible' => true
+            ],
+            [
+                'text' => 'Equipos',
+                'route' => 'equipos.index',
+                'icon' => 'fas fa-users-cog',
+                'visible' => true
             ]
         ];
 
@@ -128,7 +184,9 @@ class MenuServiceProvider extends ServiceProvider
             case 2: // Gerencia
                 return array_merge($baseMenu, $gerenciaMenu);
             case 3: // Rol 3
-                return array_merge($baseMenu, $rol3Menu);
+                return array_merge($baseMenu, $personal);
+            case 4: // Rol 4
+                return array_merge($baseMenu, $operador);
             default:
                 return $baseMenu;
         }
