@@ -34,7 +34,7 @@ class Usuario extends Authenticatable
      */
     protected $fillable = [
         'nombre_personal',
-        'dni_personal', 
+        'dni_personal',
         'id_personal_api',
         'clave',
         'id_tiendas_api',
@@ -91,9 +91,10 @@ class Usuario extends Authenticatable
     /**
      * Relationship with PersonalApi
      */
+    // Relación con PersonalApi
     public function personal()
     {
-        return $this->belongsTo(PersonalApi::class, 'id_personal_api');
+        return $this->belongsTo(PersonalApi::class, 'id_personal_api', 'id_personal_api');
     }
 
     /**

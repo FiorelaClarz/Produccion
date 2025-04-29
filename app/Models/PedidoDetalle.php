@@ -17,11 +17,14 @@ class PedidoDetalle extends Model
         'id_pedidos_cab',
         'id_productos_api',
         'id_areas',
+        'id_recetas',
         'cantidad',
         'id_u_medidas',
         'es_personalizado',
         'descripcion',
         'foto_referencial',
+        'foto_referencial_url',
+        'id_estados',
         'is_deleted'
     ];
 
@@ -52,5 +55,16 @@ class PedidoDetalle extends Model
     public function uMedida()
     {
         return $this->belongsTo(UMedida::class, 'id_u_medidas');
+    }
+
+    // Relación con Estado
+    public function estado()
+    {
+        return $this->belongsTo(Estado::class, 'id_estados');
+    }
+    // Relación con RecetaCabecera
+    public function receta()
+    {
+        return $this->belongsTo(RecetaCabecera::class, 'id_recetas');
     }
 }

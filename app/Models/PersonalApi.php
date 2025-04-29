@@ -23,9 +23,10 @@ class PersonalApi extends Model
     ];
 
     protected $casts = [
-        'sueldo' => 'decimal:2'
+        'sueldo' => 'decimal:2',
+        'status' => 'boolean',
+        'is_deleted' => 'boolean'
     ];
-
 
     protected $dates = [
         'created_at',
@@ -43,9 +44,5 @@ class PersonalApi extends Model
         return $this->belongsTo(Area::class, 'id_areas', 'id_areas');
     }
 
-    // Relación con Usuarios (si existe)
-    public function usuario()
-    {
-        return $this->hasOne(Usuario::class, 'id_personal_api');
-    }
+
 }

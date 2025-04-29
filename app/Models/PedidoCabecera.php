@@ -4,14 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PedidoCabecera extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'pedidos_cab';
     protected $primaryKey = 'id_pedidos_cab';
-    public $timestamps = true;
+    public $timestamps = false; // Desactivamos created_at y updated_at
 
     protected $fillable = [
         'id_usuarios',
@@ -21,14 +22,20 @@ class PedidoCabecera extends Model
         'hora_created',
         'hora_last_update',
         'esta_dentro_de_hora',
-        'hora_limite',
+        'id_hora_limite',
         'doc_interno',
-        'id_estados',
-        'is_deleted'
+        'is_deleted',
+        'status'
     ];
 
     protected $casts = [
-        'is_deleted' => 'boolean'
+        'is_deleted' => 'boolean',
+        'status' => 'boolean',
+        'esta_dentro_de_hora' => 'boolean',
+        'fecha_created' => 'datetime:Y-m-d',
+        'fecha_last_update' => 'datetime:Y-m-d',
+        'hora_created' => 'datetime:H:i:s',
+        'hora_last_update' => 'datetime:H:i:s'
     ];
 
     // Relación con Usuario
@@ -43,10 +50,10 @@ class PedidoCabecera extends Model
         return $this->belongsTo(Tienda::class, 'id_tiendas_api');
     }
 
-    // Relación con Estado
-    public function estado()
+    // Relación con HoraLimite
+    public function horaLimite()
     {
-        return $this->belongsTo(Estado::class, 'id_estados');
+        return $this->belongsTo(HoraLimite::class, 'id_hora_limite');
     }
 
     // Relación con PedidoDetalle
