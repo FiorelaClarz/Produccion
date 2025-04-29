@@ -9,6 +9,8 @@ use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\UMedidaController;
 use App\Http\Controllers\RecetaController;
+use App\Http\Controllers\PedidoController;
+use App\Http\Controllers\EquipoController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
@@ -154,4 +156,41 @@ Route::middleware(['auth'])->group(function () {
     // Agregar esta ruta
     Route::patch('/recetas/{id}/toggle-status', [RecetaController::class, 'toggleStatus'])
         ->name('recetas.toggle-status');
+
+
+    // Rutas para equipos
+    Route::prefix('equipos')->group(function () {
+        Route::get('/', [EquipoController::class, 'index'])->name('equipos.index');
+        Route::get('/create', [EquipoController::class, 'create'])->name('equipos.create');
+        Route::post('/', [EquipoController::class, 'store'])->name('equipos.store');
+        Route::get('/{id}', [EquipoController::class, 'show'])->name('equipos.show');
+        Route::get('/{id}/edit', [EquipoController::class, 'edit'])->name('equipos.edit');
+        Route::put('/{id}', [EquipoController::class, 'update'])->name('equipos.update');
+        Route::delete('/{id}', [EquipoController::class, 'destroy'])->name('equipos.destroy');
+        // Route::patch('/{id}/toggle-status', [EquipoController::class, 'toggleStatus'])->name('equipos.toggle-status');
+        Route::match(['PATCH', 'POST'], '/equipos/{id}/toggle-status', [EquipoController::class, 'toggleStatus'])
+            ->name('equipos.toggle-status');
+        Route::post('/{id}/registrar-salida', [EquipoController::class, 'registrarSalida'])->name('equipos.registrar-salida');
+    });
+
+
+    Route::prefix('pedidos')->group(function () {
+        // 1. Primero las rutas fijas (sin parámetros)
+        // Route::get('buscar/recetas', [PedidoController::class, 'buscarRecetas'])
+        //     ->name('pedidos.buscar-recetas');
+        Route::get('pedidos/buscar-recetas', [PedidoController::class, 'buscarRecetas'])->name('pedidos.buscar-recetas');
+
+        // 2. Luego las rutas con parámetros
+        Route::get('/', [PedidoController::class, 'index'])->name('pedidos.index');
+        Route::get('/create', [PedidoController::class, 'create'])->name('pedidos.create');
+        Route::post('/', [PedidoController::class, 'store'])->name('pedidos.store');
+        Route::get('/{id}', [PedidoController::class, 'show'])->name('pedidos.show');
+        Route::get('/{id}/edit', [PedidoController::class, 'edit'])->name('pedidos.edit');
+        Route::put('/{id}', [PedidoController::class, 'update'])->name('pedidos.update');
+        Route::delete('/{id}', [PedidoController::class, 'destroy'])->name('pedidos.destroy');
+
+        // Rutas adicionales para acciones específicas
+        Route::patch('/{id}/cancelar', [PedidoController::class, 'cancelar'])->name('pedidos.cancelar');
+        Route::patch('/{id}/procesar', [PedidoController::class, 'procesar'])->name('pedidos.procesar');
+    });
 });
