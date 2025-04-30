@@ -1,348 +1,595 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <h1 class="mb-4">Nuevo Pedido</h1>
-
-    <div class="card">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <span>Información del Pedido</span>
-            </div>
-        </div>
-
-        <div class="card-body">
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <p><strong>Usuario:</strong> {{ $usuario->nombre_personal }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Tienda:</strong> {{ $usuario->tienda->nombre ?? 'No asignada' }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Área:</strong> {{ $usuario->area->nombre ?? 'No asignada' }}</p>
-                </div>
-            </div>
-
-            <form id="pedidoForm" method="POST" action="{{ route('pedidos.store') }}">
-                @csrf
-
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">Detalles del Pedido</div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_areas" class="form-label">Área <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="id_areas" name="id_areas" required>
-                                        <option value="">Seleccione un área</option>
-                                        @foreach($areas as $area)
-                                        <option value="{{ $area->id_areas }}">{{ $area->nombre }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="buscar_receta" class="form-label">Buscar Receta <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="buscar_receta" placeholder="Ingrese al menos 3 caracteres">
-                                    <div id="resultados_recetas" class="mt-2 d-none list-group"></div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="cantidad" class="form-label">Cantidad <span class="text-danger">*</span></label>
-                                    <input type="number" step="0.01" min="0.1" class="form-control" id="cantidad">
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_u_medidas" class="form-label">Unidad de Medida <span class="text-danger">*</span></label>
-                                    <select class="form-select" id="id_u_medidas">
-                                        <option value="">Seleccione unidad</option>
-                                        @foreach($unidades as $unidad)
-                                        <option value="{{ $unidad->id_u_medidas }}">{{ $unidad->nombre }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3 form-check">
-                                    <input type="checkbox" class="form-check-input" id="es_personalizado">
-                                    <label class="form-check-label" for="es_personalizado">¿Es personalizado?</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="personalizado_fields" class="row g-3 d-none mt-2">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="descripcion" class="form-label">Descripción</label>
-                                    <textarea class="form-control" id="descripcion" rows="2"></textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="foto_referencial_url" class="form-label">URL de Imagen Referencial</label>
-                                    <input type="url" class="form-control" id="foto_referencial_url">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-end gap-2 mt-3">
-                            <button type="button" id="limpiarBtn" class="btn btn-secondary">
-                                <i class="fas fa-broom me-1"></i> Limpiar
-                            </button>
-                            <button type="button" id="agregarBtn" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i> Agregar
-                            </button>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Nuevo Pedido</h4>
+                        <div id="contador-regresivo" class="badge fs-5">
+                            <i class="fas fa-clock me-2"></i>
+                            <span id="tiempo-restante">--:--</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">Lista de Pedidos</div>
-                    <div class="card-body">
-                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                            <table class="table table-hover" id="tablaDetalles">
-                                <thead class="table-light">
+                <div class="card-body">
+                    <!-- Información del Pedido -->
+                    <div class="mb-4">
+                        <h5>Información del Pedido</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><strong>Usuario:</strong></label>
+                                    <p class="form-control-plaintext">{{ Auth::user()->nombre_personal }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><strong>Tienda:</strong></label>
+                                    <p class="form-control-plaintext">{{ Auth::user()->tienda->nombre ?? 'No asignada' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalles del Pedido -->
+                    <div class="mb-4">
+                        <h5>Detalles del Pedido</h5>
+                        <form id="form-detalle-pedido">
+                            @csrf
+                            <input type="hidden" id="id_hora_limite" name="id_hora_limite" value="{{ $horaLimite->id_hora_limite }}">
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="id_areas">Área</label>
+                                        <select class="form-control" id="id_areas" name="id_areas" required>
+                                            <option value="">Seleccione un área</option>
+                                            @foreach($areas as $area)
+                                            <option value="{{ $area->id_areas }}">{{ $area->nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="buscar-receta">Buscar Receta (mínimo 3 caracteres)</label>
+                                        <input type="text" class="form-control" id="buscar-receta" name="buscar-receta"
+                                            placeholder="Ingrese nombre de receta..." minlength="3">
+                                        <div id="sugerencias-recetas" class="list-group mt-2" style="display:none;"></div>
+                                        <input type="hidden" id="id_recetas" name="id_recetas">
+                                        <input type="hidden" id="id_productos_api" name="id_productos_api">
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="cantidad">Cantidad</label>
+                                        <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" value="1" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="id_u_medidas">Unidad de Medida</label>
+                                        <select class="form-control" id="id_u_medidas" name="id_u_medidas" required>
+                                            <option value="">Seleccione</opstion>
+                                            @foreach($unidades as $umedida)
+                                            <option value="{{ $umedida->id_u_medidas }}">{{ $umedida->nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Campos para pedido personalizado -->
+                            <div id="campos-personalizado" style="display:none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="descripcion">Descripción</label>
+                                            <textarea class="form-control" id="descripcion" name="descripcion" rows="2"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="foto_referencial_url">URL de imagen referencial (opcional)</label>
+                                            <input type="url" class="form-control" id="foto_referencial_url" name="foto_referencial_url">
+                                            <small class="form-text text-muted">Puede subir una imagen más adelante</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="es_personalizado" name="es_personalizado">
+                                        <label class="form-check-label" for="es_personalizado">¿Es personalizado?</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <button type="button" id="btn-agregar" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Agregar
+                                    </button>
+                                    <button type="button" id="btn-limpiar" class="btn btn-secondary">
+                                        <i class="fas fa-broom"></i> Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Lista de pedidos agregados -->
+                    <div class="mt-4">
+                        <h5>Lista de Pedidos</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="thead-dark">
                                     <tr>
                                         <th>Área</th>
                                         <th>Receta</th>
                                         <th>Cantidad</th>
                                         <th>Unidad</th>
+                                        <th>Estado</th>
                                         <th>Personalizado</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="detallesBody">
-                                    <!-- Aquí se agregarán los detalles dinámicamente -->
+                                <tbody id="lista-pedidos">
+                                    <!-- Aquí se agregarán dinámicamente los pedidos -->
+                                    <tr>
+                                        <td colspan="7" class="text-center">No hay pedidos agregados</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
 
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ route('pedidos.index') }}" class="btn btn-danger">
-                        <i class="fas fa-times me-1"></i> Cancelar
-                    </a>
-                    <button type="submit" class="btn btn-success" id="submitBtn">
-                        <i class="fas fa-check me-1"></i> Confirmar Pedido
-                    </button>
+                    <!-- Botones finales -->
+                    <div class="row mt-4">
+                        <div class="col-md-12 text-right">
+                            <button type="button" id="btn-pedir" class="btn btn-success btn-lg">
+                                <i class="fas fa-paper-plane"></i> Pedir
+                            </button>
+                            <button type="button" id="btn-cancelar" class="btn btn-danger btn-lg">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                        </div>
+                    </div>
                 </div>
-
-                <input type="hidden" name="detalles" id="detallesInput">
-            </form>
+            </div>
         </div>
     </div>
 </div>
 @endsection
 
-@push('scripts')
+@section('scripts')
 <script>
-$(document).ready(function() {
-    let detalles = [];
-    let editIndex = null;
+    $(document).ready(function() {
+        // Variables globales
+        let pedidos = [];
+        let hora_limite = '{{ $horaLimite->hora_limite }}';
+        let intervaloContador = null;
 
-    // Buscar recetas
-    $('#buscar_receta').on('input', function() {
-        const termino = $(this).val().trim();
-        const id_areas = $('#id_areas').val();
-        
-        if (termino.length < 3 || !id_areas) {
-            $('#resultados_recetas').addClass('d-none');
-            return;
+        // Inicializar el contador regresivo
+        function iniciarContadorRegresivo() {
+            const ahora = new Date();
+            const horaFin = new Date(`${ahora.toDateString()} ${hora_limite}`);
+
+            actualizarContador();
+
+            // Actualizar cada segundo
+            intervaloContador = setInterval(actualizarContador, 1000);
         }
 
-        $('#resultados_recetas').html('<div class="list-group-item">Buscando...</div>')
-                              .removeClass('d-none');
+        function actualizarContador() {
+            const ahora = new Date();
+            const horaFin = new Date(`${ahora.toDateString()} ${hora_limite}`);
+            const diferencia = horaFin - ahora;
 
-        $.ajax({
-            url: "{{ route('pedidos.buscar-recetas') }}",
-            method: 'GET',
-            data: { id_areas, termino },
-            success: function(response) {
-                const resultados = $('#resultados_recetas');
-                resultados.empty();
-                
-                if (response.length > 0) {
-                    resultados.removeClass('d-none');
-                    response.forEach(receta => {
-                        resultados.append(`
-                            <div class="list-group-item list-group-item-action receta-item" 
-                                data-id="${receta.id}" 
-                                data-nombre="${receta.nombre}"
-                                data-id_producto="${receta.id_productos_api}"
-                                data-id_u_medida="${receta.id_u_medidas}"
-                                data-u_medida_nombre="${receta.u_medida_nombre}">
-                                <strong>${receta.nombre}</strong> (${receta.u_medida_nombre})
-                            </div>
-                        `);
+            if (diferencia <= 0) {
+                clearInterval(intervaloContador);
+                $('#tiempo-restante').text('00:00');
+                $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+
+                // Mostrar alerta y redireccionar
+                Swal.fire({
+                    title: '¡Tiempo agotado!',
+                    text: 'El tiempo para realizar pedidos ha terminado. Será redirigido.',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    window.location.href = "{{ route('pedidos.index') }}";
+                });
+                return;
+            }
+
+            const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+            const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+
+            const minutosStr = minutos < 10 ? '0' + minutos : minutos;
+            const segundosStr = segundos < 10 ? '0' + segundos : segundos;
+
+            $('#tiempo-restante').text(`${minutosStr}:${segundosStr}`);
+
+            // Cambiar color según el tiempo restante
+            if (diferencia < (5 * 60 * 1000)) { // Menos de 5 minutos
+                $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+
+                // Mostrar alerta solo una vez cuando quedan 5 minutos
+                if (minutos === 4 && segundos === 59) {
+                    Swal.fire({
+                        title: '¡Atención!',
+                        text: 'Quedan menos de 5 minutos para realizar pedidos',
+                        icon: 'warning',
+                        confirmButtonText: 'Entendido'
                     });
-                } else {
-                    resultados.html('<div class="list-group-item">No se encontraron recetas</div>')
-                              .removeClass('d-none');
                 }
-            },
-            error: function(xhr) {
-                console.error('Error:', xhr.responseText);
-                $('#resultados_recetas').html('<div class="list-group-item text-danger">Error en la búsqueda</div>')
-                                      .removeClass('d-none');
+            } else if (diferencia < (15 * 60 * 1000)) { // Menos de 15 minutos
+                $('#contador-regresivo').removeClass('bg-primary bg-danger').addClass('bg-warning');
+
+                // Mostrar alerta solo una vez cuando quedan 15 minutos
+                if (minutos === 14 && segundos === 59) {
+                    Swal.fire({
+                        title: '¡Atención!',
+                        text: 'Quedan menos de 15 minutos para realizar pedidos',
+                        icon: 'warning',
+                        confirmButtonText: 'Entendido'
+                    });
+                }
+            }
+        }
+
+        // Mostrar/ocultar campos personalizados
+        $('#es_personalizado').change(function() {
+            if ($(this).is(':checked')) {
+                $('#campos-personalizado').show();
+                $('#descripcion').prop('required', true);
+            } else {
+                $('#campos-personalizado').hide();
+                $('#descripcion').prop('required', false);
             }
         });
-    });
 
-    // Seleccionar receta
-    $(document).on('click', '.receta-item', function() {
-        const id_recetas = $(this).data('id');
-        const nombre = $(this).data('nombre');
-        const id_u_medida = $(this).data('id_u_medida');
-        
-        $('#buscar_receta').val(nombre)
-            .data('id_recetas', id_recetas)
-            .data('id_productos_api', $(this).data('id_producto'));
-            
-        $('#id_u_medidas').val(id_u_medida).trigger('change');
-        $('#resultados_recetas').addClass('d-none');
-    });
+        // Buscar recetas al escribir
+        $('#buscar-receta').on('input', function() {
+            const term = $(this).val();
+            const id_area = $('#id_areas').val();
 
-    // Mostrar/ocultar campos personalizados
-    $('#es_personalizado').change(function() {
-        $('#personalizado_fields').toggleClass('d-none', !$(this).is(':checked'));
-    });
+            if (term.length >= 3 && id_area) {
+                $.get('{{ route("pedidos.buscar-recetas") }}', {
+                    id_areas: id_area,
+                    termino: term
+                }, function(data) {
+                    const $sugerencias = $('#sugerencias-recetas');
+                    $sugerencias.empty();
 
-    // Agregar detalle
-    $('#agregarBtn').click(function() {
-        // Validar campos básicos
-        if (!$('#id_areas').val() || !$('#buscar_receta').val() || !$('#cantidad').val() || !$('#id_u_medidas').val()) {
-            alert('Por favor complete todos los campos obligatorios');
-            return;
-        }
+                    if (data.length > 0) {
+                        data.forEach(function(receta) {
+                            $sugerencias.append(`
+                            <a href="#" class="list-group-item list-group-item-action" 
+                               data-id="${receta.id}" 
+                               data-id-producto="${receta.id_productos_api}"
+                               data-id-u-medida="${receta.id_u_medidas}"
+                               data-u-medida="${receta.u_medida_nombre}">
+                                ${receta.nombre}
+                                <small class="text-muted d-block">${receta.producto_nombre}</small>
+                            </a>
+                        `);
+                        });
+                        $sugerencias.show();
+                    } else {
+                        $sugerencias.hide();
+                    }
+                });
+            } else {
+                $('#sugerencias-recetas').hide();
+            }
+        });
 
-        // Crear objeto detalle
-        const detalle = {
-            id_areas: $('#id_areas').val(),
-            area_nombre: $('#id_areas option:selected').text(),
-            id_recetas: $('#buscar_receta').data('id_recetas') || null,
-            receta_nombre: $('#buscar_receta').val(),
-            cantidad: parseFloat($('#cantidad').val()),
-            id_u_medidas: $('#id_u_medidas').val(),
-            unidad_nombre: $('#id_u_medidas option:selected').text(),
-            es_personalizado: $('#es_personalizado').is(':checked') ? 1 : 0,
-            descripcion: $('#es_personalizado').is(':checked') ? $('#descripcion').val() : null,
-            foto_referencial_url: $('#es_personalizado').is(':checked') ? $('#foto_referencial_url').val() : null,
-            id_productos_api: $('#buscar_receta').data('id_productos_api') || null
-        };
+        // Seleccionar receta de las sugerencias
+        $(document).on('click', '#sugerencias-recetas a', function(e) {
+            e.preventDefault();
 
-        // Editar o agregar
-        if (editIndex !== null) {
-            detalles[editIndex] = detalle;
-            editIndex = null;
-            $('#agregarBtn').html('<i class="fas fa-plus me-1"></i> Agregar');
-        } else {
-            detalles.push(detalle);
-        }
+            const id_receta = $(this).data('id');
+            const id_producto = $(this).data('id-producto');
+            const id_u_medida = $(this).data('id-u-medida');
+            const u_medida = $(this).data('u-medida');
 
-        actualizarTablaDetalles();
-        limpiarCampos();
-    });
+            $('#id_recetas').val(id_receta);
+            $('#id_productos_api').val(id_producto);
+            $('#buscar-receta').val($(this).text().trim());
+            $('#id_u_medidas').val(id_u_medida).trigger('change');
 
-    // Limpiar campos
-    $('#limpiarBtn').click(limpiarCampos);
+            $('#sugerencias-recetas').hide();
+        });
 
-    function limpiarCampos() {
-        $('#id_areas').val('').trigger('change');
-        $('#buscar_receta').val('').removeData('id_recetas').removeData('id_productos_api');
-        $('#cantidad').val('');
-        $('#id_u_medidas').val('');
-        $('#es_personalizado').prop('checked', false);
-        $('#personalizado_fields').addClass('d-none');
-        $('#descripcion').val('');
-        $('#foto_referencial_url').val('');
-        $('#resultados_recetas').addClass('d-none').empty();
-        
-        if (editIndex !== null) {
-            $('#agregarBtn').html('<i class="fas fa-plus me-1"></i> Agregar');
-            editIndex = null;
-        }
-    }
+        // Limpiar formulario
+        $('#btn-limpiar').click(function() {
+            $('#form-detalle-pedido')[0].reset();
+            $('#campos-personalizado').hide();
+            $('#es_personalizado').prop('checked', false);
+            $('#sugerencias-recetas').hide();
+        });
 
-    // Actualizar tabla de detalles
-    function actualizarTablaDetalles() {
-        const tbody = $('#detallesBody');
-        tbody.empty();
+        // Agregar pedido a la lista
+        $('#btn-agregar').click(function() {
+            if ($('#form-detalle-pedido')[0].checkValidity()) {
+                const area = $('#id_areas option:selected').text();
+                const receta = $('#buscar-receta').val();
+                const cantidad = $('#cantidad').val();
+                const unidad = $('#id_u_medidas option:selected').text();
+                const es_personalizado = $('#es_personalizado').is(':checked');
+                const descripcion = $('#descripcion').val();
+                const foto_url = $('#foto_referencial_url').val();
 
-        if (detalles.length === 0) {
-            tbody.append('<tr><td colspan="6" class="text-center">No hay detalles agregados</td></tr>');
-        } else {
-            detalles.forEach((detalle, index) => {
-                tbody.append(`
-                    <tr>
-                        <td>${detalle.area_nombre}</td>
-                        <td>${detalle.receta_nombre}</td>
-                        <td>${detalle.cantidad}</td>
-                        <td>${detalle.unidad_nombre}</td>
-                        <td>${detalle.es_personalizado ? 'Sí' : 'No'}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-warning editar-detalle" data-index="${index}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger eliminar-detalle" data-index="${index}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `);
+                const pedido = {
+                    id_area: $('#id_areas').val(),
+                    area_nombre: area,
+                    id_receta: $('#id_recetas').val(),
+                    receta_nombre: receta,
+                    id_producto: $('#id_productos_api').val(),
+                    cantidad: cantidad,
+                    id_u_medida: $('#id_u_medidas').val(),
+                    u_medida_nombre: unidad,
+                    es_personalizado: es_personalizado,
+                    descripcion: descripcion,
+                    foto_url: foto_url,
+                    id_estado: 2 // Pendiente por defecto
+                };
+
+                pedidos.push(pedido);
+                actualizarListaPedidos();
+                $('#btn-limpiar').click(); // Limpiar el formulario
+            } else {
+                $('#form-detalle-pedido')[0].reportValidity();
+            }
+        });
+
+        // Actualizar la tabla de pedidos
+        function actualizarListaPedidos() {
+            const $lista = $('#lista-pedidos');
+            $lista.empty();
+
+            if (pedidos.length === 0) {
+                $lista.append('<tr><td colspan="7" class="text-center">No hay pedidos agregados</td></tr>');
+                return;
+            }
+
+            pedidos.forEach(function(pedido, index) {
+                const estadoColor = getColorEstado(pedido.id_estado);
+                const personalizadoIcon = pedido.es_personalizado ?
+                    '<i class="fas fa-check text-success"></i>' :
+                    '<i class="fas fa-times text-danger"></i>';
+
+                $lista.append(`
+                <tr>
+                    <td>${pedido.area_nombre}</td>
+                    <td>${pedido.receta_nombre || 'Personalizado'}</td>
+                    <td>${pedido.cantidad}</td>
+                    <td>${pedido.u_medida_nombre}</td>
+                    <td><span class="badge ${estadoColor}">Pendiente</span></td>
+                    <td class="text-center">${personalizadoIcon}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-warning btn-editar" data-index="${index}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger btn-eliminar" data-index="${index}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
             });
         }
 
-        $('#detallesInput').val(JSON.stringify(detalles));
-        $('#submitBtn').prop('disabled', detalles.length === 0);
-    }
-
-    // Editar detalle
-    $(document).on('click', '.editar-detalle', function() {
-        const index = $(this).data('index');
-        const detalle = detalles[index];
-
-        $('#id_areas').val(detalle.id_areas).trigger('change');
-        $('#buscar_receta').val(detalle.receta_nombre)
-            .data('id_recetas', detalle.id_recetas)
-            .data('id_productos_api', detalle.id_productos_api);
-        $('#cantidad').val(detalle.cantidad);
-        $('#id_u_medidas').val(detalle.id_u_medidas);
-        $('#es_personalizado').prop('checked', detalle.es_personalizado == 1);
-
-        if (detalle.es_personalizado) {
-            $('#personalizado_fields').removeClass('d-none');
-            $('#descripcion').val(detalle.descripcion);
-            $('#foto_referencial_url').val(detalle.foto_referencial_url);
+        // Obtener color según el estado
+        function getColorEstado(id_estado) {
+            switch (id_estado) {
+                case 2:
+                    return 'bg-light text-dark'; // Pendiente
+                case 3:
+                    return 'bg-info'; // Procesando
+                case 4:
+                    return 'bg-success'; // Terminado
+                case 5:
+                    return 'bg-danger'; // Cancelado
+                default:
+                    return 'bg-secondary';
+            }
         }
 
-        $('#agregarBtn').html('<i class="fas fa-save me-1"></i> Actualizar');
-        editIndex = index;
-    });
+        // Editar pedido
+        $(document).on('click', '.btn-editar', function() {
+            const index = $(this).data('index');
+            const pedido = pedidos[index];
 
-    // Eliminar detalle
-    $(document).on('click', '.eliminar-detalle', function() {
-        const index = $(this).data('index');
-        detalles.splice(index, 1);
-        actualizarTablaDetalles();
-    });
+            // Llenar el formulario con los datos del pedido
+            $('#id_areas').val(pedido.id_area);
+            $('#id_recetas').val(pedido.id_receta);
+            $('#buscar-receta').val(pedido.receta_nombre);
+            $('#id_productos_api').val(pedido.id_producto);
+            $('#cantidad').val(pedido.cantidad);
+            $('#id_u_medidas').val(pedido.id_u_medida);
 
-    // Validar antes de enviar
-    $('#pedidoForm').submit(function() {
-        if (detalles.length === 0) {
-            alert('Debe agregar al menos un detalle al pedido');
-            return false;
+            if (pedido.es_personalizado) {
+                $('#es_personalizado').prop('checked', true);
+                $('#campos-personalizado').show();
+                $('#descripcion').val(pedido.descripcion);
+                $('#foto_referencial_url').val(pedido.foto_url);
+            } else {
+                $('#es_personalizado').prop('checked', false);
+                $('#campos-personalizado').hide();
+            }
+
+            // Cambiar el botón a "Actualizar"
+            $('#btn-agregar').html('<i class="fas fa-sync-alt"></i> Actualizar');
+            $('#btn-agregar').off('click').on('click', function() {
+                // Actualizar el pedido
+                pedidos[index] = {
+                    id_area: $('#id_areas').val(),
+                    area_nombre: $('#id_areas option:selected').text(),
+                    id_receta: $('#id_recetas').val(),
+                    receta_nombre: $('#buscar-receta').val(),
+                    id_producto: $('#id_productos_api').val(),
+                    cantidad: $('#cantidad').val(),
+                    id_u_medida: $('#id_u_medidas').val(),
+                    u_medida_nombre: $('#id_u_medidas option:selected').text(),
+                    es_personalizado: $('#es_personalizado').is(':checked'),
+                    descripcion: $('#descripcion').val(),
+                    foto_url: $('#foto_referencial_url').val(),
+                    id_estado: 2 // Pendiente por defecto
+                };
+
+                actualizarListaPedidos();
+                $('#btn-limpiar').click();
+
+                // Restaurar el botón a "Agregar"
+                $('#btn-agregar').html('<i class="fas fa-plus"></i> Agregar');
+                $('#btn-agregar').off('click').on('click', agregarPedido);
+            });
+        });
+
+        // Eliminar pedido
+        $(document).on('click', '.btn-eliminar', function() {
+            const index = $(this).data('index');
+            Swal.fire({
+                title: '¿Eliminar pedido?',
+                text: "Esta acción no se puede deshacer",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    pedidos.splice(index, 1);
+                    actualizarListaPedidos();
+                    Swal.fire(
+                        'Eliminado!',
+                        'El pedido ha sido eliminado.',
+                        'success'
+                    );
+                }
+            });
+        });
+
+        // Enviar pedido
+        $('#btn-pedir').click(function() {
+            if (pedidos.length === 0) {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Debe agregar al menos un pedido',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Confirmar pedido?',
+                text: "Está a punto de enviar el pedido con " + pedidos.length + " items",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, enviar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    enviarPedido();
+                }
+            });
+        });
+        // Función para enviar el pedido al servidor
+        function enviarPedido() {
+            const data = {
+                id_hora_limite: $('#id_hora_limite').val(),
+                detalles: pedidos.map(pedido => ({
+                    id_areas: pedido.id_area,
+                    id_recetas: pedido.id_receta,
+                    id_productos_api: pedido.id_producto,
+                    cantidad: pedido.cantidad,
+                    id_u_medidas: pedido.id_u_medida,
+                    es_personalizado: pedido.es_personalizado,
+                    descripcion: pedido.descripcion,
+                    foto_referencial_url: pedido.foto_url,
+                    id_estados: pedido.id_estado
+                }))
+            };
+
+            $.ajax({
+                url: '{{ route("pedidos.store") }}',
+                method: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            title: '¡Éxito!',
+                            text: response.message,
+                            icon: 'success',
+                            confirmButtonText: 'Aceptar'
+                        }).then(() => {
+                            window.location.href = response.redirect;
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: response.message,
+                            icon: 'error',
+                            confirmButtonText: 'Entendido'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error al enviar el pedido';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        title: 'Error',
+                        text: errorMsg,
+                        icon: 'error',
+                        confirmButtonText: 'Entendido'
+                    });
+                }
+            });
         }
-        return true;
+
+        // Cancelar pedido
+        $('#btn-cancelar').click(function() {
+            if (pedidos.length > 0) {
+                Swal.fire({
+                    title: '¿Cancelar pedido?',
+                    text: "Todos los datos no guardados se perderán",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sí, cancelar',
+                    cancelButtonText: 'Continuar editando'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '{{ route("pedidos.index") }}';
+                    }
+                });
+            } else {
+                window.location.href = '{{ route("pedidos.index") }}';
+            }
+        });
+
+        // Iniciar el contador al cargar la página
+        iniciarContadorRegresivo();
     });
-});
 </script>
-@endpush
+@endsection
