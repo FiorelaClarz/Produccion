@@ -5,16 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\PedidoCabecera;
 use App\Models\PedidoDetalle;
 use App\Models\RecetaCabecera;
-use App\Models\Usuario;
 use App\Models\Area;
-use App\Models\UMedida;
 use App\Models\Estado;
+use App\Models\UMedida;
 use App\Models\HoraLimite;
+use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class PedidoController extends Controller
 {
@@ -23,7 +24,8 @@ class PedidoController extends Controller
         $pedidos = PedidoCabecera::with(['usuario', 'tienda', 'pedidosDetalle'])
             ->where('is_deleted', false)
             ->orderBy('fecha_created', 'desc')
-            ->get();
+            ->orderBy('hora_created', 'desc')
+            ->paginate(10);
 
         return view('pedidos.index', compact('pedidos'));
     }
@@ -31,23 +33,43 @@ class PedidoController extends Controller
     public function create()
     {
         try {
+            // Obtener el usuario autenticado con sus relaciones
+            $usuario = Usuario::with(['tienda', 'area'])
+                ->findOrFail(Auth::id());
+
+            // Obtener áreas activas
             $areas = Area::where('status', true)
                 ->where('is_deleted', false)
                 ->get();
-                
-            $unidades = UMedida::activos()->get();
-            $horaLimite = HoraLimite::where('status', true)->first();
-            
-            $usuario = Usuario::with(['tienda', 'area'])
-                ->findOrFail(Auth::id());
-                
+
+            // Obtener unidades de medida activas
+            $unidades = UMedida::where('status', true)
+                ->where('is_deleted', false)
+                ->get();
+
+            // Obtener la hora límite activa
+            $horaLimite = HoraLimite::where('status', true)
+                ->where('is_deleted', false)
+                ->first();
+
+            // Verificar si hay hora límite configurada
+            if (!$horaLimite) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'No hay hora límite configurada. Contacte al administrador.');
+            }
+
+            // Calcular tiempo restante
+            $ahora = Carbon::now();
+            $horaLimiteCarbon = Carbon::parse($horaLimite->hora_limite);
+            $tiempoRestante = $ahora->diff($horaLimiteCarbon);
+
             return view('pedidos.create', compact(
-                'areas', 
-                'unidades', 
-                'horaLimite', 
-                'usuario'
+                'usuario',
+                'areas',
+                'unidades', // Pasamos las unidades a la vista
+                'horaLimite',
+                'tiempoRestante'
             ));
-            
         } catch (\Exception $e) {
             Log::error('Error en PedidoController@create: ' . $e->getMessage());
             return redirect()->route('pedidos.index')
@@ -57,64 +79,202 @@ class PedidoController extends Controller
 
     public function store(Request $request)
     {
-        // Validación inicial
-        $request->validate([
-            'detalles' => 'required|json',
-        ]);
-
         DB::beginTransaction();
-        
+
         try {
-            $detalles = json_decode($request->detalles, true);
-            
-            // Validar el JSON
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Formato de datos inválido');
-            }
-            
-            // Validar que haya al menos un detalle
-            if (count($detalles) === 0) {
-                throw new \Exception('Debe agregar al menos un detalle al pedido');
+            // Validar los datos recibidos
+            $validator = Validator::make($request->all(), [
+                'detalles' => 'required|array|min:1',
+                'detalles.*.id_areas' => 'required|exists:areas,id_areas',
+                'detalles.*.id_recetas' => 'nullable|exists:recetas_cab,id_recetas',
+                'detalles.*.cantidad' => 'required|numeric|min:0.1',
+                'detalles.*.id_u_medidas' => 'required|exists:u_medidas,id_u_medidas',
+                'id_hora_limite' => 'required|exists:hora_limites,id_hora_limite'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first()
+                ], 422);
             }
 
-            // Validar cada detalle
-            foreach ($detalles as $detalle) {
-                if (!isset($detalle['id_areas'])) {
-                    throw new \Exception('Todos los detalles deben tener un área asignada');
-                }
-                // Agregar más validaciones según necesites
-            }
-
-            // Verificar hora límite
-            $horaLimite = HoraLimite::where('status', true)->first();
+            $usuario = Auth::user();
             $ahora = Carbon::now();
-            
-            if ($horaLimite && $ahora->greaterThan(Carbon::parse($horaLimite->hora_limite))) {
-                throw new \Exception('No se puede realizar el pedido, ha pasado la hora límite.');
+            $horaLimite = HoraLimite::find($request->id_hora_limite);
+
+            // Verificar si está dentro de la hora límite
+            $estaDentroDeHora = $ahora->lte(Carbon::parse($horaLimite->hora_limite));
+
+            if (!$estaDentroDeHora) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El tiempo para realizar pedidos ha terminado'
+                ], 400);
             }
-            
+
             // Crear cabecera del pedido
             $pedidoCab = PedidoCabecera::create([
-                'id_usuarios' => Auth::id(),
-                'id_tiendas_api' => Auth::user()->id_tiendas_api,
+                'id_usuarios' => $usuario->id_usuarios,
+                'id_tiendas_api' => $usuario->id_tiendas_api,
                 'fecha_created' => $ahora->toDateString(),
                 'hora_created' => $ahora->toTimeString(),
                 'fecha_last_update' => $ahora->toDateString(),
                 'hora_last_update' => $ahora->toTimeString(),
-                'esta_dentro_de_hora' => true,
+                'esta_dentro_de_hora' => $estaDentroDeHora,
                 'id_hora_limite' => $horaLimite->id_hora_limite,
-                'doc_interno' => 'PED-' . strtoupper(uniqid()),
+                'doc_interno' => 'PED-' . $ahora->format('Ymd-His') . '-' . strtoupper(substr(uniqid(), -5)),
                 'is_deleted' => false,
                 'status' => true
             ]);
-            
+
             // Crear detalles del pedido
-            foreach ($detalles as $detalle) {
+            foreach ($request->detalles as $detalle) {
+                $receta = isset($detalle['id_recetas']) ?
+                    RecetaCabecera::find($detalle['id_recetas']) : null;
+
                 PedidoDetalle::create([
                     'id_pedidos_cab' => $pedidoCab->id_pedidos_cab,
                     'id_areas' => $detalle['id_areas'],
                     'id_recetas' => $detalle['id_recetas'] ?? null,
-                    'id_productos_api' => $detalle['id_productos_api'] ?? null,
+                    'id_productos_api' => $receta ? $receta->id_productos_api : null,
+                    'cantidad' => $detalle['cantidad'],
+                    'id_u_medidas' => $detalle['id_u_medidas'],
+                    'es_personalizado' => $detalle['es_personalizado'] ?? false,
+                    'descripcion' => $detalle['descripcion'] ?? null,
+                    'foto_referencial_url' => $detalle['foto_referencial_url'] ?? null,
+                    'id_estados' => $detalle['id_estados'] ?? 2, // Estado pendiente por defecto
+                    'is_deleted' => false
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido creado correctamente',
+                'redirect' => route('pedidos.index')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al crear pedido: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear el pedido: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function show(PedidoCabecera $pedido)
+    {
+        $pedido->load([
+            'usuario',
+            'tienda',
+            'horaLimite',
+            'pedidosDetalle' => function ($query) {
+                $query->where('is_deleted', false)
+                    ->with(['area', 'receta', 'uMedida', 'estado']);
+            }
+        ]);
+
+        return view('pedidos.show', compact('pedido'));
+    }
+
+    public function edit(PedidoCabecera $pedido)
+    {
+        // Verificar si el pedido puede ser editado
+        $horaLimite = $pedido->horaLimite;
+        $ahora = Carbon::now();
+        $puedeEditar = $ahora->lte(Carbon::parse($horaLimite->hora_limite));
+
+        if (!$puedeEditar) {
+            return redirect()->route('pedidos.index')
+                ->with('error', 'El tiempo para editar este pedido ha expirado.');
+        }
+
+        $areas = Area::where('status', true)
+            ->where('is_deleted', false)
+            ->get();
+
+        $unidades = UMedida::activos()->get();
+
+        // Cargar detalles existentes
+        $detallesExistentes = $pedido->pedidosDetalle()
+            ->where('is_deleted', false)
+            ->get()
+            ->map(function ($detalle) {
+                return [
+                    'id_areas' => $detalle->id_areas,
+                    'area_nombre' => $detalle->area->nombre,
+                    'id_recetas' => $detalle->id_recetas,
+                    'receta_nombre' => $detalle->receta ? $detalle->receta->nombre : 'Personalizado',
+                    'cantidad' => $detalle->cantidad,
+                    'id_u_medidas' => $detalle->id_u_medidas,
+                    'u_medida_nombre' => $detalle->uMedida->nombre,
+                    'es_personalizado' => $detalle->es_personalizado,
+                    'descripcion' => $detalle->descripcion,
+                    'foto_referencial_url' => $detalle->foto_referencial_url,
+                    'id_estados' => $detalle->id_estados
+                ];
+            });
+
+        return view('pedidos.edit', compact(
+            'pedido',
+            'areas',
+            'unidades',
+            'detallesExistentes'
+        ));
+    }
+
+    public function update(Request $request, PedidoCabecera $pedido)
+    {
+        // Verificar hora límite
+        $horaLimite = $pedido->horaLimite;
+        $ahora = Carbon::now();
+
+        if ($ahora->gt(Carbon::parse($horaLimite->hora_limite))) {
+            return redirect()->route('pedidos.index')
+                ->with('error', 'No se puede actualizar el pedido, ha pasado la hora límite.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Validar los datos
+            $validator = Validator::make($request->all(), [
+                'detalles' => 'required|array|min:1',
+                'detalles.*.id_areas' => 'required|exists:areas,id_areas',
+                'detalles.*.id_recetas' => 'nullable|exists:recetas_cab,id_recetas',
+                'detalles.*.cantidad' => 'required|numeric|min:0.1',
+                'detalles.*.id_u_medidas' => 'required|exists:u_medidas,id_u_medidas',
+            ]);
+
+            if ($validator->fails()) {
+                return back()
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+
+            // Actualizar cabecera
+            $pedido->update([
+                'fecha_last_update' => $ahora->toDateString(),
+                'hora_last_update' => $ahora->toTimeString()
+            ]);
+
+            // Eliminar detalles antiguos (soft delete)
+            $pedido->pedidosDetalle()->update(['is_deleted' => true]);
+
+            // Crear nuevos detalles
+            foreach ($request->detalles as $detalle) {
+                $receta = isset($detalle['id_recetas']) ?
+                    RecetaCabecera::find($detalle['id_recetas']) : null;
+
+                PedidoDetalle::create([
+                    'id_pedidos_cab' => $pedido->id_pedidos_cab,
+                    'id_areas' => $detalle['id_areas'],
+                    'id_recetas' => $detalle['id_recetas'] ?? null,
+                    'id_productos_api' => $receta ? $receta->id_productos_api : null,
                     'cantidad' => $detalle['cantidad'],
                     'id_u_medidas' => $detalle['id_u_medidas'],
                     'es_personalizado' => $detalle['es_personalizado'] ?? false,
@@ -124,135 +284,49 @@ class PedidoController extends Controller
                     'is_deleted' => false
                 ]);
             }
-            
+
             DB::commit();
-            
+
             return redirect()->route('pedidos.index')
-                ->with('success', 'Pedido creado correctamente.');
-                
+                ->with('success', 'Pedido actualizado correctamente');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al crear pedido: ' . $e->getMessage());
-            Log::error('Datos recibidos: ' . print_r($request->all(), true));
-            
+            Log::error('Error al actualizar pedido: ' . $e->getMessage());
+
             return back()
-                ->with('error', 'Error al crear el pedido: ' . $e->getMessage())
+                ->with('error', 'Error al actualizar el pedido')
                 ->withInput();
         }
     }
 
-    // Mostrar un pedido específico
-    public function show(PedidoCabecera $pedido)
-    {
-        $pedido->load([
-            'usuario',
-            'tienda',
-            'pedidosDetalle',
-            'pedidosDetalle.area',
-            'pedidosDetalle.receta',
-            'pedidosDetalle.uMedida',
-            'pedidosDetalle.estado'
-        ]);
-
-        return view('pedidos.show', compact('pedido'));
-    }
-
-    // Mostrar formulario de edición
-    public function edit(PedidoCabecera $pedido)
-    {
-        // Verificar si se puede editar (dentro de hora límite)
-        $horaLimite = HoraLimite::find($pedido->id_hora_limite);
-        $ahora = Carbon::now();
-
-        if (!$horaLimite || $ahora->greaterThan(Carbon::parse($horaLimite->hora_limite))) {
-            return redirect()->route('pedidos.index')->with('error', 'No se puede editar el pedido, ha pasado la hora límite.');
-        }
-
-        $areas = Area::where('status', true)->where('is_deleted', false)->get();
-        $unidades = UMedida::activos()->get();
-        $usuario = Auth::user();
-
-        // Cargar detalles existentes
-        $detallesExistentes = $pedido->pedidosDetalle->map(function ($detalle) {
-            return [
-                'id_areas' => $detalle->id_areas,
-                'area_nombre' => $detalle->area->nombre,
-                'id_recetas' => $detalle->id_recetas,
-                'receta_nombre' => $detalle->receta ? $detalle->receta->nombre : 'Personalizado',
-                'cantidad' => $detalle->cantidad,
-                'id_u_medidas' => $detalle->id_u_medidas,
-                'unidad_nombre' => $detalle->uMedida->nombre,
-                'es_personalizado' => $detalle->es_personalizado,
-                'descripcion' => $detalle->descripcion,
-                'foto_referencial_url' => $detalle->foto_referencial_url,
-                'id_estados' => $detalle->id_estados
-            ];
-        });
-
-        return view('pedidos.edit', compact('pedido', 'areas', 'unidades', 'horaLimite', 'usuario', 'detallesExistentes'));
-    }
-
-    // Actualizar pedido
-    public function update(Request $request, PedidoCabecera $pedido)
-    {
-        // Verificar hora límite
-        $horaLimite = HoraLimite::find($pedido->id_hora_limite);
-        $ahora = Carbon::now();
-
-        if (!$horaLimite || $ahora->greaterThan(Carbon::parse($horaLimite->hora_limite))) {
-            return redirect()->route('pedidos.index')->with('error', 'No se puede actualizar el pedido, ha pasado la hora límite.');
-        }
-
-        // Validación
-        $request->validate([
-            'detalles' => 'required|array|min:1',
-            'detalles.*.id_areas' => 'required|exists:areas,id_areas',
-            'detalles.*.id_recetas' => 'nullable|exists:recetas_cab,id_recetas',
-            'detalles.*.cantidad' => 'required|numeric|min:0.1',
-            'detalles.*.id_u_medidas' => 'required|exists:u_medidas,id_u_medidas',
-        ]);
-
-        // Actualizar cabecera
-        $pedido->update([
-            'fecha_last_update' => $ahora->toDateString(),
-            'hora_last_update' => $ahora->toTimeString()
-        ]);
-
-        // Eliminar detalles antiguos (soft delete)
-        $pedido->pedidosDetalle()->update(['is_deleted' => true]);
-
-        // Crear nuevos detalles
-        foreach ($request->detalles as $detalle) {
-            $receta = RecetaCabecera::find($detalle['id_recetas']);
-
-            PedidoDetalle::create([
-                'id_pedidos_cab' => $pedido->id_pedidos_cab,
-                'id_productos_api' => $receta ? $receta->id_productos_api : null,
-                'id_areas' => $detalle['id_areas'],
-                'id_recetas' => $detalle['id_recetas'],
-                'cantidad' => $detalle['cantidad'],
-                'id_u_medidas' => $detalle['id_u_medidas'],
-                'es_personalizado' => $detalle['es_personalizado'] ?? false,
-                'descripcion' => $detalle['descripcion'] ?? null,
-                'foto_referencial_url' => $detalle['foto_referencial_url'] ?? null,
-                'id_estados' => $detalle['id_estados'] ?? 2, // Mantener estado o poner pendiente
-                'is_deleted' => false
-            ]);
-        }
-
-        return redirect()->route('pedidos.index')->with('success', 'Pedido actualizado correctamente.');
-    }
-
-    // Eliminar pedido (soft delete)
     public function destroy(PedidoCabecera $pedido)
     {
-        $pedido->update(['is_deleted' => true]);
-        $pedido->pedidosDetalle()->update(['is_deleted' => true]);
+        DB::beginTransaction();
 
-        return redirect()->route('pedidos.index')->with('success', 'Pedido eliminado correctamente.');
+        try {
+            // Soft delete de la cabecera y detalles
+            $pedido->update([
+                'is_deleted' => true,
+                'status' => false,
+                'fecha_last_update' => Carbon::now()->toDateString(),
+                'hora_last_update' => Carbon::now()->toTimeString()
+            ]);
+
+            $pedido->pedidosDetalle()->update(['is_deleted' => true]);
+
+            DB::commit();
+
+            return redirect()->route('pedidos.index')
+                ->with('success', 'Pedido eliminado correctamente');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al eliminar pedido: ' . $e->getMessage());
+
+            return back()
+                ->with('error', 'Error al eliminar el pedido');
+        }
     }
 
-    // Método para buscar recetas por área y término
     public function buscarRecetas(Request $request)
     {
         try {
@@ -260,20 +334,20 @@ class PedidoController extends Controller
                 'id_areas' => 'required|exists:areas,id_areas',
                 'termino' => 'required|string|min:3'
             ]);
-            
+
             $recetas = RecetaCabecera::with(['uMedida', 'producto'])
                 ->where('id_areas', $request->id_areas)
-                ->where(function($query) use ($request) {
-                    $query->where('nombre', 'ilike', '%'.$request->termino.'%')
-                          ->orWhereHas('producto', function($q) use ($request) {
-                              $q->where('nombre', 'ilike', '%'.$request->termino.'%');
-                          });
+                ->where(function ($query) use ($request) {
+                    $query->where('nombre', 'ilike', '%' . $request->termino . '%')
+                        ->orWhereHas('producto', function ($q) use ($request) {
+                            $q->where('nombre', 'ilike', '%' . $request->termino . '%');
+                        });
                 })
                 ->where('status', true)
                 ->where('is_deleted', false)
                 ->limit(10)
                 ->get()
-                ->map(function($receta) {
+                ->map(function ($receta) {
                     return [
                         'id' => $receta->id_recetas,
                         'nombre' => $receta->nombre,
@@ -283,9 +357,8 @@ class PedidoController extends Controller
                         'producto_nombre' => $receta->producto->nombre ?? 'N/A'
                     ];
                 });
-                
+
             return response()->json($recetas);
-            
         } catch (\Exception $e) {
             Log::error('Error en buscarRecetas: ' . $e->getMessage());
             return response()->json(['error' => 'Error en la búsqueda'], 500);
