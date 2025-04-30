@@ -23,6 +23,6 @@ class HoraLimite extends Model
     protected $casts = [
         'status' => 'boolean',
         'is_deleted' => 'boolean',
-        'hora_limite' => 'datetime:H:i:s'
+        'hora_limite' => 'string'
     ];
 }
