@@ -1,97 +1,143 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <h1 class="mb-4">Detalles del Pedido #{{ $pedido->doc_interno }}</h1>
-    
-    <div class="card mb-4">
-        <div class="card-header">
-            Información General
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Usuario:</strong> {{ $pedido->usuario->name }}</p>
-                    <p><strong>Tienda:</strong> {{ $pedido->tienda->nombre }}</p>
-                    <p><strong>Hora Límite:</strong> {{ $pedido->horaLimite->hora_limite }}</p>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Detalles del Pedido #{{ $pedido->id_pedidos_cab }}</h4>
                 </div>
-                <div class="col-md-6">
-                    <p><strong>Fecha/Hora creación:</strong> {{ $pedido->fecha_created }} {{ $pedido->hora_created }}</p>
-                    <p><strong>Última actualización:</strong> {{ $pedido->fecha_last_update }} {{ $pedido->hora_last_update }}</p>
-                    <p>
-                        <strong>Estado:</strong> 
-                        @if($pedido->esta_dentro_de_hora)
-                            <span class="badge bg-success">Dentro de hora</span>
-                        @else
-                            <span class="badge bg-danger">Fuera de hora</span>
-                        @endif
-                    </p>
+
+                <div class="card-body">
+                    <!-- Información del Pedido -->
+                    <div class="mb-4">
+                        <h5>Información General</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label><strong>Usuario:</strong></label>
+                                    <p class="form-control-plaintext">{{ $pedido->usuario->nombre_personal }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label><strong>Tienda:</strong></label>
+                                    <p class="form-control-plaintext">{{ $pedido->usuario->tienda->nombre ?? 'No asignada' }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label><strong>Fecha/Hora:</strong></label>
+                                    <p class="form-control-plaintext">
+                                        {{ $pedido->fecha_created }} - {{ $pedido->hora_created }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><strong>Documento Interno:</strong></label>
+                                    <p class="form-control-plaintext">{{ $pedido->doc_interno }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><strong>Hora Límite:</strong></label>
+                                    <p class="form-control-plaintext">{{ $pedido->horaLimite->hora_limite }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalles del Pedido -->
+                    <div class="mt-4">
+                        <h5>Ítems del Pedido</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Área</th>
+                                        <th>Receta/Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Unidad</th>
+                                        <th>Estado</th>
+                                        <th>Personalizado</th>
+                                        <th>Imagen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($pedido->pedidosDetalle as $detalle)
+                                    <tr>
+                                        <td>{{ $detalle->area->nombre }}</td>
+                                        <td>
+                                            @if($detalle->receta)
+                                                {{ $detalle->receta->nombre }}
+                                                @if($detalle->receta->producto)
+                                                    <small class="text-muted">({{ $detalle->receta->producto->nombre }})</small>
+                                                @endif
+                                            @else
+                                                Personalizado: {{ $detalle->descripcion }}
+                                            @endif
+                                        </td>
+                                        <td>{{ $detalle->cantidad }}</td>
+                                        <td>{{ $detalle->uMedida->nombre ?? 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge {{ $detalle->estado->badge_class ?? 'bg-secondary' }}">
+                                                {{ $detalle->estado->nombre ?? 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <i class="fas {{ $detalle->es_personalizado ? 'fa-check text-success' : 'fa-times text-danger' }}"></i>
+                                        </td>
+                                        <td class="text-center">
+                                            @if($detalle->foto_referencial)
+                                                <img src="{{ asset('storage/' . $detalle->foto_referencial) }}" 
+                                                     class="img-thumbnail" 
+                                                     style="width: 50px; height: 50px; object-fit: cover;">
+                                            @else
+                                                <div class="text-muted">Sin imagen</div>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Botones finales -->
+                    <div class="row mt-4">
+                        <div class="col-md-12 text-right">
+                            <a href="{{ route('pedidos.index') }}" class="btn btn-primary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="card-header">
-            Detalles del Pedido
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Área</th>
-                            <th>Receta/Producto</th>
-                            <th>Cantidad</th>
-                            <th>Unidad</th>
-                            <th>Estado</th>
-                            <th>Personalizado</th>
-                            <th>Descripción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($pedido->pedidosDetalle as $detalle)
-                        <tr>
-                            <td>{{ $detalle->area->nombre }}</td>
-                            <td>
-                                @if($detalle->receta)
-                                    {{ $detalle->receta->nombre }}
-                                @elseif($detalle->producto)
-                                    {{ $detalle->producto->nombre }}
-                                @else
-                                    Producto no especificado
-                                @endif
-                            </td>
-                            <td>{{ $detalle->cantidad }}</td>
-                            <td>{{ $detalle->uMedida->nombre }}</td>
-                            <td>
-                                <span class="badge {{ getEstadoBadgeClass($detalle->estado->id_estados) }}">
-                                    {{ $detalle->estado->nombre }}
-                                </span>
-                            </td>
-                            <td>{{ $detalle->es_personalizado ? 'Sí' : 'No' }}</td>
-                            <td>{{ $detalle->descripcion }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer">
-            <a href="{{ route('pedidos.index') }}" class="btn btn-secondary">Volver</a>
         </div>
     </div>
 </div>
 @endsection
 
-@php
-function getEstadoBadgeClass($id_estado) {
-    switch($id_estado) {
-        case 2: return 'bg-light text-dark'; // Pendiente
-        case 3: return 'bg-info'; // Procesando
-        case 4: return 'bg-success'; // Terminado
-        case 5: return 'bg-danger'; // Cancelado
-        default: return 'bg-secondary';
+@section('styles')
+<style>
+    .card-header {
+        padding: 1rem 1.25rem;
     }
-}
-@endphp
+    .form-control-plaintext {
+        padding-top: calc(.375rem + 1px);
+        padding-bottom: calc(.375rem + 1px);
+        margin-bottom: 0;
+        line-height: 1.5;
+        background-color: #f8f9fa;
+        border-radius: .25rem;
+        padding-left: .75rem;
+    }
+    .table th {
+        white-space: nowrap;
+    }
+</style>
+@endsection
