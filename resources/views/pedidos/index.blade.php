@@ -7,12 +7,38 @@
             <h2>Listado de Pedidos</h2>
         </div>
         <div class="col-md-6 text-end">
-            <a href="{{ route('pedidos.create') }}" class="btn btn-primary">
+            @php
+                // Obtener la hora límite configurada en el sistema
+                $horaLimiteActual = App\Models\HoraLimite::where('status', true)
+                    ->where('is_deleted', false)
+                    ->first();
+                
+                // Obtener la hora actual
+                $horaActual = now();
+                
+                // Parsear la hora límite si existe
+                $horaLimite = $horaLimiteActual ? Carbon\Carbon::parse($horaLimiteActual->hora_limite) : null;
+                
+                // Verificar si estamos dentro del horario permitido (hora actual <= hora límite)
+                $dentroDeHoraPermitida = $horaLimite ? $horaActual->lte($horaLimite) : false;
+            @endphp
+
+            {{-- Botón para crear nuevo pedido --}}
+            <a href="{{ route('pedidos.create') }}" 
+               class="btn btn-primary {{ !$dentroDeHoraPermitida ? 'disabled' : '' }}" 
+               @if(!$dentroDeHoraPermitida) 
+                   title="El tiempo para realizar pedidos ha terminado" 
+               @endif>
                 <i class="fas fa-plus"></i> Nuevo Pedido
+                @if(!$dentroDeHoraPermitida)
+                    {{-- Mostrar badge si está fuera del horario --}}
+                    <span class="badge bg-danger ms-2">Tiempo agotado</span>
+                @endif
             </a>
         </div>
     </div>
 
+    {{-- Mensajes de sesión --}}
     @if (session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
@@ -42,41 +68,71 @@
             </thead>
             <tbody>
                 @foreach ($pedidos as $pedido)
+                @php
+                    // Obtener el estado general del pedido
+                    $estados = $pedido->pedidosDetalle->pluck('id_estados')->unique();
+                    $estadoGeneral = $estados->count() == 1 
+                        ? $pedido->pedidosDetalle->first()->estado->nombre 
+                        : 'Mixto';
+                @endphp
+                
                 <tr>
                     <td>{{ $pedido->id_pedidos_cab }}</td>
                     <td>{{ $pedido->doc_interno }}</td>
-                    <td>{{ $pedido->usuario->name }}</td>
+                    <td>{{ $pedido->usuario->nombre_personal }}</td>
                     <td>{{ $pedido->tienda->nombre }}</td>
                     <td>{{ \Carbon\Carbon::parse($pedido->fecha_created)->format('d/m/Y') }}</td>
                     <td>{{ $pedido->hora_created }}</td>
                     <td>
                         {{ $pedido->horaLimite->hora_limite }}
-                        @if (!$pedido->esta_dentro_de_hora)
-                            <span class="badge bg-danger">Expirado</span>
+                        @if (!$dentroDeHoraPermitida)
+                            <span class="badge bg-danger">Fuera de horario</span>
                         @endif
                     </td>
+                    <td>{{ $estadoGeneral }}</td>
                     <td>
-                        @php
-                            $estadoGeneral = $pedido->pedidosDetalle->pluck('id_estados')->unique()->count() == 1 
-                                ? $pedido->pedidosDetalle->first()->estado->nombre 
-                                : 'Mixto';
-                        @endphp
-                        {{ $estadoGeneral }}
-                    </td>
-                    <td>
-                        <a href="{{ route('pedidos.show', $pedido->id_pedidos_cab) }}" class="btn btn-sm btn-info" title="Ver">
+                        {{-- Botón para ver el pedido - siempre activo --}}
+                        <a href="{{ route('pedidos.show', $pedido->id_pedidos_cab) }}" 
+                           class="btn btn-sm btn-info" 
+                           title="Ver detalles del pedido">
                             <i class="fas fa-eye"></i>
                         </a>
-                        <a href="{{ route('pedidos.edit', $pedido->id_pedidos_cab) }}" class="btn btn-sm btn-warning" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <form action="{{ route('pedidos.destroy', $pedido->id_pedidos_cab) }}" method="POST" style="display: inline-block;">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Eliminar" onclick="return confirm('¿Estás seguro de eliminar este pedido?')">
+                        
+                        {{-- Botones condicionales según si estamos dentro del horario permitido --}}
+                        @if($dentroDeHoraPermitida)
+                            {{-- Botón de editar - solo visible dentro del horario --}}
+                            <a href="{{ route('pedidos.edit', $pedido->id_pedidos_cab) }}" 
+                               class="btn btn-sm btn-warning" 
+                               title="Editar pedido">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            {{-- Formulario para eliminar - solo visible dentro del horario --}}
+                            <form action="{{ route('pedidos.destroy', $pedido->id_pedidos_cab) }}" 
+                                  method="POST" 
+                                  style="display: inline-block;">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" 
+                                        class="btn btn-sm btn-danger" 
+                                        title="Eliminar pedido" 
+                                        onclick="return confirm('¿Estás seguro de eliminar este pedido?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        @else
+                            {{-- Botones deshabilitados fuera del horario --}}
+                            <button class="btn btn-sm btn-secondary" 
+                                    disabled 
+                                    title="Edición no permitida - Fuera del horario permitido">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-secondary" 
+                                    disabled 
+                                    title="Eliminación no permitida - Fuera del horario permitido">
                                 <i class="fas fa-trash"></i>
                             </button>
-                        </form>
+                        @endif
                     </td>
                 </tr>
                 @endforeach
@@ -84,6 +140,7 @@
         </table>
     </div>
 
+    {{-- Paginación --}}
     <div class="d-flex justify-content-center">
         {{ $pedidos->links() }}
     </div>
@@ -92,9 +149,12 @@
 
 @section('scripts')
 <script>
-    // Script para manejar la expiración del tiempo
     document.addEventListener('DOMContentLoaded', function() {
-        // Aquí puedes agregar lógica para actualizar el estado de los pedidos expirados
+        // Actualizar automáticamente la página cada 5 minutos
+        // para reflejar cambios en el estado del horario permitido
+        setInterval(() => {
+            window.location.reload();
+        }, 300000); // 300,000 ms = 5 minutos
     });
 </script>
 @endsection
