@@ -75,7 +75,7 @@
                                         <label for="id_u_medidas">Unidad de Medida</label>
                                         <select class="form-control" id="id_u_medidas" name="id_u_medidas" required>
                                             <option value="">Seleccione</opstion>
-                                            @foreach($unidades as $umedida)
+                                                @foreach($unidades as $umedida)
                                             <option value="{{ $umedida->id_u_medidas }}">{{ $umedida->nombre }}</option>
                                             @endforeach
                                         </select>
@@ -94,9 +94,12 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group">
-                                            <label for="foto_referencial_url">URL de imagen referencial (opcional)</label>
-                                            <input type="url" class="form-control" id="foto_referencial_url" name="foto_referencial_url">
-                                            <small class="form-text text-muted">Puede subir una imagen más adelante</small>
+                                            <label for="foto_referencial">Imagen referencial (opcional)</label>
+                                            <input type="file" class="form-control" id="foto_referencial" name="foto_referencial" accept="image/*">
+                                            <small class="form-text text-muted">Formatos: JPEG, PNG, JPG, GIF (Max 2MB)</small>
+                                            <div id="preview-container" class="mt-2" style="display:none;">
+                                                <img id="preview-image" src="#" alt="Previsualización" class="img-thumbnail" style="max-height: 150px;">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -172,78 +175,107 @@
 <script>
     $(document).ready(function() {
         // Variables globales
-        let pedidos = [];
-        let hora_limite = '{{ $horaLimite->hora_limite }}';
-        let intervaloContador = null;
+    // Variables globales
+let pedidos = [];
+let hora_limite = '{{ $horaLimite->hora_limite }}';
+console.log('Hora límite desde PHP:', hora_limite); // Verifica en la consola del navegador
+let intervaloContador = null;
 
-        // Inicializar el contador regresivo
-        function iniciarContadorRegresivo() {
-            const ahora = new Date();
-            const horaFin = new Date(`${ahora.toDateString()} ${hora_limite}`);
+// Inicializar el contador regresivo
+function iniciarContadorRegresivo() {
+    // Obtener la hora límite del backend
+    let hora_limite_str = '{{ $horaLimite->hora_limite }}';
+    console.log('Hora límite recibida:', hora_limite_str); // Para depuración
+    
+    // Parsear la hora límite (asegurarse que tiene formato HH:MM:SS)
+    let [hours, minutes, seconds] = hora_limite_str.split(':').map(Number);
+    
+    // Validar que los valores sean números
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+        console.error('Formato de hora inválido:', hora_limite_str);
+        $('#tiempo-restante').text('--:--');
+        return;
+    }
+    
+    const ahora = new Date();
+    const horaFin = new Date(
+        ahora.getFullYear(),
+        ahora.getMonth(),
+        ahora.getDate(),
+        hours,
+        minutes,
+        seconds || 0
+    );
+    
+    // Crear fecha límite con la hora de hoy
+    // const horaFin = new Date(
+    //     ahora.getFullYear(),
+    //     ahora.getMonth(),
+    //     ahora.getDate(),
+    //     hours,
+    //     minutes,
+    //     seconds || 0
+    // );
 
-            actualizarContador();
+    // Si la hora límite ya pasó hoy, sumar un día
+    if (horaFin < ahora) {
+        horaFin.setDate(horaFin.getDate() + 1);
+    }
 
-            // Actualizar cada segundo
-            intervaloContador = setInterval(actualizarContador, 1000);
-        }
+    actualizarContador(ahora, horaFin);
 
-        function actualizarContador() {
-            const ahora = new Date();
-            const horaFin = new Date(`${ahora.toDateString()} ${hora_limite}`);
-            const diferencia = horaFin - ahora;
+    // Actualizar cada segundo
+    intervaloContador = setInterval(() => {
+        actualizarContador(new Date(), horaFin);
+    }, 1000);
+}
 
-            if (diferencia <= 0) {
-                clearInterval(intervaloContador);
-                $('#tiempo-restante').text('00:00');
-                $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+function actualizarContador(ahora, horaFin) {
+    const diferencia = horaFin - ahora;
 
-                // Mostrar alerta y redireccionar
-                Swal.fire({
-                    title: '¡Tiempo agotado!',
-                    text: 'El tiempo para realizar pedidos ha terminado. Será redirigido.',
-                    icon: 'error',
-                    confirmButtonText: 'Entendido'
-                }).then(() => {
-                    window.location.href = "{{ route('pedidos.index') }}";
-                });
-                return;
-            }
+    if (diferencia <= 0) {
+        clearInterval(intervaloContador);
+        $('#tiempo-restante').text('00:00');
+        $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
 
-            const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
-            const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+        // Mostrar alerta y redireccionar
+        Swal.fire({
+            title: '¡Tiempo agotado!',
+            text: 'El tiempo para realizar pedidos ha terminado. Será redirigido.',
+            icon: 'error',
+            confirmButtonText: 'Entendido'
+        }).then(() => {
+            window.location.href = "{{ route('pedidos.index') }}";
+        });
+        return;
+    }
 
-            const minutosStr = minutos < 10 ? '0' + minutos : minutos;
-            const segundosStr = segundos < 10 ? '0' + segundos : segundos;
+    const horas = Math.floor(diferencia / (1000 * 60 * 60));
+    const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
 
-            $('#tiempo-restante').text(`${minutosStr}:${segundosStr}`);
+    // Formatear a 2 dígitos
+    const horasStr = horas.toString().padStart(2, '0');
+    const minutosStr = minutos.toString().padStart(2, '0');
+    const segundosStr = segundos.toString().padStart(2, '0');
 
-            // Cambiar color según el tiempo restante
-            if (diferencia < (5 * 60 * 1000)) { // Menos de 5 minutos
-                $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+    // Mostrar horas solo si es mayor que 0
+    const tiempoRestante = horas > 0 
+        ? `${horasStr}:${minutosStr}:${segundosStr}`
+        : `${minutosStr}:${segundosStr}`;
 
-                // Mostrar alerta solo una vez cuando quedan 5 minutos
-                if (minutos === 4 && segundos === 59) {
-                    Swal.fire({
-                        title: '¡Atención!',
-                        text: 'Quedan menos de 5 minutos para realizar pedidos',
-                        icon: 'warning',
-                        confirmButtonText: 'Entendido'
-                    });
-                }
-            } else if (diferencia < (15 * 60 * 1000)) { // Menos de 15 minutos
-                $('#contador-regresivo').removeClass('bg-primary bg-danger').addClass('bg-warning');
+    $('#tiempo-restante').text(tiempoRestante);
 
-                // Mostrar alerta solo una vez cuando quedan 15 minutos
-                if (minutos === 14 && segundos === 59) {
-                    Swal.fire({
-                        title: '¡Atención!',
-                        text: 'Quedan menos de 15 minutos para realizar pedidos',
-                        icon: 'warning',
-                        confirmButtonText: 'Entendido'
-                    });
-                }
-            }
-        }
+    // Cambiar color según el tiempo restante
+    if (diferencia < (5 * 60 * 1000)) { // Menos de 5 minutos
+        $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+    } else if (diferencia < (15 * 60 * 1000)) { // Menos de 15 minutos
+        $('#contador-regresivo').removeClass('bg-primary bg-danger').addClass('bg-warning');
+    }
+}
+
+// Iniciar el contador al cargar la página
+iniciarContadorRegresivo();
 
         // Mostrar/ocultar campos personalizados
         $('#es_personalizado').change(function() {
@@ -272,19 +304,28 @@
                     if (data.length > 0) {
                         data.forEach(function(receta) {
                             $sugerencias.append(`
-                            <a href="#" class="list-group-item list-group-item-action" 
-                               data-id="${receta.id}" 
-                               data-id-producto="${receta.id_productos_api}"
-                               data-id-u-medida="${receta.id_u_medidas}"
-                               data-u-medida="${receta.u_medida_nombre}">
-                                ${receta.nombre}
-                                <small class="text-muted d-block">${receta.producto_nombre}</small>
-                            </a>
-                        `);
+                    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-bold">${receta.nombre}</div>
+                            <small class="text-muted">${receta.producto_nombre}</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">${receta.u_medida_nombre}</span>
+                        <span class="d-none" 
+                              data-id="${receta.id}" 
+                              data-id-producto="${receta.id_productos_api}"
+                              data-id-u-medida="${receta.id_u_medidas}"
+                              data-u-medida-nombre="${receta.u_medida_nombre}"></span>
+                    </a>
+                `);
                         });
                         $sugerencias.show();
                     } else {
-                        $sugerencias.hide();
+                        $sugerencias.append(`
+                    <div class="list-group-item text-muted">
+                        No se encontraron recetas coincidentes
+                    </div>
+                `);
+                        $sugerencias.show();
                     }
                 });
             } else {
@@ -295,18 +336,31 @@
         // Seleccionar receta de las sugerencias
         $(document).on('click', '#sugerencias-recetas a', function(e) {
             e.preventDefault();
+            e.stopPropagation();
 
-            const id_receta = $(this).data('id');
-            const id_producto = $(this).data('id-producto');
-            const id_u_medida = $(this).data('id-u-medida');
-            const u_medida = $(this).data('u-medida');
+            const id_receta = $(this).find('span.d-none').data('id');
+            const id_producto = $(this).find('span.d-none').data('id-producto');
+            const id_u_medida = $(this).find('span.d-none').data('id-u-medida');
+            const u_medida_nombre = $(this).find('span.d-none').data('u-medida-nombre');
+            const receta_nombre = $(this).find('.fw-bold').text();
 
             $('#id_recetas').val(id_receta);
-            $('#id_productos_api').val(id_producto);
-            $('#buscar-receta').val($(this).text().trim());
+            $('#id_productos_api').val(id_producto); 
+            $('#buscar-receta').val(receta_nombre);
             $('#id_u_medidas').val(id_u_medida).trigger('change');
 
             $('#sugerencias-recetas').hide();
+        });
+
+        $('#foto_referencial').change(function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#preview-image').attr('src', e.target.result);
+                    $('#preview-container').show();
+                }
+                reader.readAsDataURL(this.files[0]);
+            }
         });
 
         // Limpiar formulario
@@ -326,7 +380,8 @@
                 const unidad = $('#id_u_medidas option:selected').text();
                 const es_personalizado = $('#es_personalizado').is(':checked');
                 const descripcion = $('#descripcion').val();
-                const foto_url = $('#foto_referencial_url').val();
+                const fotoInput = $('#foto_referencial')[0];
+                const fotoFile = fotoInput.files[0];
 
                 const pedido = {
                     id_area: $('#id_areas').val(),
@@ -339,7 +394,7 @@
                     u_medida_nombre: unidad,
                     es_personalizado: es_personalizado,
                     descripcion: descripcion,
-                    foto_url: foto_url,
+                    foto_referencial: fotoFile, // Guardamos el archivo directamente
                     id_estado: 2 // Pendiente por defecto
                 };
 
@@ -351,7 +406,6 @@
             }
         });
 
-        // Actualizar la tabla de pedidos
         function actualizarListaPedidos() {
             const $lista = $('#lista-pedidos');
             $lista.empty();
@@ -367,25 +421,46 @@
                     '<i class="fas fa-check text-success"></i>' :
                     '<i class="fas fa-times text-danger"></i>';
 
+                // Mostrar miniatura si hay imagen
+                const fotoThumbnail = pedido.foto_referencial ?
+                    `<div class="position-relative" style="width: 50px; height: 50px;">
+                <img src="${URL.createObjectURL(pedido.foto_referencial)}" 
+                     class="img-thumbnail" 
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0" 
+                        style="width: 15px; height: 15px; line-height: 15px;"
+                        onclick="eliminarFoto(${index})">
+                    <i class="fas fa-times" style="font-size: 8px;"></i>
+                </button>
+            </div>` :
+                    '<div class="text-muted">Sin imagen</div>';
+
                 $lista.append(`
-                <tr>
-                    <td>${pedido.area_nombre}</td>
-                    <td>${pedido.receta_nombre || 'Personalizado'}</td>
-                    <td>${pedido.cantidad}</td>
-                    <td>${pedido.u_medida_nombre}</td>
-                    <td><span class="badge ${estadoColor}">Pendiente</span></td>
-                    <td class="text-center">${personalizadoIcon}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-warning btn-editar" data-index="${index}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger btn-eliminar" data-index="${index}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `);
+            <tr>
+                <td>${pedido.area_nombre}</td>
+                <td>${pedido.receta_nombre || 'Personalizado'}</td>
+                <td>${pedido.cantidad}</td>
+                <td>${pedido.u_medida_nombre}</td>
+                <td><span class="badge ${estadoColor}">Pendiente</span></td>
+                <td class="text-center">${personalizadoIcon}</td>
+                <td class="text-center">
+                    ${fotoThumbnail}
+                    <button class="btn btn-sm btn-warning btn-editar" data-index="${index}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-eliminar" data-index="${index}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
             });
+        }
+
+        // Función para eliminar foto de un pedido
+        function eliminarFoto(index) {
+            pedidos[index].foto_referencial = null;
+            actualizarListaPedidos();
         }
 
         // Obtener color según el estado
@@ -509,26 +584,30 @@
         });
         // Función para enviar el pedido al servidor
         function enviarPedido() {
-            const data = {
-                id_hora_limite: $('#id_hora_limite').val(),
-                detalles: pedidos.map(pedido => ({
-                    id_areas: pedido.id_area,
-                    id_recetas: pedido.id_receta,
-                    id_productos_api: pedido.id_producto,
-                    cantidad: pedido.cantidad,
-                    id_u_medidas: pedido.id_u_medida,
-                    es_personalizado: pedido.es_personalizado,
-                    descripcion: pedido.descripcion,
-                    foto_referencial_url: pedido.foto_url,
-                    id_estados: pedido.id_estado
-                }))
-            };
+            const formData = new FormData();
+            formData.append('id_hora_limite', $('#id_hora_limite').val());
+
+            pedidos.forEach((pedido, index) => {
+                formData.append(`detalles[${index}][id_areas]`, pedido.id_area);
+                formData.append(`detalles[${index}][id_recetas]`, pedido.id_receta || '');
+                formData.append(`detalles[${index}][id_productos_api]`, pedido.id_producto || '');
+                formData.append(`detalles[${index}][cantidad]`, pedido.cantidad);
+                formData.append(`detalles[${index}][id_u_medidas]`, pedido.id_u_medida);
+                formData.append(`detalles[${index}][es_personalizado]`, pedido.es_personalizado ? '1' : '0');
+                formData.append(`detalles[${index}][descripcion]`, pedido.descripcion || '');
+
+                // Agregar la imagen si existe
+                if (pedido.foto_referencial) {
+                    formData.append(`detalles[${index}][foto_referencial]`, pedido.foto_referencial);
+                }
+            });
 
             $.ajax({
                 url: '{{ route("pedidos.store") }}',
                 method: 'POST',
-                data: JSON.stringify(data),
-                contentType: 'application/json',
+                data: formData,
+                processData: false,
+                contentType: false,
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 },
@@ -564,6 +643,7 @@
                     });
                 }
             });
+
         }
 
         // Cancelar pedido
@@ -592,4 +672,34 @@
         iniciarContadorRegresivo();
     });
 </script>
+<style>
+    #sugerencias-recetas {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 0 0 5px 5px;
+    }
+
+    #sugerencias-recetas .list-group-item {
+        border-left: none;
+        border-right: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    #sugerencias-recetas .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    #sugerencias-recetas .fw-bold {
+        color: #0d6efd;
+    }
+
+    #sugerencias-recetas .badge {
+        font-size: 0.8em;
+    }
+</style>
 @endsection
