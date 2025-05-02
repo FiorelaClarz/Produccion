@@ -212,8 +212,27 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-        // Variables globales
-        let pedidos = @json($pedidosData);
+        // Variables globales - Versión corregida
+        let pedidos = @json($pedidosData).map(pedido => {
+            return {
+                id_pedidos_det: pedido.id_pedidos_det,
+                id_area: pedido.id_area,
+                area_nombre: pedido.area_nombre,
+                id_receta: pedido.id_receta,
+                receta_nombre: pedido.receta_nombre,
+                id_producto: pedido.id_producto,
+                cantidad: pedido.cantidad,
+                id_u_medida: pedido.id_u_medida,
+                u_medida_nombre: pedido.u_medida_nombre,
+                es_personalizado: pedido.es_personalizado,
+                descripcion: pedido.descripcion,
+                foto_referencial: null, // Inicialmente no hay nueva foto
+                foto_referencial_url: pedido.foto_referencial_url ? 
+                    '{{ asset('') }}' + pedido.foto_referencial_url : null,
+                id_estado: pedido.id_estado || 2 // Por defecto pendiente
+            };
+        });
+
         let hora_limite = '{{ $pedido->horaLimite->hora_limite }}';
         let intervaloContador = null;
         let editandoIndex = null;
@@ -489,71 +508,95 @@
         });
 
         function actualizarListaPedidos() {
-            const $lista = $('#lista-pedidos');
-            $lista.empty();
+    const $lista = $('#lista-pedidos');
+    $lista.empty();
 
-            if (pedidos.length === 0) {
-                $lista.append('<tr><td colspan="7" class="text-center">No hay pedidos agregados</td></tr>');
-                return;
-            }
+    if (pedidos.length === 0) {
+        $lista.append('<tr><td colspan="7" class="text-center">No hay pedidos agregados</td></tr>');
+        return;
+    }
 
-            pedidos.forEach(function(pedido, index) {
-                const estadoColor = getColorEstado(pedido.id_estado);
-                const personalizadoIcon = pedido.es_personalizado ?
-                    '<i class="fas fa-check text-success"></i>' :
-                    '<i class="fas fa-times text-danger"></i>';
+    // Ordenar los pedidos por área y luego por receta
+    const pedidosOrdenados = [...pedidos].sort((a, b) => {
+        // Primero ordenar por área
+        if (a.area_nombre < b.area_nombre) return -1;
+        if (a.area_nombre > b.area_nombre) return 1;
+        
+        // Si las áreas son iguales, ordenar por receta
+        const recetaA = a.receta_nombre || 'Personalizado';
+        const recetaB = b.receta_nombre || 'Personalizado';
+        return recetaA.localeCompare(recetaB);
+    });
 
-                let fotoThumbnail = '<div class="text-muted">Sin imagen</div>';
-                
-                if (pedido.foto_referencial) {
-                    // Nueva imagen subida
-                    fotoThumbnail = `
-                        <div class="position-relative" style="width: 50px; height: 50px;">
-                            <img src="${URL.createObjectURL(pedido.foto_referencial)}" 
-                                 class="img-thumbnail" 
-                                 style="width: 100%; height: 100%; object-fit: cover;">
-                            <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 eliminar-foto" 
-                                    style="width: 15px; height: 15px; line-height: 15px;"
-                                    data-index="${index}">
-                                <i class="fas fa-times" style="font-size: 8px;"></i>
-                            </button>
-                        </div>`;
-                } else if (pedido.foto_referencial_url) {
-                    // Imagen existente
-                    fotoThumbnail = `
-                        <div class="position-relative" style="width: 50px; height: 50px;">
-                            <img src="${pedido.foto_referencial_url}" 
-                                 class="img-thumbnail" 
-                                 style="width: 100%; height: 100%; object-fit: cover;">
-                            <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 eliminar-foto" 
-                                    style="width: 15px; height: 15px; line-height: 15px;"
-                                    data-index="${index}">
-                                <i class="fas fa-times" style="font-size: 8px;"></i>
-                            </button>
-                        </div>`;
-                }
+    pedidosOrdenados.forEach(function(pedido, index) {
+        const estadoColor = getColorEstado(pedido.id_estado);
+        const personalizadoIcon = pedido.es_personalizado ?
+            '<i class="fas fa-check text-success"></i>' :
+            '<i class="fas fa-times text-danger"></i>';
 
-                $lista.append(`
-                    <tr data-index="${index}" ${pedido.id_pedidos_det ? 'data-id="' + pedido.id_pedidos_det + '"' : ''}>
-                        <td>${pedido.area_nombre}</td>
-                        <td>${pedido.receta_nombre || 'Personalizado'}</td>
-                        <td>${pedido.cantidad}</td>
-                        <td>${pedido.u_medida_nombre}</td>
-                        <td><span class="badge ${estadoColor}">Pendiente</span></td>
-                        <td class="text-center">${personalizadoIcon}</td>
-                        <td class="text-center">
-                            ${fotoThumbnail}
-                            <button class="btn btn-sm btn-warning btn-editar" data-index="${index}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger btn-eliminar" data-index="${index}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `);
-            });
+        let fotoThumbnail = '<div class="text-muted">Sin imagen</div>';
+        
+        if (pedido.foto_referencial) {
+            // Nueva imagen subida
+            fotoThumbnail = `
+                <div class="position-relative" style="width: 50px; height: 50px;">
+                    <img src="${URL.createObjectURL(pedido.foto_referencial)}" 
+                         class="img-thumbnail" 
+                         style="width: 100%; height: 100%; object-fit: cover;">
+                    <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 eliminar-foto" 
+                            style="width: 15px; height: 15px; line-height: 15px;"
+                            data-index="${pedidos.findIndex(p => p.id_pedidos_det === pedido.id_pedidos_det)}">
+                        <i class="fas fa-times" style="font-size: 8px;"></i>
+                    </button>
+                </div>`;
+        } else if (pedido.foto_referencial_url) {
+            // Imagen existente
+            fotoThumbnail = `
+                <div class="position-relative" style="width: 50px; height: 50px;">
+                    <img src="${pedido.foto_referencial_url}" 
+                         class="img-thumbnail" 
+                         style="width: 100%; height: 100%; object-fit: cover;">
+                    <button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 eliminar-foto" 
+                            style="width: 15px; height: 15px; line-height: 15px;"
+                            data-index="${pedidos.findIndex(p => p.id_pedidos_det === pedido.id_pedidos_det)}">
+                        <i class="fas fa-times" style="font-size: 8px;"></i>
+                    </button>
+                </div>`;
         }
+
+        $lista.append(`
+            <tr data-index="${pedidos.findIndex(p => p.id_pedidos_det === pedido.id_pedidos_det)}" 
+                data-id="${pedido.id_pedidos_det}">
+                <td>${pedido.area_nombre}</td>
+                <td>${pedido.receta_nombre || 'Personalizado'}</td>
+                <td>${pedido.cantidad}</td>
+                <td>${pedido.u_medida_nombre}</td>
+                <td><span class="badge ${estadoColor}">${getEstadoNombre(pedido.id_estado)}</span></td>
+                <td class="text-center">${personalizadoIcon}</td>
+                <td class="text-center">
+                    ${fotoThumbnail}
+                    <button class="btn btn-sm btn-warning btn-editar" data-id="${pedido.id_pedidos_det}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-eliminar" data-id="${pedido.id_pedidos_det}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+    });
+}
+
+// Función auxiliar para obtener el nombre del estado
+function getEstadoNombre(id_estado) {
+    switch(id_estado) {
+        case 2: return 'Pendiente';
+        case 3: return 'Procesando';
+        case 4: return 'Terminado';
+        case 5: return 'Cancelado';
+        default: return 'Desconocido';
+    }
+}
 
         // Eliminar foto de un pedido
         $(document).on('click', '.eliminar-foto', function(e) {
@@ -576,21 +619,29 @@
         }
 
         // Editar pedido
+        // Editar pedido - Versión corregida
         $(document).on('click', '.btn-editar', function() {
-            const index = $(this).data('index');
+            const idPedidoDet = $(this).data('id'); // Obtenemos el ID del pedido detalle
+            const index = pedidos.findIndex(p => p.id_pedidos_det == idPedidoDet); // Buscamos el índice
+            
+            if (index === -1) {
+                console.error('No se encontró el pedido con ID:', idPedidoDet);
+                return;
+            }
+
             const pedido = pedidos[index];
+            console.log('Editando pedido:', pedido); // Para depuración
 
             // Llenar el formulario con los datos del pedido
-            $('#id_areas').val(pedido.id_area);
+            $('#id_areas').val(pedido.id_area).trigger('change');
             $('#id_recetas').val(pedido.id_receta);
             $('#buscar-receta').val(pedido.receta_nombre || '');
             $('#id_productos_api').val(pedido.id_producto || '');
             $('#cantidad').val(pedido.cantidad);
-            $('#id_u_medidas').val(pedido.id_u_medida);
+            $('#id_u_medidas').val(pedido.id_u_medida).trigger('change');
             
             if (pedido.es_personalizado) {
-                $('#es_personalizado').prop('checked', true);
-                $('#campos-personalizado').show();
+                $('#es_personalizado').prop('checked', true).trigger('change');
                 $('#descripcion').val(pedido.descripcion || '');
                 
                 // Mostrar previsualización si hay imagen
@@ -599,8 +650,7 @@
                     $('#preview-container').show();
                 }
             } else {
-                $('#es_personalizado').prop('checked', false);
-                $('#campos-personalizado').hide();
+                $('#es_personalizado').prop('checked', false).trigger('change');
             }
 
             // Guardar el índice del pedido que estamos editando
