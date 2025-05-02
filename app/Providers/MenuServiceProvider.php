@@ -135,7 +135,7 @@ class MenuServiceProvider extends ServiceProvider
             ]
         ];
 
-        // Menú para Rol 3
+        // PERSONAL
         $personal = [
             [
                 'text' => 'Roles',
@@ -156,7 +156,7 @@ class MenuServiceProvider extends ServiceProvider
                 'visible' => true
             ]
         ];
-        // Menú para Rol 3
+        // OPERADOR
         $operador = [
             [
                 'text' => 'Roles',
@@ -175,6 +175,29 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'equipos.index',
                 'icon' => 'fas fa-users-cog',
                 'visible' => true
+            ],
+            [
+                'text' => 'Pedidos',
+                'route' => 'pedidos.index',
+                'icon' => 'fas fa-clipboard-list',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todos los Pedidos',
+                        'route' => 'pedidos.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Nuevo Pedido',
+                        'route' => 'pedidos.create',
+                        'icon' => 'fas fa-plus-circle'
+                    ],
+                    [
+                        'text' => 'Horas Límite',
+                        'route' => 'hora-limites.index',
+                        'icon' => 'fas fa-clock'
+                    ]
+                ]
             ]
         ];
 

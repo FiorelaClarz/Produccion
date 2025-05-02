@@ -103,7 +103,7 @@
                 <td>{{ $detalle->descripcion ?? 'N/A' }}</td>
                 <td>
                     @if($detalle->foto_referencial)
-                    <img src="{{ storage_path('app/public/' . $detalle->foto_referencial) }}" width="100">
+                    <img src="{{ storage_path('app/public/storage/pedidos' . $detalle->foto_referencial) }}" width="100">
                     @elseif($detalle->foto_referencial_url)
                     [Imagen externa]
                     @else

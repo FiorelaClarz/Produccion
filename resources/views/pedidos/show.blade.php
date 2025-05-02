@@ -45,7 +45,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label><strong>Hora Límite:</strong></label>
-                                    <p class="form-control-plaintext">{{ $pedido->horaLimite->hora_limite }}</p>
+                                    <p class="form-control-plaintext">{{ $pedido->hora_limite }}</p> 
                                 </div>
                             </div>
                         </div>

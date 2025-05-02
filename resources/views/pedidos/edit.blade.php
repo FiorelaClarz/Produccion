@@ -42,6 +42,7 @@
                             @csrf
                             @method('PUT')
                             <input type="hidden" id="id_hora_limite" name="id_hora_limite" value="{{ $pedido->id_hora_limite }}">
+                            <input type="hidden" id="editing-index" value="">
 
                             <div class="row">
                                 <div class="col-md-4">
@@ -68,7 +69,7 @@
                                 <div class="col-md-2">
                                     <div class="form-group">
                                         <label for="cantidad">Cantidad</label>
-                                        <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" value="1" required>
+                                        <input type="number" class="form-control" id="cantidad" name="cantidad" min="0.1" step="0.1" value="1" required>
                                     </div>
                                 </div>
                                 <div class="col-md-2">
@@ -122,6 +123,12 @@
                                     </button>
                                     <button type="button" id="btn-limpiar" class="btn btn-secondary">
                                         <i class="fas fa-broom"></i> Limpiar
+                                    </button>
+                                    <button type="button" id="btn-actualizar-item" class="btn btn-success" style="display:none;">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
+                                    <button type="button" id="btn-cancelar-edicion" class="btn btn-danger" style="display:none;">
+                                        <i class="fas fa-times"></i> Cancelar
                                     </button>
                                 </div>
                             </div>
@@ -206,94 +213,100 @@
 <script>
     $(document).ready(function() {
         // Variables globales
-        // Variables globales
-let pedidos = @json($pedidosData);
-let hora_limite = '{{ $pedido->horaLimite->hora_limite }}'; // Asegúrate que esto devuelve un formato como "HH:MM:SS"
-let intervaloContador = null;
+        let pedidos = @json($pedidosData);
+        let hora_limite = '{{ $pedido->horaLimite->hora_limite }}';
+        let intervaloContador = null;
+        let editandoIndex = null;
 
-// Modificar las URLs de las imágenes para incluir el asset()
-pedidos = pedidos.map(pedido => {
-    if (pedido.foto_referencial_url) {
-        pedido.foto_referencial_url = '{{ asset('') }}' + pedido.foto_referencial_url;
-    }
-    return pedido;
-});
-
-// Inicializar el contador regresivo
-function iniciarContadorRegresivo() {
-    // Parsear la hora límite correctamente
-    const [hours, minutes, seconds] = hora_limite.split(':').map(Number);
-    const ahora = new Date();
-    
-    // Crear fecha límite con la hora de hoy
-    const horaFin = new Date(
-        ahora.getFullYear(),
-        ahora.getMonth(),
-        ahora.getDate(),
-        hours,
-        minutes,
-        seconds || 0
-    );
-
-    // Si la hora límite ya pasó hoy, sumar un día
-    if (horaFin < ahora) {
-        horaFin.setDate(horaFin.getDate() + 1);
-    }
-
-    actualizarContador(ahora, horaFin);
-
-    // Actualizar cada segundo
-    intervaloContador = setInterval(() => {
-        actualizarContador(new Date(), horaFin);
-    }, 1000);
-}
-
-function actualizarContador(ahora, horaFin) {
-    const diferencia = horaFin - ahora;
-
-    if (diferencia <= 0) {
-        clearInterval(intervaloContador);
-        $('#tiempo-restante').text('00:00');
-        $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
-
-        // Mostrar alerta y redireccionar
-        Swal.fire({
-            title: '¡Tiempo agotado!',
-            text: 'El tiempo para realizar pedidos ha terminado. Será redirigido.',
-            icon: 'error',
-            confirmButtonText: 'Entendido'
-        }).then(() => {
-            window.location.href = "{{ route('pedidos.index') }}";
+        // Modificar las URLs de las imágenes para incluir el asset()
+        pedidos = pedidos.map(pedido => {
+            if (pedido.foto_referencial_url) {
+                pedido.foto_referencial_url = '{{ asset('') }}' + pedido.foto_referencial_url;
+            }
+            return pedido;
         });
-        return;
-    }
 
-    const horas = Math.floor(diferencia / (1000 * 60 * 60));
-    const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
-    const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+        // Función para cambiar a modo edición
+        function cambiarAModoEdicion(mostrar) {
+            if (mostrar) {
+                $('#btn-agregar').hide();
+                $('#btn-limpiar').hide();
+                $('#btn-actualizar-item').show();
+                $('#btn-cancelar-edicion').show();
+            } else {
+                $('#btn-agregar').show();
+                $('#btn-limpiar').show();
+                $('#btn-actualizar-item').hide();
+                $('#btn-cancelar-edicion').hide();
+                editandoIndex = null;
+                $('#editing-index').val('');
+            }
+        }
 
-    // Formatear a 2 dígitos
-    const horasStr = horas.toString().padStart(2, '0');
-    const minutosStr = minutos.toString().padStart(2, '0');
-    const segundosStr = segundos.toString().padStart(2, '0');
+        // Inicializar el contador regresivo
+        function iniciarContadorRegresivo() {
+            const [hours, minutes, seconds] = hora_limite.split(':').map(Number);
+            const ahora = new Date();
+            
+            const horaFin = new Date(
+                ahora.getFullYear(),
+                ahora.getMonth(),
+                ahora.getDate(),
+                hours,
+                minutes,
+                seconds || 0
+            );
 
-    // Mostrar horas solo si es mayor que 0
-    const tiempoRestante = horas > 0 
-        ? `${horasStr}:${minutosStr}:${segundosStr}`
-        : `${minutosStr}:${segundosStr}`;
+            if (horaFin < ahora) {
+                horaFin.setDate(horaFin.getDate() + 1);
+            }
 
-    $('#tiempo-restante').text(tiempoRestante);
+            actualizarContador(ahora, horaFin);
 
-    // Cambiar color según el tiempo restante
-    if (diferencia < (5 * 60 * 1000)) { // Menos de 5 minutos
-        $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
-    } else if (diferencia < (15 * 60 * 1000)) { // Menos de 15 minutos
-        $('#contador-regresivo').removeClass('bg-primary bg-danger').addClass('bg-warning');
-    }
-}
+            intervaloContador = setInterval(() => {
+                actualizarContador(new Date(), horaFin);
+            }, 1000);
+        }
 
-// Iniciar el contador al cargar la página
-iniciarContadorRegresivo();
+        function actualizarContador(ahora, horaFin) {
+            const diferencia = horaFin - ahora;
+
+            if (diferencia <= 0) {
+                clearInterval(intervaloContador);
+                $('#tiempo-restante').text('00:00');
+                $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+
+                Swal.fire({
+                    title: '¡Tiempo agotado!',
+                    text: 'El tiempo para realizar pedidos ha terminado. Será redirigido.',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    window.location.href = "{{ route('pedidos.index') }}";
+                });
+                return;
+            }
+
+            const horas = Math.floor(diferencia / (1000 * 60 * 60));
+            const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+            const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+
+            const horasStr = horas.toString().padStart(2, '0');
+            const minutosStr = minutos.toString().padStart(2, '0');
+            const segundosStr = segundos.toString().padStart(2, '0');
+
+            const tiempoRestante = horas > 0 
+                ? `${horasStr}:${minutosStr}:${segundosStr}`
+                : `${minutosStr}:${segundosStr}`;
+
+            $('#tiempo-restante').text(tiempoRestante);
+
+            if (diferencia < (5 * 60 * 1000)) {
+                $('#contador-regresivo').removeClass('bg-primary bg-warning').addClass('bg-danger');
+            } else if (diferencia < (15 * 60 * 1000)) {
+                $('#contador-regresivo').removeClass('bg-primary bg-danger').addClass('bg-warning');
+            }
+        }
 
         // Mostrar/ocultar campos personalizados
         $('#es_personalizado').change(function() {
@@ -370,6 +383,7 @@ iniciarContadorRegresivo();
             $('#sugerencias-recetas').hide();
         });
 
+        // Previsualizar imagen
         $('#foto_referencial').change(function() {
             if (this.files && this.files[0]) {
                 const reader = new FileReader();
@@ -387,6 +401,13 @@ iniciarContadorRegresivo();
             $('#campos-personalizado').hide();
             $('#es_personalizado').prop('checked', false);
             $('#sugerencias-recetas').hide();
+            $('#preview-container').hide();
+        });
+
+        // Cancelar edición
+        $('#btn-cancelar-edicion').click(function() {
+            $('#btn-limpiar').click();
+            cambiarAModoEdicion(false);
         });
 
         // Agregar pedido a la lista
@@ -420,7 +441,48 @@ iniciarContadorRegresivo();
 
                 pedidos.push(pedido);
                 actualizarListaPedidos();
-                $('#btn-limpiar').click(); // Limpiar el formulario
+                $('#btn-limpiar').click();
+            } else {
+                $('#form-detalle-pedido')[0].reportValidity();
+            }
+        });
+
+        // Actualizar item existente
+        $('#btn-actualizar-item').click(function() {
+            if ($('#form-detalle-pedido')[0].checkValidity()) {
+                const index = $('#editing-index').val();
+                const area = $('#id_areas option:selected').text();
+                const receta = $('#buscar-receta').val();
+                const cantidad = $('#cantidad').val();
+                const unidad = $('#id_u_medidas option:selected').text();
+                const es_personalizado = $('#es_personalizado').is(':checked');
+                const descripcion = $('#descripcion').val();
+                const fotoInput = $('#foto_referencial')[0];
+                const fotoFile = fotoInput.files[0];
+
+                // Mantener la URL de la imagen original si no se sube una nueva
+                const fotoOriginalUrl = pedidos[index].foto_referencial_url;
+
+                pedidos[index] = {
+                    id_pedidos_det: pedidos[index].id_pedidos_det,
+                    id_area: $('#id_areas').val(),
+                    area_nombre: area,
+                    id_receta: $('#id_recetas').val(),
+                    receta_nombre: receta,
+                    id_producto: $('#id_productos_api').val(),
+                    cantidad: cantidad,
+                    id_u_medida: $('#id_u_medidas').val(),
+                    u_medida_nombre: unidad,
+                    es_personalizado: es_personalizado,
+                    descripcion: descripcion,
+                    foto_referencial: fotoFile,
+                    foto_referencial_url: fotoOriginalUrl,
+                    id_estado: pedidos[index].id_estado
+                };
+
+                actualizarListaPedidos();
+                $('#btn-limpiar').click();
+                cambiarAModoEdicion(false);
             } else {
                 $('#form-detalle-pedido')[0].reportValidity();
             }
@@ -441,7 +503,6 @@ iniciarContadorRegresivo();
                     '<i class="fas fa-check text-success"></i>' :
                     '<i class="fas fa-times text-danger"></i>';
 
-                // Mostrar miniatura si hay imagen
                 let fotoThumbnail = '<div class="text-muted">Sin imagen</div>';
                 
                 if (pedido.foto_referencial) {
@@ -506,16 +567,11 @@ iniciarContadorRegresivo();
         // Obtener color según el estado
         function getColorEstado(id_estado) {
             switch (id_estado) {
-                case 2:
-                    return 'bg-light text-dark'; // Pendiente
-                case 3:
-                    return 'bg-info'; // Procesando
-                case 4:
-                    return 'bg-success'; // Terminado
-                case 5:
-                    return 'bg-danger'; // Cancelado
-                default:
-                    return 'bg-secondary';
+                case 2: return 'bg-light text-dark'; // Pendiente
+                case 3: return 'bg-info'; // Procesando
+                case 4: return 'bg-success'; // Terminado
+                case 5: return 'bg-danger'; // Cancelado
+                default: return 'bg-secondary';
             }
         }
 
@@ -547,37 +603,12 @@ iniciarContadorRegresivo();
                 $('#campos-personalizado').hide();
             }
 
-            // Cambiar el botón a "Actualizar"
-            $('#btn-agregar').html('<i class="fas fa-sync-alt"></i> Actualizar');
-            $('#btn-agregar').off('click').on('click', function() {
-                const fotoInput = $('#foto_referencial')[0];
-                const fotoFile = fotoInput.files[0];
-
-                // Actualizar el pedido
-                pedidos[index] = {
-                    id_pedidos_det: pedido.id_pedidos_det,
-                    id_area: $('#id_areas').val(),
-                    area_nombre: $('#id_areas option:selected').text(),
-                    id_receta: $('#id_recetas').val(),
-                    receta_nombre: $('#buscar-receta').val(),
-                    id_producto: $('#id_productos_api').val(),
-                    cantidad: $('#cantidad').val(),
-                    id_u_medida: $('#id_u_medidas').val(),
-                    u_medida_nombre: $('#id_u_medidas option:selected').text(),
-                    es_personalizado: $('#es_personalizado').is(':checked'),
-                    descripcion: $('#descripcion').val(),
-                    foto_referencial: fotoFile,
-                    foto_referencial_url: pedido.foto_referencial_url, // Mantener la URL existente si no hay nueva imagen
-                    id_estado: pedido.id_estado
-                };
-
-                actualizarListaPedidos();
-                $('#btn-limpiar').click();
-
-                // Restaurar el botón a "Agregar"
-                $('#btn-agregar').html('<i class="fas fa-plus"></i> Agregar');
-                $('#btn-agregar').off('click').on('click', agregarPedido);
-            });
+            // Guardar el índice del pedido que estamos editando
+            editandoIndex = index;
+            $('#editing-index').val(index);
+            
+            // Cambiar a modo edición
+            cambiarAModoEdicion(true);
         });
 
         // Eliminar pedido
@@ -605,7 +636,7 @@ iniciarContadorRegresivo();
             });
         });
 
-        // Actualizar pedido
+        // Actualizar pedido completo
         $('#btn-actualizar').click(function() {
             if (pedidos.length === 0) {
                 Swal.fire({

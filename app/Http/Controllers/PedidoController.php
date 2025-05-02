@@ -20,16 +20,67 @@ use Illuminate\Support\Facades\Storage;
 
 class PedidoController extends Controller
 {
-    public function index()
-    {
-        $pedidos = PedidoCabecera::with(['usuario', 'tienda', 'pedidosDetalle'])
-            ->where('is_deleted', false)
-            ->orderBy('fecha_created', 'desc')
-            ->orderBy('hora_created', 'desc')
-            ->paginate(10);
 
-        return view('pedidos.index', compact('pedidos'));
+    public function index(Request $request)
+{
+    // Obtener el usuario autenticado
+    $usuario = Auth::user();
+    
+    $query = PedidoCabecera::with([
+            'usuario', 
+            'tienda', 
+            'pedidosDetalle.area',
+            'pedidosDetalle.estado',
+            'pedidosDetalle.uMedida'
+        ])
+        ->where('is_deleted', false);
+
+    // Filtro por rol de usuario
+    if ($usuario->id_roles == 4) { // Rol operador
+        $query->where('id_tiendas_api', $usuario->id_tiendas_api);
+    } elseif ($usuario->id_roles != 1) { // Si no es admin ni operador
+        $query->where('id_usuarios', $usuario->id_usuarios);
     }
+    // Para admin (id_roles = 1) no aplicamos filtro adicional
+
+    // Ordenamiento
+    $query->orderBy('fecha_last_update', 'desc')
+          ->orderBy('hora_last_update', 'desc');
+
+    // Determinar el filtro a aplicar (por defecto es 'today')
+    $filter = $request->filter ?? 'today';
+    $today = Carbon::today();
+
+    switch ($filter) {
+        case 'today':
+            $query->whereDate('fecha_last_update', $today);
+            break;
+        case 'yesterday':
+            $query->whereDate('fecha_last_update', $today->copy()->subDay());
+            break;
+        case 'week':
+            $query->whereBetween('fecha_last_update', [$today->copy()->subWeek(), $today]);
+            break;
+        case 'custom':
+            if ($request->has('custom_date')) {
+                $query->whereDate('fecha_last_update', $request->custom_date);
+            }
+            break;
+    }
+
+    $pedidos = $query->paginate(10);
+
+    // Obtener la hora límite para el botón de nuevo pedido
+    $horaLimiteActual = HoraLimite::where('status', true)
+        ->where('is_deleted', false)
+        ->first();
+
+    $horaActual = now();
+    $horaLimite = $horaLimiteActual ? Carbon::parse($horaLimiteActual->hora_limite) : null;
+    $dentroDeHoraPermitida = $horaLimite ? $horaActual->lte($horaLimite) : false;
+
+    return view('pedidos.index', compact('pedidos', 'dentroDeHoraPermitida', 'horaLimiteActual', 'filter', 'usuario'));
+}
 
     public function create()
     {
@@ -48,18 +99,18 @@ class PedidoController extends Controller
                 ->where('is_deleted', false)
                 ->get();
 
-              // Obtener la hora límite activa
-        $horaLimite = HoraLimite::where('status', true)
-        ->where('is_deleted', false)
-        ->first();
+            // Obtener la hora límite activa
+            $horaLimite = HoraLimite::where('status', true)
+                ->where('is_deleted', false)
+                ->first();
 
-    if (!$horaLimite) {
-        return redirect()->route('pedidos.index')
-            ->with('error', 'No hay hora límite configurada. Contacte al administrador.');
-    }
+            if (!$horaLimite) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'No hay hora límite configurada. Contacte al administrador.');
+            }
 
-    // Asegurar formato correcto de la hora
-    $horaLimite->hora_limite = Carbon::createFromFormat('H:i:s', $horaLimite->hora_limite)->format('H:i:s');
+            // Asegurar formato correcto de la hora
+            $horaLimite->hora_limite = Carbon::createFromFormat('H:i:s', $horaLimite->hora_limite)->format('H:i:s');
 
             // Calcular tiempo restante
             $ahora = Carbon::now();
@@ -126,6 +177,7 @@ class PedidoController extends Controller
                 'hora_last_update' => $ahora->toTimeString(),
                 'esta_dentro_de_hora' => $estaDentroDeHora,
                 'id_hora_limite' => $horaLimite->id_hora_limite,
+                'hora_limite' => $horaLimite->hora_limite, // Guardamos la hora límite
                 'doc_interno' => 'PED-' . $ahora->format('Ymd-His') . '-' . strtoupper(substr(uniqid(), -5)),
                 'is_deleted' => false,
                 'status' => true
@@ -139,7 +191,7 @@ class PedidoController extends Controller
                     $fotoPath = $detalle['foto_referencial']->store('pedidos', 'public');
                 }
 
-                $receta = isset($detalle['id_recetas']) ? 
+                $receta = isset($detalle['id_recetas']) ?
                     RecetaCabecera::find($detalle['id_recetas']) : null;
 
                 PedidoDetalle::create([
@@ -179,13 +231,13 @@ class PedidoController extends Controller
     public function show($id)
     {
         $pedido = PedidoCabecera::with([
-                'pedidosDetalle.area', 
-                'pedidosDetalle.receta', 
-                'pedidosDetalle.uMedida',  
-                'pedidosDetalle.estado',  // Estado viene de PedidoDetalle
-                'usuario.tienda', 
-                'horaLimite'
-            ])
+            'pedidosDetalle.area',
+            'pedidosDetalle.receta',
+            'pedidosDetalle.uMedida',
+            'pedidosDetalle.estado',  // Estado viene de PedidoDetalle
+            'usuario.tienda',
+            'horaLimite'
+        ])
             ->findOrFail($id);
 
         return view('pedidos.show', compact('pedido'));
@@ -193,24 +245,24 @@ class PedidoController extends Controller
     public function edit($id)
     {
         $pedido = PedidoCabecera::with([
-                'pedidosDetalle.area', 
-                'pedidosDetalle.receta', 
-                'pedidosDetalle.uMedida',
-                'pedidosDetalle.estado', 
-                'usuario.tienda', 
-                'horaLimite'
-            ])
+            'pedidosDetalle.area',
+            'pedidosDetalle.receta',
+            'pedidosDetalle.uMedida',
+            'pedidosDetalle.estado',
+            'usuario.tienda',
+            'horaLimite'
+        ])
             ->findOrFail($id);
 
-             // Validar si el pedido está dentro del tiempo permitido
-    if (!$pedido->esta_dentro_de_hora) {
-        return redirect()->route('pedidos.index')
-            ->with('error', 'No se puede editar un pedido fuera del tiempo límite');
-    }
-    
+        // Validar si el pedido está dentro del tiempo permitido
+        if (!$pedido->esta_dentro_de_hora) {
+            return redirect()->route('pedidos.index')
+                ->with('error', 'No se puede editar un pedido fuera del tiempo límite');
+        }
+
 
         // Preparar los datos de los pedidos para JavaScript
-        $pedidosData = $pedido->pedidosDetalle->map(function($detalle) {
+        $pedidosData = $pedido->pedidosDetalle->map(function ($detalle) {
             return [
                 'id_pedidos_det' => $detalle->id_pedidos_det,
                 'id_area' => $detalle->id_areas,
@@ -257,13 +309,13 @@ class PedidoController extends Controller
         try {
             $pedido = PedidoCabecera::findOrFail($id);
 
-              // Validar si el pedido está dentro del tiempo permitido
-    if (!$pedido->esta_dentro_de_hora) {
-        return response()->json([
-            'success' => false,
-            'message' => 'No se puede actualizar un pedido fuera del tiempo límite'
-        ], 403);
-    }
+            // Validar si el pedido está dentro del tiempo permitido
+            if (!$pedido->esta_dentro_de_hora) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede actualizar un pedido fuera del tiempo límite'
+                ], 403);
+            }
 
             // Actualizar detalles existentes o crear nuevos
             foreach ($request->detalles as $detalleData) {
@@ -332,10 +384,10 @@ class PedidoController extends Controller
         DB::beginTransaction();
 
         // Validar si el pedido está dentro del tiempo permitido
-    if (!$pedido->esta_dentro_de_hora) {
-        return redirect()->route('pedidos.index')
-            ->with('error', 'No se puede eliminar un pedido fuera del tiempo límite');
-    }
+        if (!$pedido->esta_dentro_de_hora) {
+            return redirect()->route('pedidos.index')
+                ->with('error', 'No se puede eliminar un pedido fuera del tiempo límite');
+        }
         try {
             // Soft delete de la cabecera y detalles
             $pedido->update([

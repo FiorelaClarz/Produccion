@@ -57,12 +57,6 @@ class PedidoDetalle extends Model
         return $this->belongsTo(UMedida::class, 'id_u_medidas', 'id_u_medidas');
     }
 
-    // En App\Models\PedidoDetalle.php
-    // public function unidadMedida()
-    // {
-    //     return $this->belongsTo(UMedida::class, 'id_u_medidas', 'id_u_medidas');
-    // }
-
     // Relación con Estado
     public function estado()
     {

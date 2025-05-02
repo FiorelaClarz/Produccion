@@ -23,6 +23,7 @@ class PedidoCabecera extends Model
         'hora_last_update',
         'esta_dentro_de_hora',
         'id_hora_limite',
+        'hora_limite',
         'doc_interno',
         'is_deleted',
         'status'
