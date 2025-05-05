@@ -17,105 +17,148 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\File;
 
 class PedidoController extends Controller
 {
-
     public function index(Request $request)
-{
-    // Obtener el usuario autenticado
-    $usuario = Auth::user();
-    
-    $query = PedidoCabecera::with([
-            'usuario', 
-            'tienda', 
+    {
+        $usuario = Auth::user();
+
+        // Obtener la hora límite activa actual
+        $horaLimiteActual = $this->getHoraLimiteActiva();
+
+        // Calcular si estamos dentro del tiempo permitido para pedidos
+        $horaActual = now();
+        $horaInicioPedidos = $horaLimiteActual ? Carbon::parse($horaLimiteActual->hora_limite)->subHour() : null;
+        $dentroDeHoraPermitida = $horaLimiteActual ?
+            ($horaActual->gte($horaInicioPedidos) && $horaActual->lte(Carbon::parse($horaLimiteActual->hora_limite))) :
+            false;
+
+        $query = PedidoCabecera::with([
+            'usuario',
+            'tienda',
+            'pedidosDetalle' => function ($query) {
+                $query->where('is_deleted', false);
+            },
             'pedidosDetalle.area',
             'pedidosDetalle.estado',
-            'pedidosDetalle.uMedida'
+            'pedidosDetalle.uMedida',
+            'horaLimite'
         ])
-        ->where('is_deleted', false);
+            ->where('is_deleted', false)
+            ->whereNull('deleted_at');
 
-    // Filtro por rol de usuario
-    if ($usuario->id_roles == 4) { // Rol operador
-        $query->where('id_tiendas_api', $usuario->id_tiendas_api);
-    } elseif ($usuario->id_roles != 1) { // Si no es admin ni operador
-        $query->where('id_usuarios', $usuario->id_usuarios);
+        // Filtro por rol de usuario
+        if ($usuario->id_roles == 4) { // Rol operador
+            $query->where('id_tiendas_api', $usuario->id_tiendas_api);
+        } elseif ($usuario->id_roles != 1) { // Si no es admin ni operador
+            $query->where('id_usuarios', $usuario->id_usuarios);
+        }
+
+        // Ordenamiento
+        $query->orderBy('fecha_last_update', 'desc')
+            ->orderBy('hora_last_update', 'desc');
+
+        // Determinar el filtro a aplicar
+        $filter = $request->filter ?? 'today';
+        $today = Carbon::today();
+
+        switch ($filter) {
+            case 'today':
+                $query->whereDate('fecha_last_update', $today);
+                break;
+            case 'yesterday':
+                $query->whereDate('fecha_last_update', $today->copy()->subDay());
+                break;
+            case 'week':
+                $query->whereBetween('fecha_last_update', [$today->copy()->subWeek(), $today]);
+                break;
+            case 'custom':
+                if ($request->has('custom_date')) {
+                    $query->whereDate('fecha_last_update', $request->custom_date);
+                }
+                break;
+        }
+
+        $pedidos = $query->paginate(10);
+
+        return view('pedidos.index', compact(
+            'pedidos',
+            'dentroDeHoraPermitida',
+            'horaLimiteActual',
+            'filter',
+            'usuario'
+        ));
     }
-    // Para admin (id_roles = 1) no aplicamos filtro adicional
 
-    // Ordenamiento
-    $query->orderBy('fecha_last_update', 'desc')
-          ->orderBy('hora_last_update', 'desc');
+    /**
+     * Obtiene la hora límite activa actual basada en la hora del sistema
+     */
+    protected function getHoraLimiteActiva()
+    {
+        $horaActual = now();
 
-    // Determinar el filtro a aplicar (por defecto es 'today')
-    $filter = $request->filter ?? 'today';
-    $today = Carbon::today();
+        // Obtener todas las horas límite activas ordenadas
+        $horasLimite = HoraLimite::where('status', true)
+            ->where('is_deleted', false)
+            ->orderBy('hora_limite', 'asc')
+            ->get();
 
-    switch ($filter) {
-        case 'today':
-            $query->whereDate('fecha_last_update', $today);
-            break;
-        case 'yesterday':
-            $query->whereDate('fecha_last_update', $today->copy()->subDay());
-            break;
-        case 'week':
-            $query->whereBetween('fecha_last_update', [$today->copy()->subWeek(), $today]);
-            break;
-        case 'custom':
-            if ($request->has('custom_date')) {
-                $query->whereDate('fecha_last_update', $request->custom_date);
+        foreach ($horasLimite as $horaLimite) {
+            $horaLimiteCarbon = Carbon::parse($horaLimite->hora_limite);
+            $horaInicio = $horaLimiteCarbon->copy()->subHour();
+
+            // Si la hora actual está entre inicio (1 hora antes) y la hora límite
+            if ($horaActual->between($horaInicio, $horaLimiteCarbon)) {
+                return $horaLimite;
             }
-            break;
+        }
+
+        // Si no encontramos una hora límite activa, devolver la próxima
+        foreach ($horasLimite as $horaLimite) {
+            if ($horaActual->lt(Carbon::parse($horaLimite->hora_limite))) {
+                return $horaLimite;
+            }
+        }
+
+        // Si no hay ninguna hora límite futura, devolver la última del día
+        return $horasLimite->last() ?? null;
     }
-
-    $pedidos = $query->paginate(10);
-
-    // Obtener la hora límite para el botón de nuevo pedido
-    $horaLimiteActual = HoraLimite::where('status', true)
-        ->where('is_deleted', false)
-        ->first();
-
-    $horaActual = now();
-    $horaLimite = $horaLimiteActual ? Carbon::parse($horaLimiteActual->hora_limite) : null;
-    $dentroDeHoraPermitida = $horaLimite ? $horaActual->lte($horaLimite) : false;
-
-    return view('pedidos.index', compact('pedidos', 'dentroDeHoraPermitida', 'horaLimiteActual', 'filter', 'usuario'));
-}
 
     public function create()
     {
         try {
-            // Obtener el usuario autenticado con sus relaciones
+            // Verificar si estamos dentro del tiempo permitido
+            $horaLimite = $this->getHoraLimiteActiva();
+            $horaActual = now();
+            $horaInicioPedidos = Carbon::parse($horaLimite->hora_limite)->subHour();
+
+            if ($horaActual->lt($horaInicioPedidos)) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'Los pedidos para este turno se habilitarán a las ' . $horaInicioPedidos->format('H:i'));
+            }
+
+            if ($horaActual->gt(Carbon::parse($horaLimite->hora_limite))) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'El tiempo para crear pedidos para este turno ha terminado');
+            }
+
             $usuario = Usuario::with(['tienda', 'area'])
                 ->findOrFail(Auth::id());
 
-            // Obtener áreas activas
             $areas = Area::where('status', true)
                 ->where('is_deleted', false)
                 ->get();
 
-            // Obtener unidades de medida activas
             $unidades = UMedida::where('status', true)
                 ->where('is_deleted', false)
                 ->get();
 
-            // Obtener la hora límite activa
-            $horaLimite = HoraLimite::where('status', true)
-                ->where('is_deleted', false)
-                ->first();
-
-            if (!$horaLimite) {
-                return redirect()->route('pedidos.index')
-                    ->with('error', 'No hay hora límite configurada. Contacte al administrador.');
-            }
-
-            // Asegurar formato correcto de la hora
-            $horaLimite->hora_limite = Carbon::createFromFormat('H:i:s', $horaLimite->hora_limite)->format('H:i:s');
-
             // Calcular tiempo restante
-            $ahora = Carbon::now();
             $horaLimiteCarbon = Carbon::parse($horaLimite->hora_limite);
-            $tiempoRestante = $ahora->diff($horaLimiteCarbon);
+            $tiempoRestante = $horaActual->diff($horaLimiteCarbon);
 
             return view('pedidos.create', compact(
                 'usuario',
@@ -143,7 +186,8 @@ class PedidoController extends Controller
                 'detalles.*.cantidad' => 'required|numeric|min:0.1',
                 'detalles.*.id_u_medidas' => 'required|exists:u_medidas,id_u_medidas',
                 'id_hora_limite' => 'required|exists:hora_limites,id_hora_limite',
-                'detalles.*.foto_referencial' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+                'detalles.*.foto_referencial' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'detalles.*.descripcion' => 'required_if:detalles.*.es_personalizado,true',
             ]);
 
             if ($validator->fails()) {
@@ -158,7 +202,8 @@ class PedidoController extends Controller
             $horaLimite = HoraLimite::find($request->id_hora_limite);
 
             // Verificar si está dentro de la hora límite
-            $estaDentroDeHora = $ahora->lte(Carbon::parse($horaLimite->hora_limite));
+            $horaInicioPedidos = Carbon::parse($horaLimite->hora_limite)->subHour();
+            $estaDentroDeHora = $ahora->between($horaInicioPedidos, Carbon::parse($horaLimite->hora_limite));
 
             if (!$estaDentroDeHora) {
                 return response()->json([
@@ -177,7 +222,7 @@ class PedidoController extends Controller
                 'hora_last_update' => $ahora->toTimeString(),
                 'esta_dentro_de_hora' => $estaDentroDeHora,
                 'id_hora_limite' => $horaLimite->id_hora_limite,
-                'hora_limite' => $horaLimite->hora_limite, // Guardamos la hora límite
+                'hora_limite' => $horaLimite->hora_limite,
                 'doc_interno' => 'PED-' . $ahora->format('Ymd-His') . '-' . strtoupper(substr(uniqid(), -5)),
                 'is_deleted' => false,
                 'status' => true
@@ -186,7 +231,6 @@ class PedidoController extends Controller
             // Crear detalles del pedido
             foreach ($request->detalles as $detalle) {
                 $fotoPath = null;
-                // Procesar la imagen si existe
                 if (isset($detalle['foto_referencial']) && $detalle['foto_referencial'] instanceof \Illuminate\Http\UploadedFile) {
                     $fotoPath = $detalle['foto_referencial']->store('pedidos', 'public');
                 }
@@ -234,14 +278,14 @@ class PedidoController extends Controller
             'pedidosDetalle.area',
             'pedidosDetalle.receta',
             'pedidosDetalle.uMedida',
-            'pedidosDetalle.estado',  // Estado viene de PedidoDetalle
+            'pedidosDetalle.estado',
             'usuario.tienda',
             'horaLimite'
-        ])
-            ->findOrFail($id);
+        ])->findOrFail($id);
 
         return view('pedidos.show', compact('pedido'));
     }
+
     public function edit($id)
     {
         $pedido = PedidoCabecera::with([
@@ -251,17 +295,31 @@ class PedidoController extends Controller
             'pedidosDetalle.estado',
             'usuario.tienda',
             'horaLimite'
-        ])
-            ->findOrFail($id);
+        ])->findOrFail($id);
 
-        // Validar si el pedido está dentro del tiempo permitido
-        if (!$pedido->esta_dentro_de_hora) {
+        // Verificar si el pedido está dentro del tiempo permitido para edición
+        $horaActual = now();
+        $horaLimitePedido = Carbon::parse($pedido->hora_limite);
+        $horaInicioEdicion = $horaLimitePedido->copy()->subHour();
+
+        if ($horaActual->lt($horaInicioEdicion)) {
             return redirect()->route('pedidos.index')
-                ->with('error', 'No se puede editar un pedido fuera del tiempo límite');
+                ->with('error', 'Aún no es hora de editar este pedido (se habilita a las ' . $horaInicioEdicion->format('H:i') . ')');
         }
 
+        if ($horaActual->gt($horaLimitePedido)) {
+            return redirect()->route('pedidos.index')
+                ->with('error', 'El tiempo para editar este pedido ha terminado');
+        }
 
-        // Preparar los datos de los pedidos para JavaScript
+        $areas = Area::where('status', true)
+            ->where('is_deleted', false)
+            ->get();
+
+        $unidades = UMedida::where('status', true)
+            ->where('is_deleted', false)
+            ->get();
+
         $pedidosData = $pedido->pedidosDetalle->map(function ($detalle) {
             return [
                 'id_pedidos_det' => $detalle->id_pedidos_det,
@@ -281,17 +339,12 @@ class PedidoController extends Controller
             ];
         });
 
-        $areas = Area::where('status', true)
-            ->where('is_deleted', false)
-            ->get();
-
-        $unidades = UMedida::where('status', true)
-            ->where('is_deleted', false)
-            ->get();
-
-        $horaLimite = $pedido->horaLimite;
-
-        return view('pedidos.edit', compact('pedido', 'areas', 'unidades', 'horaLimite', 'pedidosData'));
+        return view('pedidos.edit', compact(
+            'pedido',
+            'areas',
+            'unidades',
+            'pedidosData'
+        ));
     }
 
     public function update(Request $request, $id)
@@ -309,8 +362,12 @@ class PedidoController extends Controller
         try {
             $pedido = PedidoCabecera::findOrFail($id);
 
-            // Validar si el pedido está dentro del tiempo permitido
-            if (!$pedido->esta_dentro_de_hora) {
+            // Verificar si el pedido está dentro del tiempo permitido para edición
+            $horaActual = now();
+            $horaLimitePedido = Carbon::parse($pedido->hora_limite);
+            $horaInicioEdicion = $horaLimitePedido->copy()->subHour();
+
+            if ($horaActual->lt($horaInicioEdicion) || $horaActual->gt($horaLimitePedido)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No se puede actualizar un pedido fuera del tiempo límite'
@@ -330,9 +387,7 @@ class PedidoController extends Controller
                     'id_estados' => $detalleData['id_estados'] ?? 2, // Pendiente por defecto
                 ];
 
-                // Manejar la imagen
                 if (isset($detalleData['foto_referencial']) && $detalleData['foto_referencial'] instanceof \Illuminate\Http\UploadedFile) {
-                    // Eliminar imagen anterior si existe
                     if (isset($detalleData['id_pedidos_det'])) {
                         $detalleExistente = PedidoDetalle::find($detalleData['id_pedidos_det']);
                         if ($detalleExistente && $detalleExistente->foto_referencial) {
@@ -346,17 +401,14 @@ class PedidoController extends Controller
                 }
 
                 if (isset($detalleData['id_pedidos_det'])) {
-                    // Actualizar detalle existente
                     PedidoDetalle::where('id_pedidos_det', $detalleData['id_pedidos_det'])
                         ->update($data);
                 } else {
-                    // Crear nuevo detalle
                     $data['id_pedidos_cab'] = $pedido->id_pedidos_cab;
                     PedidoDetalle::create($data);
                 }
             }
 
-            // Actualizar fecha/hora de modificación
             $pedido->update([
                 'fecha_last_update' => Carbon::now()->toDateString(),
                 'hora_last_update' => Carbon::now()->toTimeString()
@@ -383,13 +435,29 @@ class PedidoController extends Controller
     {
         DB::beginTransaction();
 
-        // Validar si el pedido está dentro del tiempo permitido
-        if (!$pedido->esta_dentro_de_hora) {
-            return redirect()->route('pedidos.index')
-                ->with('error', 'No se puede eliminar un pedido fuera del tiempo límite');
-        }
         try {
-            // Soft delete de la cabecera y detalles
+            $horaLimitePedido = Carbon::parse($pedido->hora_limite);
+            $horaInicioEdicion = $horaLimitePedido->copy()->subHour();
+            $horaActual = now();
+
+            // Verificar si estamos dentro del período permitido (1 hora antes de la hora límite)
+            if ($horaActual->lt($horaInicioEdicion)) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'Aún no es hora de eliminar este pedido (se habilita a las ' . $horaInicioEdicion->format('H:i') . ')');
+            }
+
+            if ($horaActual->gt($horaLimitePedido)) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'El tiempo para eliminar este pedido ha terminado (hora límite: ' . $horaLimitePedido->format('H:i') . ')');
+            }
+
+            // Verificar si el pedido fue creado en el período actual
+            if (!$pedido->esta_dentro_de_hora) {
+                return redirect()->route('pedidos.index')
+                    ->with('error', 'No se puede eliminar un pedido de un turno anterior');
+            }
+
+            // Actualizar primero los campos manuales
             $pedido->update([
                 'is_deleted' => true,
                 'status' => false,
@@ -397,7 +465,12 @@ class PedidoController extends Controller
                 'hora_last_update' => Carbon::now()->toTimeString()
             ]);
 
+            // Eliminar usando SoftDeletes (esto establecerá deleted_at)
+            $pedido->delete();
+
+            // Actualizar los detalles del pedido
             $pedido->pedidosDetalle()->update(['is_deleted' => true]);
+            $pedido->pedidosDetalle()->delete();
 
             DB::commit();
 
@@ -408,7 +481,7 @@ class PedidoController extends Controller
             Log::error('Error al eliminar pedido: ' . $e->getMessage());
 
             return back()
-                ->with('error', 'Error al eliminar el pedido');
+                ->with('error', 'Error al eliminar el pedido: ' . $e->getMessage());
         }
     }
 
@@ -448,5 +521,77 @@ class PedidoController extends Controller
             Log::error('Error en buscarRecetas: ' . $e->getMessage());
             return response()->json(['error' => 'Error en la búsqueda'], 500);
         }
+    }
+
+    public function generatePdf($id)
+    {
+        $pedido = PedidoCabecera::with([
+            'pedidosDetalle.area',
+            'pedidosDetalle.receta',
+            'pedidosDetalle.uMedida',
+            'pedidosDetalle.estado',
+            'usuario.rol',
+            'tienda'
+        ])->findOrFail($id);
+
+        $options = [
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+            'defaultFont' => 'Arial'
+        ];
+
+        $pdf = Pdf::loadView('pedidos.pdf.individual', compact('pedido'))
+            ->setOptions($options)
+            ->setPaper('a4', 'portrait');
+
+        // Guardar el PDF en storage
+        $filename = 'pedido_' . $pedido->id_pedidos_cab . '_' . now()->format('YmdHis') . '.pdf';
+        $path = 'pedidos/pdf/' . $filename;
+
+        // Asegurarse de que el directorio existe
+        if (!Storage::disk('public')->exists('pedidos/pdf')) {
+            Storage::disk('public')->makeDirectory('pedidos/pdf');
+        }
+
+        Storage::disk('public')->put($path, $pdf->output());
+
+        // Actualizar la ruta del PDF en la base de datos
+        $pedido->update(['pdf_path' => $path]);
+
+        return $pdf->stream($filename);
+    }
+
+    public function generateConsolidadoPdf(Request $request)
+    {
+        $usuario = Auth::user();
+        $today = Carbon::today()->format('Y-m-d');
+
+        $query = PedidoCabecera::with([
+            'pedidosDetalle.area',
+            'pedidosDetalle.receta',
+            'pedidosDetalle.uMedida',
+            'pedidosDetalle.estado',
+            'usuario',
+            'tienda'
+        ])
+            ->whereDate('fecha_created', $today)
+            ->where('is_deleted', false);
+
+        // Aplicar filtros según rol
+        if ($usuario->id_roles == 4) { // Rol operador
+            $query->where('id_tiendas_api', $usuario->id_tiendas_api);
+        } elseif ($usuario->id_roles != 1) { // Si no es admin
+            $query->where('id_usuarios', $usuario->id_usuarios);
+        }
+
+        $pedidos = $query->get();
+        $fecha = Carbon::today()->format('d/m/Y');
+
+        $pdf = Pdf::loadView('pedidos.pdf.consolidado', compact('pedidos', 'fecha'));
+
+        // Generar nombre único para el consolidado
+        $filename = 'consolidado_pedidos_' . now()->format('YmdHis') . '.pdf';
+
+        return $pdf->stream($filename);
     }
 }
