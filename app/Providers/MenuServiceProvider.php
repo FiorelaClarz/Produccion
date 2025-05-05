@@ -85,7 +85,7 @@ class MenuServiceProvider extends ServiceProvider
             [
                 'text' => 'Recetas',
                 'route' => 'recetas.index',
-                'icon' => 'fas fa-utensils', // Icono de recetas
+                'icon' => 'fas fa-utensils',
                 'visible' => true
             ],
             [
@@ -116,6 +116,12 @@ class MenuServiceProvider extends ServiceProvider
                         'icon' => 'fas fa-clock'
                     ]
                 ]
+            ],
+            [
+                'text' => 'Horas Límite',
+                'route' => 'hora-limites.index',
+                'icon' => 'fas fa-clock',
+                'visible' => true
             ]
         ];
 
@@ -156,6 +162,7 @@ class MenuServiceProvider extends ServiceProvider
                 'visible' => true
             ]
         ];
+        
         // OPERADOR
         $operador = [
             [

@@ -11,6 +11,7 @@ use App\Http\Controllers\UMedidaController;
 use App\Http\Controllers\RecetaController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\EquipoController;
+use App\Http\Controllers\HoraLimiteController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
@@ -194,5 +195,10 @@ Route::middleware(['auth'])->group(function () {
         // Rutas adicionales para acciones específicas
         Route::patch('/{id}/cancelar', [PedidoController::class, 'cancelar'])->name('pedidos.cancelar');
         Route::patch('/{id}/procesar', [PedidoController::class, 'procesar'])->name('pedidos.procesar');
+
+
+        Route::get('/pedidos/{id}/pdf', [PedidoController::class, 'generatePdf'])->name('pedidos.pdf');
+Route::get('/pedidos/consolidado-pdf', [PedidoController::class, 'generateConsolidadoPdf'])->name('pedidos.consolidado.pdf');
     });
+    Route::resource('hora-limites', HoraLimiteController::class);
 });

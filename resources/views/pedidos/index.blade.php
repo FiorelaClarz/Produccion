@@ -21,23 +21,64 @@
                         @break
                 @endswitch
             </p>
+            
+            @if($horaLimiteActual)
+                <div class="alert alert-info py-2 mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                        <div>
+                            <strong>Turno Actual:</strong> 
+                            @if($horaLimiteActual->hora_limite == '08:00:00')
+                                Mañana (08:00)
+                            @elseif($horaLimiteActual->hora_limite == '13:00:00')
+                                Tarde (13:00)
+                            @else
+                                Noche (19:00)
+                            @endif
+                            <br>
+                            <strong>Ventana de Pedidos:</strong> 
+                            {{ Carbon\Carbon::parse($horaLimiteActual->hora_limite)->subHour()->format('H:i') }} - {{ $horaLimiteActual->hora_limite }}
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
+        
         <div class="col-md-6 text-end">
-            <a href="{{ route('pedidos.create') }}" 
-               class="btn btn-primary {{ !$dentroDeHoraPermitida ? 'disabled' : '' }}" 
-               @if(!$dentroDeHoraPermitida) 
-                   title="El tiempo para realizar pedidos ha terminado" 
-               @endif>
-                <i class="fas fa-plus"></i> Nuevo Pedido
-                @if(!$dentroDeHoraPermitida)
-                    <span class="badge bg-danger ms-2">Tiempo agotado</span>
+            <div class="d-flex justify-content-end gap-2">
+                @if($filter == 'today')
+                <a href="{{ route('pedidos.consolidado.pdf') }}" 
+                   class="btn btn-success" 
+                   target="_blank"
+                   data-bs-toggle="tooltip" 
+                   title="Generar PDF consolidado de todos los pedidos de hoy">
+                    <i class="fas fa-file-pdf"></i> Consolidado
+                </a>
                 @endif
-            </a>
+                
+                <a href="{{ route('pedidos.create') }}" 
+                   class="btn btn-primary {{ !$dentroDeHoraPermitida ? 'disabled' : '' }}" 
+                   @if(!$dentroDeHoraPermitida) 
+                       data-bs-toggle="tooltip" 
+                       title="El tiempo para realizar pedidos ha terminado" 
+                   @else
+                       data-bs-toggle="tooltip" 
+                       title="Crear nuevo pedido"
+                   @endif>
+                    <i class="fas fa-plus"></i> Nuevo Pedido
+                    @if(!$dentroDeHoraPermitida)
+                        <span class="badge bg-danger ms-2">Tiempo agotado</span>
+                    @endif
+                </a>
+            </div>
         </div>
     </div>
 
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>
             {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -45,6 +86,7 @@
 
     @if (session('error'))
         <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>
             {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -56,15 +98,21 @@
                 <div class="col-md-8">
                     <div class="btn-group btn-group-sm" role="group">
                         <a href="{{ route('pedidos.index', ['filter' => 'today']) }}" 
-                           class="btn btn-outline-primary {{ $filter == 'today' ? 'active' : '' }}">
+                           class="btn btn-outline-primary {{ $filter == 'today' ? 'active' : '' }}"
+                           data-bs-toggle="tooltip"
+                           title="Mostrar pedidos de hoy">
                             Hoy
                         </a>
                         <a href="{{ route('pedidos.index', ['filter' => 'yesterday']) }}" 
-                           class="btn btn-outline-primary {{ $filter == 'yesterday' ? 'active' : '' }}">
+                           class="btn btn-outline-primary {{ $filter == 'yesterday' ? 'active' : '' }}"
+                           data-bs-toggle="tooltip"
+                           title="Mostrar pedidos de ayer">
                             Ayer
                         </a>
                         <a href="{{ route('pedidos.index', ['filter' => 'week']) }}" 
-                           class="btn btn-outline-primary {{ $filter == 'week' ? 'active' : '' }}">
+                           class="btn btn-outline-primary {{ $filter == 'week' ? 'active' : '' }}"
+                           data-bs-toggle="tooltip"
+                           title="Mostrar pedidos de la última semana">
                             Última Semana
                         </a>
                     </div>
@@ -73,8 +121,11 @@
                     <form action="{{ route('pedidos.index') }}" method="GET" class="d-flex">
                         <input type="hidden" name="filter" value="custom">
                         <input type="date" class="form-control form-control-sm me-2" name="custom_date" 
-                               value="{{ request()->custom_date ?? date('Y-m-d') }}">
-                        <button class="btn btn-primary btn-sm" type="submit">
+                               value="{{ request()->custom_date ?? date('Y-m-d') }}"
+                               max="{{ date('Y-m-d') }}">
+                        <button class="btn btn-primary btn-sm" type="submit"
+                                data-bs-toggle="tooltip"
+                                title="Buscar por fecha específica">
                             <i class="fas fa-search"></i>
                         </button>
                     </form>
@@ -87,37 +138,55 @@
         <table class="table table-striped table-hover table-sm">
             <thead class="table-dark">
                 <tr>
-                    <th>ID</th>
-                    <th>Documento</th>
-                    <th>Usuario</th>
-                    <th>Tienda</th>
-                    <th>Fecha/Hora</th>
-                    <th>Hora Límite</th>
-                    <th>Detalles</th>
-                    <th>Acciones</th>
+                    <th width="5%">ID</th>
+                    <th width="15%">Documento</th>
+                    <th width="15%">Usuario</th>
+                    <th width="15%">Tienda</th>
+                    <th width="10%">Fecha/Hora</th>
+                    <th width="10%">Hora Límite</th>
+                    <th width="15%">Detalles</th>
+                    <th width="15%">Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse ($pedidos as $pedido)
+            @forelse ($pedidos as $pedido)
                 @php
                     $fechaActualizacion = Carbon\Carbon::parse($pedido->fecha_last_update);
                     $horaActualizacion = Carbon\Carbon::parse($pedido->hora_last_update);
+                    $horaLimitePedido = Carbon\Carbon::parse($pedido->hora_limite);
+                    $horaInicioEdicion = $horaLimitePedido->copy()->subHour();
+                    
+                    // Verificar si estamos dentro del período permitido (1 hora antes de la hora límite)
+                    $puedeEditarEliminar = now()->between($horaInicioEdicion, $horaLimitePedido);
+                    
+                    // Verificar si el pedido fue creado en el período actual
+                    $pedidoCreadoEnPeriodoActual = $pedido->esta_dentro_de_hora;
                 @endphp
-                
+                <!-- Debug por pedido -->
+                <div class="bg-light p-2 mb-1">
+                    <p class="fw-bold">Debug Pedido ID: {{ $pedido->id_pedidos_cab }}</p>
+                    <p>Hora límite: {{ $horaLimitePedido->format('H:i:s') }}</p>
+                    <p>Hora inicio edición: {{ $horaInicioEdicion->format('H:i:s') }}</p>
+                    <p>¿Puede editar/eliminar?: {{ $puedeEditarEliminar ? 'Sí' : 'No' }}</p>
+                    <p>¿Creado en período actual?: {{ $pedidoCreadoEnPeriodoActual ? 'Sí' : 'No' }}</p>
+                    <p>Hora creación: {{ $pedido->hora_created }}</p>
+                </div>
                 <tr>
                     <td class="align-middle">{{ $pedido->id_pedidos_cab }}</td>
-                    <td class="align-middle">{{ $pedido->doc_interno }}</td>
+                    <td class="align-middle">
+                        <span class="badge bg-primary">{{ $pedido->doc_interno }}</span>
+                    </td>
                     <td class="align-middle">{{ $pedido->usuario->nombre_personal }}</td>
                     <td class="align-middle">{{ $pedido->tienda->nombre }}</td>
                     <td class="align-middle">
                         <small>
-                            {{ $fechaActualizacion->format('d/m/Y') }}<br>
-                            {{ $horaActualizacion->format('H:i:s') }}
+                            <div class="text-nowrap">{{ $fechaActualizacion->format('d/m/Y') }}</div>
+                            <div class="text-nowrap">{{ $horaActualizacion->format('H:i') }}</div>
                         </small>
                     </td>
                     <td class="align-middle">
                         <small>
-                            {{ $pedido->hora_limite }}
+                            <div class="text-nowrap">{{ $pedido->hora_limite }}</div>
                             @if (!$pedido->esta_dentro_de_hora)
                                 <span class="badge bg-danger">Fuera de horario</span>
                             @endif
@@ -164,7 +233,7 @@
                                                             @endif
                                                         </small>
                                                     </td>
-                                                    <td><small>{{ $detalle->cantidad }}</small></td>
+                                                    <td class="text-end"><small>{{ $detalle->cantidad }}</small></td>
                                                     <td><small>{{ $detalle->uMedida->nombre ?? 'N/A' }}</small></td>
                                                     <td>
                                                         <span class="badge bg-{{ $detalle->estado->color ?? 'secondary' }}">
@@ -184,14 +253,24 @@
                         <div class="d-flex flex-column flex-sm-row gap-1">
                             <a href="{{ route('pedidos.show', $pedido->id_pedidos_cab) }}" 
                                class="btn btn-sm btn-info" 
-                               title="Ver detalles">
+                               data-bs-toggle="tooltip"
+                               title="Ver detalles completos">
                                 <i class="fas fa-eye"></i>
                             </a>
                             
-                            @if($pedido->esta_dentro_de_hora)
+                            <a href="{{ route('pedidos.pdf', $pedido->id_pedidos_cab) }}" 
+                               class="btn btn-sm btn-secondary" 
+                               data-bs-toggle="tooltip"
+                               title="Generar PDF individual"
+                               target="_blank">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                            
+                            @if($puedeEditarEliminar && $pedidoCreadoEnPeriodoActual)
                                 <a href="{{ route('pedidos.edit', $pedido->id_pedidos_cab) }}" 
                                    class="btn btn-sm btn-warning" 
-                                   title="Editar">
+                                   data-bs-toggle="tooltip"
+                                   title="Editar pedido (Permitido hasta {{ $horaLimitePedido->format('H:i') }})">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 
@@ -201,34 +280,41 @@
                                     @method('DELETE')
                                     <button type="submit" 
                                             class="btn btn-sm btn-danger" 
-                                            title="Eliminar" 
+                                            data-bs-toggle="tooltip"
+                                            title="Eliminar pedido (Permitido hasta {{ $horaLimitePedido->format('H:i') }})"
                                             onclick="return confirm('¿Estás seguro de eliminar este pedido?')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
                             @else
-                                <button class="btn btn-sm btn-secondary" 
+                                <button class="btn btn-sm btn-outline-secondary" 
                                         disabled 
-                                        title="Edición no permitida">
+                                        data-bs-toggle="tooltip"
+                                        title="Edición permitida desde {{ $horaInicioEdicion->format('H:i') }} hasta {{ $horaLimitePedido->format('H:i') }}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-sm btn-secondary" 
+                                <button class="btn btn-sm btn-outline-secondary" 
                                         disabled 
-                                        title="Eliminación no permitida">
+                                        data-bs-toggle="tooltip"
+                                        title="Eliminación permitida desde {{ $horaInicioEdicion->format('H:i') }} hasta {{ $horaLimitePedido->format('H:i') }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             @endif
                         </div>
                     </td>
                 </tr>
-                @empty
+            @empty
                 <tr>
-                    <td colspan="8" class="text-center py-4">No se encontraron pedidos</td>
+                    <td colspan="8" class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No se encontraron pedidos</p>
+                    </td>
                 </tr>
-                @endforelse
+            @endforelse
             </tbody>
         </table>
     </div>
+    
 
     <div class="d-flex justify-content-center mt-3">
         <nav aria-label="Page navigation">
@@ -286,16 +372,72 @@
     .badge {
         font-size: 0.75em;
     }
+    
+    /* Espaciado entre botones */
+    .gap-1 {
+        gap: 0.25rem;
+    }
+    .gap-2 {
+        gap: 0.5rem;
+    }
+    
+    /* Mejora en la visualización de la tabla */
+    .table-responsive {
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    /* Estilo para filas hover */
+    .table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    /* Estilo para el mensaje de no resultados */
+    .text-muted i {
+        opacity: 0.5;
+    }
 </style>
 @endsection
 
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
         // Actualizar automáticamente la página cada 5 minutos
         setInterval(() => {
             window.location.reload();
         }, 300000);
+        
+        // Mostrar alerta si estamos cerca del límite de tiempo
+        @if(isset($dentroDeHoraPermitida) && isset($horaLimiteActual))
+            const horaLimiteActual = @json($horaLimiteActual->hora_limite);
+            
+            if(@json($dentroDeHoraPermitida) && horaLimiteActual){
+                const horaFin = new Date('{{ today()->format("Y-m-d") }}T' + horaLimiteActual);
+                const diferencia = horaFin - new Date();
+                
+                if (diferencia < (15 * 60 * 1000)) {
+                    const minutosRestantes = Math.floor(diferencia / (1000 * 60));
+                    
+                    Swal.fire({
+                        title: '¡Atención!',
+                        html: `Quedan <strong>${minutosRestantes} minutos</strong> para realizar pedidos en este turno.<br><br>
+                              <i class="fas fa-clock"></i> Hora límite: ${horaLimiteActual}`,
+                        icon: 'warning',
+                        confirmButtonText: 'Entendido',
+                        timer: 10000,
+                        timerProgressBar: true
+                    });
+                }
+            }
+        @endif
     });
 </script>
 @endsection
+
+

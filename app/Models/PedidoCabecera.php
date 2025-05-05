@@ -26,6 +26,7 @@ class PedidoCabecera extends Model
         'hora_limite',
         'doc_interno',
         'is_deleted',
+        'pdf_path',
         'status'
     ];
 
