@@ -30,16 +30,23 @@
                         </div>
                         <div>
                             <strong>Turno Actual:</strong> 
-                            @if($horaLimiteActual->hora_limite == '08:00:00')
-                                Mañana (08:00)
-                            @elseif($horaLimiteActual->hora_limite == '13:00:00')
-                                Tarde (13:00)
-                            @else
-                                Noche (19:00)
-                            @endif
+                            @if($horaLimiteActual->hora_limite >= '07:00:00' && $horaLimiteActual->hora_limite <= '12:00:00')
+    Mañana ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
+@elseif($horaLimiteActual->hora_limite >= '12:01:00' && $horaLimiteActual->hora_limite <= '18:59:00')
+    Tarde ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
+@else
+    Noche ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
+@endif
                             <br>
                             <strong>Ventana de Pedidos:</strong> 
                             {{ Carbon\Carbon::parse($horaLimiteActual->hora_limite)->subHour()->format('H:i') }} - {{ $horaLimiteActual->hora_limite }}
+                            <br>
+                            <strong>Estado Actual:</strong> 
+                            @if($dentroDeHoraPermitida)
+                                <span class="text-success">Puede crear/editar pedidos</span>
+                            @else
+                                <span class="text-danger">No puede crear/editar pedidos</span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -62,14 +69,14 @@
                    class="btn btn-primary {{ !$dentroDeHoraPermitida ? 'disabled' : '' }}" 
                    @if(!$dentroDeHoraPermitida) 
                        data-bs-toggle="tooltip" 
-                       title="El tiempo para realizar pedidos ha terminado" 
+                       title="Los pedidos solo se pueden crear entre {{ $horaInicioPedidos->format('H:i') }} y {{ $horaFinPedidos->format('H:i') }}" 
                    @else
                        data-bs-toggle="tooltip" 
                        title="Crear nuevo pedido"
                    @endif>
                     <i class="fas fa-plus"></i> Nuevo Pedido
                     @if(!$dentroDeHoraPermitida)
-                        <span class="badge bg-danger ms-2">Tiempo agotado</span>
+                        <span class="badge bg-danger ms-2">Fuera de horario</span>
                     @endif
                 </a>
             </div>
@@ -160,17 +167,9 @@
                     $puedeEditarEliminar = now()->between($horaInicioEdicion, $horaLimitePedido);
                     
                     // Verificar si el pedido fue creado en el período actual
-                    $pedidoCreadoEnPeriodoActual = $pedido->esta_dentro_de_hora;
+                    $pedidoCreadoEnPeriodoActual = $pedido->esta_dentro_de_hora && 
+                                                  $pedido->hora_limite == $horaLimiteActual->hora_limite;
                 @endphp
-                <!-- Debug por pedido -->
-                <div class="bg-light p-2 mb-1">
-                    <p class="fw-bold">Debug Pedido ID: {{ $pedido->id_pedidos_cab }}</p>
-                    <p>Hora límite: {{ $horaLimitePedido->format('H:i:s') }}</p>
-                    <p>Hora inicio edición: {{ $horaInicioEdicion->format('H:i:s') }}</p>
-                    <p>¿Puede editar/eliminar?: {{ $puedeEditarEliminar ? 'Sí' : 'No' }}</p>
-                    <p>¿Creado en período actual?: {{ $pedidoCreadoEnPeriodoActual ? 'Sí' : 'No' }}</p>
-                    <p>Hora creación: {{ $pedido->hora_created }}</p>
-                </div>
                 <tr>
                     <td class="align-middle">{{ $pedido->id_pedidos_cab }}</td>
                     <td class="align-middle">
@@ -186,7 +185,15 @@
                     </td>
                     <td class="align-middle">
                         <small>
-                            <div class="text-nowrap">{{ $pedido->hora_limite }}</div>
+                            <div class="text-nowrap">
+                                @if($pedido->hora_limite >= '07:00:00' && $pedido->hora_limite <= '12:00:00')
+                                <div class="text-nowrap">{{  $pedido->hora_limite }}</div>
+                                @elseif($pedido->hora_limite  >= '12:01:00' && $pedido->hora_limite <= '18:59:00')
+                                <div class="text-nowrap">{{    $pedido->hora_limite }}</div>
+                                @else
+                                <div class="text-nowrap">{{    $pedido->hora_limite }}</div>
+                                @endif
+                            </div>
                             @if (!$pedido->esta_dentro_de_hora)
                                 <span class="badge bg-danger">Fuera de horario</span>
                             @endif
@@ -265,7 +272,7 @@
                                target="_blank">
                                 <i class="fas fa-file-pdf"></i>
                             </a>
-                            
+
                             @if($puedeEditarEliminar && $pedidoCreadoEnPeriodoActual)
                                 <a href="{{ route('pedidos.edit', $pedido->id_pedidos_cab) }}" 
                                    class="btn btn-sm btn-warning" 
@@ -396,6 +403,27 @@
     .text-muted i {
         opacity: 0.5;
     }
+
+    /* Estilos para botones habilitados/deshabilitados */
+    .btn-action-enabled {
+        opacity: 1;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-action-disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+    
+    .btn-action-disabled:hover {
+        opacity: 0.65;
+    }
+    
+    /* Estilo para tooltips */
+    .tooltip-inner {
+        max-width: 300px;
+        padding: 0.5rem 1rem;
+    }
 </style>
 @endsection
 
@@ -439,5 +467,3 @@
     });
 </script>
 @endsection
-
-

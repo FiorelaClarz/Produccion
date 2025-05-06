@@ -6,7 +6,6 @@ use App\Models\PedidoCabecera;
 use App\Models\PedidoDetalle;
 use App\Models\RecetaCabecera;
 use App\Models\Area;
-use App\Models\Estado;
 use App\Models\UMedida;
 use App\Models\HoraLimite;
 use App\Models\Usuario;
@@ -18,7 +17,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\File;
 
 class PedidoController extends Controller
 {
@@ -32,8 +30,10 @@ class PedidoController extends Controller
         // Calcular si estamos dentro del tiempo permitido para pedidos
         $horaActual = now();
         $horaInicioPedidos = $horaLimiteActual ? Carbon::parse($horaLimiteActual->hora_limite)->subHour() : null;
+        $horaFinPedidos = $horaLimiteActual ? Carbon::parse($horaLimiteActual->hora_limite) : null;
+
         $dentroDeHoraPermitida = $horaLimiteActual ?
-            ($horaActual->gte($horaInicioPedidos) && $horaActual->lte(Carbon::parse($horaLimiteActual->hora_limite))) :
+            ($horaActual->gte($horaInicioPedidos) && $horaActual->lte($horaFinPedidos)) :
             false;
 
         $query = PedidoCabecera::with([
@@ -84,10 +84,13 @@ class PedidoController extends Controller
 
         $pedidos = $query->paginate(10);
 
+        // Pasar más información a la vista para el control de botones
         return view('pedidos.index', compact(
             'pedidos',
             'dentroDeHoraPermitida',
             'horaLimiteActual',
+            'horaInicioPedidos',
+            'horaFinPedidos',
             'filter',
             'usuario'
         ));
@@ -431,46 +434,37 @@ class PedidoController extends Controller
         }
     }
 
-    public function destroy(PedidoCabecera $pedido)
+    public function destroy($id)
     {
         DB::beginTransaction();
-
         try {
+            $pedido = PedidoCabecera::findOrFail($id);
+
+            // Verificar si está dentro del tiempo permitido para eliminación
+            $horaActual = now();
             $horaLimitePedido = Carbon::parse($pedido->hora_limite);
             $horaInicioEdicion = $horaLimitePedido->copy()->subHour();
-            $horaActual = now();
 
-            // Verificar si estamos dentro del período permitido (1 hora antes de la hora límite)
-            if ($horaActual->lt($horaInicioEdicion)) {
-                return redirect()->route('pedidos.index')
-                    ->with('error', 'Aún no es hora de eliminar este pedido (se habilita a las ' . $horaInicioEdicion->format('H:i') . ')');
+            if ($horaActual->lt($horaInicioEdicion) || $horaActual->gt($horaLimitePedido)) {
+                return redirect()->back()
+                    ->with('error', 'No se puede eliminar un pedido fuera del tiempo límite permitido');
             }
 
-            if ($horaActual->gt($horaLimitePedido)) {
-                return redirect()->route('pedidos.index')
-                    ->with('error', 'El tiempo para eliminar este pedido ha terminado (hora límite: ' . $horaLimitePedido->format('H:i') . ')');
-            }
-
-            // Verificar si el pedido fue creado en el período actual
-            if (!$pedido->esta_dentro_de_hora) {
-                return redirect()->route('pedidos.index')
-                    ->with('error', 'No se puede eliminar un pedido de un turno anterior');
-            }
-
-            // Actualizar primero los campos manuales
+            // Actualizar campos manuales antes de soft delete
+            $pedido->delete();
             $pedido->update([
                 'is_deleted' => true,
                 'status' => false,
                 'fecha_last_update' => Carbon::now()->toDateString(),
-                'hora_last_update' => Carbon::now()->toTimeString()
+                'hora_last_update' => Carbon::now()->toTimeString(),
+                'deleted_at' => Carbon::now()
             ]);
 
-            // Eliminar usando SoftDeletes (esto establecerá deleted_at)
-            $pedido->delete();
-
             // Actualizar los detalles del pedido
-            $pedido->pedidosDetalle()->update(['is_deleted' => true]);
-            $pedido->pedidosDetalle()->delete();
+            $pedido->pedidosDetalle()->update([
+                'is_deleted' => true,
+                
+            ]);
 
             DB::commit();
 
