@@ -15,15 +15,31 @@ class ProduccionCabecera extends Model
 
     protected $fillable = [
         'id_equipos',
+        'id_turnos',
+        'id_usuario',
         'fecha',
         'hora',
-        'doc_interno'
+        'doc_interno',
+        'created_at',
+        'updated_at',
     ];
 
     // Relación con EquipoCabecera
     public function equipo()
     {
         return $this->belongsTo(EquipoCabecera::class, 'id_equipos');
+    }
+
+    // Relación con Turno
+    public function turno()
+    {
+        return $this->belongsTo(Turno::class, 'id_turnos');
+    }
+
+    // Relación con Usuario
+    public function usuario()
+    {
+        return $this->belongsTo(Usuario::class, 'id_usuario');
     }
 
     // Relación con ProduccionDetalle

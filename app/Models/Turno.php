@@ -15,6 +15,7 @@ class Turno extends Model
     
     protected $fillable = [
         'nombre',
+        'id_horas_limite',
         'create_date',
         'last_update',
         'status',
@@ -25,4 +26,10 @@ class Turno extends Model
         'status' => 'boolean',
         'is_deleted' => 'boolean'
     ];
+
+    // Relación con HoraLimite
+    public function horaLimite()
+    {
+        return $this->belongsTo(HoraLimite::class, 'id_horas_limite');
+    }
 }

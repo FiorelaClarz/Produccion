@@ -201,4 +201,23 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/pedidos/consolidado-pdf', [PedidoController::class, 'generateConsolidadoPdf'])->name('pedidos.consolidado.pdf');
     });
     Route::resource('hora-limites', HoraLimiteController::class);
+
+
+// Rutas de producción
+Route::prefix('produccion')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ProduccionController::class, 'index'])->name('produccion.index');
+    Route::get('/create', [\App\Http\Controllers\ProduccionController::class, 'create'])->name('produccion.create');
+    Route::post('/', [\App\Http\Controllers\ProduccionController::class, 'store'])->name('produccion.store');
+    Route::get('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'show'])->name('produccion.show');
+    Route::get('/{produccion}/edit', [\App\Http\Controllers\ProduccionController::class, 'edit'])->name('produccion.edit');
+    Route::put('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'update'])->name('produccion.update');
+    Route::delete('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'destroy'])->name('produccion.destroy');
+    
+    // Rutas adicionales
+    Route::post('/guardar-personal', [\App\Http\Controllers\ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
+    Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
+    Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
+    Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
+
+});
 });

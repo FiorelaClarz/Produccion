@@ -122,6 +122,30 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'hora-limites.index',
                 'icon' => 'fas fa-clock',
                 'visible' => true
+            ],
+            // Nuevo menú para Producción (Admin)
+            [
+                'text' => 'Producción',
+                'route' => 'produccion.index',
+                'icon' => 'fas fa-industry',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todas las Producciones',
+                        'route' => 'produccion.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Nueva Producción',
+                        'route' => 'produccion.create',
+                        'icon' => 'fas fa-plus-circle'
+                    ],
+                    [
+                        'text' => 'Reportes',
+                        'route' => 'produccion.reportes',
+                        'icon' => 'fas fa-chart-bar'
+                    ]
+                ]
             ]
         ];
 
@@ -138,10 +162,29 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'tiendas.index',
                 'icon' => 'fas fa-store',
                 'visible' => true
+            ],
+            // Menú producción para gerencia
+            [
+                'text' => 'Producción',
+                'route' => 'produccion.index',
+                'icon' => 'fas fa-industry',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todas las Producciones',
+                        'route' => 'produccion.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Reportes',
+                        'route' => 'produccion.reportes',
+                        'icon' => 'fas fa-chart-bar'
+                    ]
+                ]
             ]
         ];
 
-        // PERSONAL
+        // PERSONAL (id_roles == 3)
         $personal = [
             [
                 'text' => 'Roles',
@@ -160,10 +203,29 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'equipos.index',
                 'icon' => 'fas fa-users-cog',
                 'visible' => true
+            ],
+            // Menú producción para personal
+            [
+                'text' => 'Producción',
+                'route' => 'produccion.index',
+                'icon' => 'fas fa-industry',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Registrar Producción',
+                        'route' => 'produccion.index',
+                        'icon' => 'fas fa-edit'
+                    ],
+                    [
+                        'text' => 'Mis Producciones',
+                        'route' => 'produccion.index',
+                        'icon' => 'fas fa-list'
+                    ]
+                ]
             ]
         ];
         
-        // OPERADOR
+        // OPERADOR (id_roles == 4)
         $operador = [
             [
                 'text' => 'Roles',
@@ -205,6 +267,25 @@ class MenuServiceProvider extends ServiceProvider
                         'icon' => 'fas fa-clock'
                     ]
                 ]
+            ],
+            // Menú producción para operador
+            [
+                'text' => 'Producción',
+                'route' => 'produccion.index',
+                'icon' => 'fas fa-industry',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todas las Producciones',
+                        'route' => 'produccion.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Reportes',
+                        'route' => 'produccion.reportes',
+                        'icon' => 'fas fa-chart-bar'
+                    ]
+                ]
             ]
         ];
 
@@ -213,9 +294,9 @@ class MenuServiceProvider extends ServiceProvider
                 return array_merge($baseMenu, $adminMenu);
             case 2: // Gerencia
                 return array_merge($baseMenu, $gerenciaMenu);
-            case 3: // Rol 3
+            case 3: // Personal (Rol 3)
                 return array_merge($baseMenu, $personal);
-            case 4: // Rol 4
+            case 4: // Operador (Rol 4)
                 return array_merge($baseMenu, $operador);
             default:
                 return $baseMenu;

@@ -17,14 +17,18 @@ class ProduccionDetalle extends Model
         'id_produccion_cab',
         'id_productos_api',
         'id_u_medidas',
-        'id_recetas',
+        'id_u_medidas_prodcc',
+        'id_recetas_cab',
+        'id_recetas_det',
         'id_areas',
         'cantidad_pedido',
+        'cantidad_esperada',
         'cantidad_producida_real',
         'es_iniciado',
         'es_terminado',
         'es_cancelado',
         'costo_diseño',
+        'subtotal_receta',
         'total_receta',
         'cant_harina'
     ];
@@ -32,7 +36,14 @@ class ProduccionDetalle extends Model
     protected $casts = [
         'es_iniciado' => 'boolean',
         'es_terminado' => 'boolean',
-        'es_cancelado' => 'boolean'
+        'es_cancelado' => 'boolean',
+        'cantidad_pedido' => 'decimal:2',
+        'cantidad_esperada' => 'decimal:2',
+        'cantidad_producida_real' => 'decimal:2',
+        'costo_diseño' => 'decimal:2',
+        'subtotal_receta' => 'decimal:2',
+        'total_receta' => 'decimal:2',
+        'cant_harina' => 'decimal:2'
     ];
 
     // Relación con ProduccionCabecera
@@ -47,16 +58,28 @@ class ProduccionDetalle extends Model
         return $this->belongsTo(Producto::class, 'id_productos_api', 'id_item');
     }
 
-    // Relación con UMedida
+    // Relación con UMedida (para pedido)
     public function uMedida()
     {
         return $this->belongsTo(UMedida::class, 'id_u_medidas');
     }
 
-    // Relación con RecetaCabecera
-    public function receta()
+    // Relación con UMedida (para producción)
+    public function uMedidaProd()
     {
-        return $this->belongsTo(RecetaCabecera::class, 'id_recetas');
+        return $this->belongsTo(UMedida::class, 'id_u_medidas_prodcc');
+    }
+
+    // Relación con RecetaCabecera
+    public function recetaCabecera()
+    {
+        return $this->belongsTo(RecetaCabecera::class, 'id_recetas_cab');
+    }
+
+    // Relación con RecetaDetalle
+    public function recetaDetalle()
+    {
+        return $this->belongsTo(RecetaDetalle::class, 'id_recetas_det');
     }
 
     // Relación con Area
