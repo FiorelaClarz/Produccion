@@ -5,8 +5,13 @@
     <h1>Detalle de Receta</h1>
     
     <div class="card mb-4">
-        <div class="card-header">
-            <h4>Información General</h4>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Información General</h4>
+            <div>
+                <a href="{{ route('recetas.edit', $receta->id_recetas) }}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Editar Receta
+                </a>
+            </div>
         </div>
         <div class="card-body">
             <div class="row">
@@ -36,13 +41,17 @@
                     <p><strong>Constante Peso Lata:</strong> {{ $receta->constante_peso_lata }}</p>
                 </div>
                 <div class="col-md-4">
-                    <p><strong>Estado:</strong> {{ $receta->status ? 'Activo' : 'Inactivo' }}</p>
+                    <p><strong>Estado:</strong> 
+                        <span class="badge badge-{{ $receta->status ? 'success' : 'secondary' }}">
+                            {{ $receta->status ? 'Activo' : 'Inactivo' }}
+                        </span>
+                    </p>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-header">
             <h4>Ingredientes</h4>
         </div>
@@ -83,9 +92,64 @@
             </div>
         </div>
     </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h4>Instructivo</h4>
+        </div>
+        <div class="card-body">
+        @if($receta->relationLoaded('instructivo') && $receta->instructivo)
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a href="{{ route('recetas.show-instructivo', $receta->id_recetas) }}" 
+           class="btn btn-info">
+            <i class="fas fa-book"></i> Ver Instructivo
+        </a>
+        <a href="{{ route('recetas.edit-instructivo', ['receta' => $receta->id_recetas, 'instructivo' => $receta->instructivo->id_recetas_instructivos]) }}" 
+           class="btn btn-warning">
+            <i class="fas fa-edit"></i> Editar Instructivo
+        </a>
+        <span class="badge badge-primary align-self-center ml-2">
+            Versión: {{ $receta->instructivo->version }}
+        </span>
+    </div>
+            @else
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Esta receta no tiene un instructivo asociado.
+                </div>
+                <a href="{{ route('recetas.create-instructivo', $receta->id_recetas) }}" 
+                   class="btn btn-success">
+                    <i class="fas fa-plus"></i> Crear Instructivo
+                </a>
+            @endif
+        </div>
+    </div>
     
     <div class="mt-3">
-        <a href="{{ route('recetas.index') }}" class="btn btn-secondary">Volver</a>
+        <a href="{{ route('recetas.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Listado
+        </a>
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .badge {
+        font-size: 0.85em;
+        padding: 0.35em 0.65em;
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .alert {
+        margin-bottom: 0;
+    }
+    .gap-2 > * {
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .gap-2 > *:last-child {
+        margin-right: 0;
+    }
+</style>
+@endpush

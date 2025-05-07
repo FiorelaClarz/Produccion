@@ -60,4 +60,11 @@ class RecetaCabecera extends Model
     {
         return $this->hasMany(ProduccionDetalle::class, 'id_recetas');
     }
+
+    // Relación con RecetaInstructivo
+public function instructivo()
+{
+    return $this->hasOne(RecetaInstructivo::class, 'id_recetas')
+        ->where('is_active', true);
+}
 }
