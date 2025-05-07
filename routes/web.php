@@ -159,6 +159,29 @@ Route::middleware(['auth'])->group(function () {
         ->name('recetas.toggle-status');
 
 
+
+// Rutas para instructivos de recetas
+Route::prefix('recetas/{receta}')->group(function() {
+    // Crear instructivo
+    Route::get('/create-instructivo', [RecetaController::class, 'showCreateInstructivo'])
+        ->name('recetas.create-instructivo');
+    Route::post('/store-instructivo', [RecetaController::class, 'storeInstructivo'])
+        ->name('recetas.store-instructivo');
+    
+    // Ver instructivo
+    Route::get('/instructivo', [RecetaController::class, 'showInstructivo'])
+        ->name('recetas.show-instructivo');
+    
+    // Editar instructivo
+    Route::get('/instructivo/{instructivo}/edit', [RecetaController::class, 'editInstructivo'])
+    ->name('recetas.edit-instructivo')
+    ->where(['receta' => '[0-9]+', 'instructivo' => '[0-9]+']);
+    
+    Route::put('/instructivo/{instructivo}', [RecetaController::class, 'updateInstructivo'])
+        ->name('recetas.update-instructivo');
+});
+
+
     // Rutas para equipos
     Route::prefix('equipos')->group(function () {
         Route::get('/', [EquipoController::class, 'index'])->name('equipos.index');
@@ -218,6 +241,7 @@ Route::prefix('produccion')->group(function () {
     Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
     Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
     Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
+
 
 });
 });
