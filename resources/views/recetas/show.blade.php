@@ -100,7 +100,7 @@
         <div class="card-body">
         @if($receta->relationLoaded('instructivo') && $receta->instructivo)
     <div class="d-flex flex-wrap gap-2 mb-3">
-        <a href="{{ route('recetas.show-instructivo', $receta->id_recetas) }}" 
+        <a href="{{ route('recetas.view-instructivo', $receta->id_recetas) }}" 
            class="btn btn-info">
             <i class="fas fa-book"></i> Ver Instructivo
         </a>
@@ -112,15 +112,15 @@
             Versión: {{ $receta->instructivo->version }}
         </span>
     </div>
-            @else
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i> Esta receta no tiene un instructivo asociado.
-                </div>
-                <a href="{{ route('recetas.create-instructivo', $receta->id_recetas) }}" 
-                   class="btn btn-success">
-                    <i class="fas fa-plus"></i> Crear Instructivo
-                </a>
-            @endif
+@else
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i> Esta receta no tiene un instructivo asociado.
+    </div>
+    <a href="{{ route('recetas.create-instructivo', $receta->id_recetas) }}" 
+       class="btn btn-success">
+        <i class="fas fa-plus"></i> Crear Instructivo
+    </a>
+@endif
         </div>
     </div>
     

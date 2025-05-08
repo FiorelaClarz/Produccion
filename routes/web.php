@@ -161,24 +161,29 @@ Route::middleware(['auth'])->group(function () {
 
 
 // Rutas para instructivos de recetas
-Route::prefix('recetas/{receta}')->group(function() {
-    // Crear instructivo
-    Route::get('/create-instructivo', [RecetaController::class, 'showCreateInstructivo'])
-        ->name('recetas.create-instructivo');
-    Route::post('/store-instructivo', [RecetaController::class, 'storeInstructivo'])
-        ->name('recetas.store-instructivo');
-    
-    // Ver instructivo
+Route::prefix('recetas')->group(function() {
+    // Ruta para ver instructivo desde producción (con query param ?id_receta=)
     Route::get('/instructivo', [RecetaController::class, 'showInstructivo'])
         ->name('recetas.show-instructivo');
     
-    // Editar instructivo
-    Route::get('/instructivo/{instructivo}/edit', [RecetaController::class, 'editInstructivo'])
-    ->name('recetas.edit-instructivo')
-    ->where(['receta' => '[0-9]+', 'instructivo' => '[0-9]+']);
+    // Ruta para ver instructivo desde recetas (con parámetro de ruta /recetas/{id}/instructivo)
+    Route::get('/{id}/instructivo', [RecetaController::class, 'showInstructivo'])
+        ->name('recetas.view-instructivo');
     
-    Route::put('/instructivo/{instructivo}', [RecetaController::class, 'updateInstructivo'])
-        ->name('recetas.update-instructivo');
+    // Rutas para CRUD de instructivos
+    Route::prefix('{receta}')->group(function() {
+        Route::get('/create-instructivo', [RecetaController::class, 'showCreateInstructivo'])
+            ->name('recetas.create-instructivo');
+        
+        Route::post('/store-instructivo', [RecetaController::class, 'storeInstructivo'])          
+            ->name('recetas.store-instructivo');
+        
+        Route::get('/edit-instructivo/{instructivo}', [RecetaController::class, 'editInstructivo'])
+            ->name('recetas.edit-instructivo');
+        
+        Route::put('/update-instructivo/{instructivo}', [RecetaController::class, 'updateInstructivo'])
+            ->name('recetas.update-instructivo');
+    });
 });
 
 

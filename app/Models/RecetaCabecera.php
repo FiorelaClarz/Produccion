@@ -57,9 +57,9 @@ class RecetaCabecera extends Model
 
     // Relación con ProduccionDetalle
     public function produccionesDetalle()
-    {
-        return $this->hasMany(ProduccionDetalle::class, 'id_recetas');
-    }
+{
+    return $this->hasMany(ProduccionDetalle::class, 'id_recetas_cab');
+}
 
     // Relación con RecetaInstructivo
 public function instructivo()

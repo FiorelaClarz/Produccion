@@ -6,11 +6,14 @@ use App\Models\Area;
 use App\Models\Producto;
 use App\Models\RecetaCabecera;
 use App\Models\RecetaDetalle;
+use App\Models\PedidoDetalle;
+use App\Models\ProduccionDetalle;
 use App\Models\UMedida;
 use App\Models\RecetaInstructivo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class RecetaController extends Controller
 {
@@ -533,18 +536,76 @@ public function storeInstructivo(Request $request, $idReceta)
         ], 500);
     }
 }
-
-// Mostrar instructivo
-public function showInstructivo($idReceta)
+/**
+ * Muestra el instructivo de una receta adaptado a la cantidad producida
+ *
+ * @param  \Illuminate\Http\Request  $request
+ * @param  int|null  $id
+ * @return \Illuminate\Http\Response
+ */
+public function showInstructivo(Request $request, $id = null)
 {
-    $instructivo = RecetaInstructivo::with('receta')
-        ->where('id_recetas', $idReceta)
-        ->where('is_active', true)
-        ->firstOrFail();
+    // Obtener el ID de la receta
+    $idReceta = $id ?? $request->query('id_receta');
+    
+    if (!$idReceta && $request->route('id')) {
+        $idReceta = $request->route('id');
+    }
 
-    return view('recetas.show-instructivo', compact('instructivo'));
+    if (!$idReceta) {
+        abort(400, 'Parámetro id_receta es requerido');
+    }
+
+    // Obtener la receta con relaciones
+    $receta = RecetaCabecera::with(['instructivo', 'area', 'uMedida', 'detalles.producto', 'detalles.uMedida'])
+        ->findOrFail($idReceta);
+    
+    if (!$receta->instructivo) {
+        return redirect()->route('recetas.show', $receta->id_recetas)
+            ->with('warning', 'Esta receta no tiene instructivo registrado');
+    }
+    
+    // Calcular la cantidad total de pedidos para esta receta hoy
+    $cantidadPedido = PedidoDetalle::where('id_recetas', $idReceta)
+        ->whereDate('created_at', Carbon::today())
+        ->where('is_deleted', false)
+        ->sum('cantidad');
+    
+    // Si no hay pedidos hoy, usar el rendimiento base de la receta
+    $cantidadProduccion = $cantidadPedido > 0 ? $cantidadPedido : $receta->cant_rendimiento;
+    $factor = $cantidadProduccion ;
+    
+    // Adaptar cantidades de ingredientes
+    $ingredientesAdaptados = $receta->detalles->map(function($detalle) use ($factor) {
+        return [
+            'id' => $detalle->id_recetas_det,
+            'nombre' => $detalle->producto->nombre,
+            'cantidad' => $detalle->cantidad * $factor,
+            'u_medida' => $detalle->uMedida->nombre,
+            'costo_unitario' => $detalle->costo_unitario,
+            'cantidad_base' => $detalle->cantidad,
+            'factor' => $factor
+        ];
+    });
+    
+    if ($request->ajax()) {
+        return view('recetas.partials.instructivo-modal', [
+            'instructivo' => $receta->instructivo,
+            'receta' => $receta,
+            'ingredientesAdaptados' => $ingredientesAdaptados,
+            'cantidadProduccion' => $cantidadProduccion,
+            'factor' => $factor
+        ]);
+    }
+    
+    return view('recetas.show-instructivo', [
+        'instructivo' => $receta->instructivo,
+        'receta' => $receta,
+        'ingredientesAdaptados' => $ingredientesAdaptados,
+        'cantidadProduccion' => $cantidadProduccion,
+        'factor' => $factor
+    ]);
 }
-
 
 /**
  * Muestra el formulario para editar un instructivo existente

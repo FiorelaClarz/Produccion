@@ -11,6 +11,8 @@
                         <span class="badge bg-light text-primary">Versión {{ $instructivo->version }}</span>
                     </div>
                     <p class="mb-0"><small>Receta: {{ $instructivo->receta->nombre }}</small></p>
+                    <p class="mb-0"><small>Cantidad producida: {{ $cantidadProduccion }} {{ $instructivo->receta->uMedida->nombre }}</small></p>
+                    <p class="mb-0"><small>Factor de ajuste: {{ number_format($factor, 2) }}x</small></p>
                 </div>
                 
                 <div class="card-body p-0">
@@ -22,42 +24,45 @@
                                 
                                 <ul class="list-group list-group-flush small">
                                     <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Rendimiento:</span>
-                                        <span class="fw-medium">{{ $instructivo->receta->cant_rendimiento }} {{ $instructivo->receta->uMedida->nombre }}</span>
+                                        <span class="text-muted">Rendimiento base:</span>
+                                        <span class="fw-medium">{{ $receta->cant_rendimiento }} {{ $receta->uMedida->nombre }}</span>
                                     </li>
                                     <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Área:</span>
-                                        <span class="fw-medium">{{ $instructivo->receta->area->nombre }}</span>
+                                        <span class="text-muted">Cantidad producida:</span>
+                                        <span class="fw-medium">{{ $cantidadProduccion }} {{ $receta->uMedida->nombre }}</span>
                                     </li>
                                     <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Constante crecimiento:</span>
-                                        <span class="fw-medium">{{ $instructivo->receta->constante_crecimiento }}</span>
-                                    </li>
-                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Constante peso/lata:</span>
-                                        <span class="fw-medium">{{ $instructivo->receta->constante_peso_lata }}</span>
-                                    </li>
-                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Fecha creación:</span>
-                                        <span class="fw-medium">{{ $instructivo->created_at->format('d/m/Y H:i') }}</span>
+                                        <span class="text-muted">Factor de ajuste:</span>
+                                        <span class="fw-medium">{{ number_format($factor, 2) }}x</span>
                                     </li>
                                 </ul>
                                 
-                                <h5 class="text-primary mt-4 mb-3"><i class="fas fa-utensils me-2"></i>Ingredientes</h5>
+                                <h5 class="text-primary mt-4 mb-3"><i class="fas fa-utensils me-2"></i>Ingredientes Ajustados</h5>
                                 
                                 <div class="ingredients-scrollable small">
                                     <table class="table table-borderless table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Ingrediente</th>
+                                                <th class="text-end">Base</th>
+                                                <th class="text-end">Ajustado</th>
+                                                <th class="text-end">Unidad</th>
+                                            </tr>
+                                        </thead>
                                         <tbody>
-                                            @foreach($instructivo->receta->detalles as $detalle)
+                                            @foreach($ingredientesAdaptados as $ingrediente)
                                             <tr class="border-bottom">
                                                 <td class="ps-0">
-                                                    <div class="fw-medium">{{ $detalle->producto->nombre }}</div>
-                                                    <div class="text-muted">{{ $detalle->cantidad }} {{ $detalle->uMedida->nombre }}</div>
+                                                    <div class="fw-medium">{{ $ingrediente['nombre'] }}</div>
+                                                </td>
+                                                <td class="text-end">
+                                                    {{ number_format($ingrediente['cantidad_base'], 2) }}
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>{{ number_format($ingrediente['cantidad'], 2) }}</strong>
                                                 </td>
                                                 <td class="pe-0 text-end">
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1">
-                                                        ${{ number_format($detalle->costo_unitario, 2) }}
-                                                    </span>
+                                                    {{ $ingrediente['u_medida'] }}
                                                 </td>
                                             </tr>
                                             @endforeach
@@ -73,25 +78,34 @@
                             
                             <div class="pasos-container">
                                 @foreach($instructivo->instrucciones as $index => $paso)
-                                <div class="paso-instruction mb-3 pb-3 border-bottom">
+                                <div class="paso-instruction mb-4">
                                     <div class="d-flex align-items-start">
-                                        <span class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;">
-                                            {{ $index + 1 }}
-                                        </span>
+                                        <div class="me-3">
+                                            <span class="badge bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                                                {{ $index + 1 }}
+                                            </span>
+                                        </div>
                                         <div class="flex-grow-1">
-                                            <div class="paso-contenido fst-italic text-muted">
+                                            <div class="paso-contenido mb-2">
                                                 {!! nl2br(e($paso['contenido'])) !!}
                                             </div>
-                                            
-                                            @if(isset($paso['ingredientes']) && count($paso['ingredientes']) > 0)
-                                            <div class="ingredientes-paso mt-2">
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    @foreach($paso['ingredientes'] as $ing)
-                                                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2">
-                                                        <small>{{ $ing['nombre'] }} ({{ $ing['cantidad'] }} {{ $ing['u_medida'] }})</small>
-                                                    </span>
+                                            @if(!empty($paso['ingredientes']))
+                                            <div class="ingredientes-paso small bg-light p-2 rounded">
+                                                <strong>Ingredientes para este paso:</strong>
+                                                <ul class="mb-0">
+                                                    @foreach($paso['ingredientes'] as $ingId)
+                                                        @php
+                                                            $ingrediente = $ingredientesAdaptados->firstWhere('id', $ingId);
+                                                        @endphp
+                                                        @if($ingrediente)
+                                                        <li>
+                                                            {{ $ingrediente['nombre'] }}: 
+                                                            {{ number_format($ingrediente['cantidad'], 2) }} 
+                                                            {{ $ingrediente['u_medida'] }}
+                                                        </li>
+                                                        @endif
                                                     @endforeach
-                                                </div>
+                                                </ul>
                                             </div>
                                             @endif
                                         </div>
@@ -104,11 +118,9 @@
                 </div>
                 
                 <div class="card-footer bg-white border-top text-end py-3">
-                    <a href="{{ route('recetas.show', $instructivo->id_recetas) }}" class="btn btn-sm btn-outline-secondary">
+                    <a href="{{ url()->previous() }}" class="btn btn-sm btn-outline-secondary">
                         <i class="fas fa-arrow-left me-1"></i> Volver
                     </a>
-                    
-                    
                     <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
                         <i class="fas fa-print me-1"></i> Imprimir
                     </button>
@@ -121,39 +133,43 @@
 
 @push('styles')
 <style>
-    /* Estilo general compacto */
     body {
         font-size: 0.9rem;
     }
     
-    /* Estilo para los pasos - Compacto y elegante */
     .paso-instruction {
         transition: all 0.2s ease;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        border-left: 4px solid #4e73df;
     }
     
     .paso-instruction:hover {
-        background-color: rgba(0, 123, 255, 0.03);
+        background-color: rgba(0, 123, 255, 0.05);
     }
     
     .paso-contenido {
-        line-height: 1.5;
-        font-style: italic;
+        line-height: 1.6;
         color: #495057;
     }
     
-    /* Estilo para el área de ingredientes */
     .ingredients-scrollable {
         max-height: 300px;
         overflow-y: auto;
         padding-right: 8px;
     }
     
-    /* Estilo para las tarjetas */
-    .card {
-        border-radius: 0.5rem;
+    .ingredientes-paso {
+        background-color: #f8f9fa;
+        border-left: 3px solid #6c757d;
     }
     
-    /* Responsividad */
+    .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
     @media (max-width: 991.98px) {
         .sticky-top {
             position: static !important;
@@ -174,7 +190,6 @@
         }
     }
     
-    /* Estilos para impresión */
     @media print {
         body {
             font-size: 10pt;
@@ -195,12 +210,16 @@
         }
         
         .paso-contenido {
-            font-style: italic !important;
+            font-style: normal !important;
         }
         
         .ingredients-scrollable {
             max-height: none !important;
             overflow: visible !important;
+        }
+        
+        .paso-instruction {
+            page-break-inside: avoid;
         }
     }
 </style>
