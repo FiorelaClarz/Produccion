@@ -15,6 +15,8 @@ use App\Http\Controllers\HoraLimiteController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
+use Illuminate\Support\Facades\File; // Agrega esta línea
+use Illuminate\Support\Facades\Response; // Agrega esta línea
 
 
 
@@ -160,31 +162,47 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-// Rutas para instructivos de recetas
-Route::prefix('recetas')->group(function() {
-    // Ruta para ver instructivo desde producción (con query param ?id_receta=)
-    Route::get('/instructivo', [RecetaController::class, 'showInstructivo'])
-        ->name('recetas.show-instructivo');
-    
-    // Ruta para ver instructivo desde recetas (con parámetro de ruta /recetas/{id}/instructivo)
-    Route::get('/{id}/instructivo', [RecetaController::class, 'showInstructivo'])
-        ->name('recetas.view-instructivo');
-    
-    // Rutas para CRUD de instructivos
-    Route::prefix('{receta}')->group(function() {
-        Route::get('/create-instructivo', [RecetaController::class, 'showCreateInstructivo'])
-            ->name('recetas.create-instructivo');
-        
-        Route::post('/store-instructivo', [RecetaController::class, 'storeInstructivo'])          
-            ->name('recetas.store-instructivo');
-        
-        Route::get('/edit-instructivo/{instructivo}', [RecetaController::class, 'editInstructivo'])
-            ->name('recetas.edit-instructivo');
-        
-        Route::put('/update-instructivo/{instructivo}', [RecetaController::class, 'updateInstructivo'])
-            ->name('recetas.update-instructivo');
+    // Rutas para instructivos de recetas
+    Route::prefix('recetas')->group(function () {
+        // Ruta para ver instructivo desde producción (con query param ?id_receta=)
+        Route::get('/instructivo', [RecetaController::class, 'showInstructivo'])
+            ->name('recetas.show-instructivo');
+
+        // Ruta para ver instructivo desde recetas (con parámetro de ruta /recetas/{id}/instructivo)
+        Route::get('/{id}/instructivo', [RecetaController::class, 'showInstructivo'])
+            ->name('recetas.view-instructivo');
+
+        // Rutas para CRUD de instructivos
+        Route::prefix('{receta}')->group(function () {
+            Route::get('/create-instructivo', [RecetaController::class, 'showCreateInstructivo'])
+                ->name('recetas.create-instructivo');
+
+            Route::post('/store-instructivo', [RecetaController::class, 'storeInstructivo'])
+                ->name('recetas.store-instructivo');
+
+            Route::get('/edit-instructivo/{instructivo}', [RecetaController::class, 'editInstructivo'])
+                ->name('recetas.edit-instructivo');
+
+            Route::put('/update-instructivo/{instructivo}', [RecetaController::class, 'updateInstructivo'])
+                ->name('recetas.update-instructivo');
+        });
     });
-});
+    // Ruta para acceder a las imágenes de pedidos
+Route::get('/storage/pedidos/{filename}', function ($filename) {
+    $path = storage_path('app/public/pedidos/' . $filename);
+
+    if (!File::exists($path)) {
+        abort(404);
+    }
+
+    $file = File::get($path);
+    $type = File::mimeType($path);
+
+    $response = Response::make($file, 200);
+    $response->header("Content-Type", $type);
+
+    return $response;
+})->name('pedidos.image')->where('filename', '.*'); // Acepta cualquier caracter en el nombre
 
 
     // Rutas para equipos
@@ -226,27 +244,25 @@ Route::prefix('recetas')->group(function() {
 
 
         Route::get('/pedidos/{id}/pdf', [PedidoController::class, 'generatePdf'])->name('pedidos.pdf');
-Route::get('/pedidos/consolidado-pdf', [PedidoController::class, 'generateConsolidadoPdf'])->name('pedidos.consolidado.pdf');
+        Route::get('/pedidos/consolidado-pdf', [PedidoController::class, 'generateConsolidadoPdf'])->name('pedidos.consolidado.pdf');
     });
     Route::resource('hora-limites', HoraLimiteController::class);
 
 
-// Rutas de producción
-Route::prefix('produccion')->group(function () {
-    Route::get('/', [\App\Http\Controllers\ProduccionController::class, 'index'])->name('produccion.index');
-    Route::get('/create', [\App\Http\Controllers\ProduccionController::class, 'create'])->name('produccion.create');
-    Route::post('/', [\App\Http\Controllers\ProduccionController::class, 'store'])->name('produccion.store');
-    Route::get('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'show'])->name('produccion.show');
-    Route::get('/{produccion}/edit', [\App\Http\Controllers\ProduccionController::class, 'edit'])->name('produccion.edit');
-    Route::put('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'update'])->name('produccion.update');
-    Route::delete('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'destroy'])->name('produccion.destroy');
-    
-    // Rutas adicionales
-    Route::post('/guardar-personal', [\App\Http\Controllers\ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
-    Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
-    Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
-    Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
+    // Rutas de producción
+    Route::prefix('produccion')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ProduccionController::class, 'index'])->name('produccion.index');
+        Route::get('/create', [\App\Http\Controllers\ProduccionController::class, 'create'])->name('produccion.create');
+        Route::post('/', [\App\Http\Controllers\ProduccionController::class, 'store'])->name('produccion.store');
+        Route::get('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'show'])->name('produccion.show');
+        Route::get('/{produccion}/edit', [\App\Http\Controllers\ProduccionController::class, 'edit'])->name('produccion.edit');
+        Route::put('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'update'])->name('produccion.update');
+        Route::delete('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'destroy'])->name('produccion.destroy');
 
-
-});
+        // Rutas adicionales
+        Route::post('/guardar-personal', [\App\Http\Controllers\ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
+        Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
+        Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
+        Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
+    });
 });
