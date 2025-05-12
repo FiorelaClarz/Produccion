@@ -570,11 +570,18 @@ public function showInstructivo(Request $request, $id = null)
         ->whereDate('created_at', Carbon::today())
         ->where('is_deleted', false)
         ->sum('cantidad');
+
+    $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
     
     // Si no hay pedidos hoy, usar el rendimiento base de la receta
     $cantidadProduccion = $cantidadPedido > 0 ? $cantidadPedido : $receta->cant_rendimiento;
-    $factor = $cantidadProduccion ;
-    
+    if($receta->id_areas == 1) 
+    {
+     $factor = $cantidadProduccion * $receta->constante_peso_lata;
+    } 
+    if ($receta->id_areas > 1) {
+ $factor = $cantidadProduccion * 1;
+    }
     // Adaptar cantidades de ingredientes
     $ingredientesAdaptados = $receta->detalles->map(function($detalle) use ($factor) {
         return [

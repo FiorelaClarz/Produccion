@@ -264,5 +264,10 @@ Route::get('/storage/pedidos/{filename}', function ($filename) {
         Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
         Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
         Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
+     // Agrega esta nueva ruta:
+    Route::post('/actualizar', [ProduccionController::class, 'actualizarProduccion'])
+        ->name('produccion.actualizar');
+    
+    
     });
 });

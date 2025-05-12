@@ -31,15 +31,13 @@ class ProduccionDetalle extends Model
         'subtotal_receta',
         'total_receta',
         'cant_harina',
-        'observaciones',
-    'es_enviado'
+        'observaciones'
     ];
 
     protected $casts = [
         'es_iniciado' => 'boolean',
         'es_terminado' => 'boolean',
         'es_cancelado' => 'boolean',
-        'es_enviado' => 'boolean', // Nuevo cast
         'cantidad_pedido' => 'decimal:2',
         'cantidad_esperada' => 'decimal:2',
         'cantidad_producida_real' => 'decimal:2',

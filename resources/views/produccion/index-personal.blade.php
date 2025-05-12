@@ -84,8 +84,8 @@ use Illuminate\Support\Facades\Storage;
                 <h6 class="m-0 font-weight-bold">
                     <i class="fas fa-clipboard-list mr-2"></i>Pedidos para Producción - {{ now()->format('d/m/Y') }}
                 </h6>
-                <span class="badge badge-pill badge-primary">
-                    {{ count($recetasAgrupadas) }} {{ count($recetasAgrupadas) === 1 ? 'pedido' : 'pedidos' }}
+                <span class="badge badge-pill badge-primary" style="color: black;">
+                    {{ count($recetasAgrupadas) }} {{ count($recetasAgrupadas) === 1 ? 'pedido' : 'productos' }}
                 </span>
             </div>
         </div>
@@ -117,44 +117,53 @@ use Illuminate\Support\Facades\Storage;
                         </thead>
                         <tbody>
                             @if($recetasAgrupadas && count($recetasAgrupadas) > 0)
+                            @php
+                            $recetaCounter = 1; // Contador para recetas agrupadas
+                            @endphp
                             @foreach($recetasAgrupadas as $idReceta => $recetaData)
                             @php
-                                $receta = $recetaData['receta'];
-                                $cantidadPedido = $recetaData['cantidad_total'];
-                                $cantidadEsperada = $cantidadPedido * $receta->constante_crecimiento;
+                            $receta = $recetaData['receta'];
+                            $cantidadPedido = $recetaData['cantidad_total'];
 
-                                $subtotalReceta = 0;
-                                foreach ($receta->detalles as $detalle) {
-                                    $subtotalReceta += $detalle->subtotal_receta * $cantidadPedido;
-                                }
+                            $cantidadEsperada = ($receta->id_areas == 1)
+                            ? $cantidadPedido * $receta->constante_peso_lata
+                            : $cantidadPedido * 1;
 
-                                $componenteHarina = $receta->detalles->first(function($item) {
-                                    return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
-                                });
-                                $cantHarina = $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
+                            $subtotalReceta = 0;
+                            foreach ($receta->detalles as $detalle) {
+                            $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada ;
+                            }
 
-                                $pedidosPersonalizados = isset($recetaData['pedidos']) ? $recetaData['pedidos']->filter(function($pedido) {
-                                    return isset($pedido['es_personalizado']) && $pedido['es_personalizado'];
-                                }) : collect([]);
+                            $componenteHarina = $receta->detalles->first(function($item) {
+                            return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
+                            });
+                            $cantHarina = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperada : 0;
 
-                                $unidadPedido = $recetaData['id_u_medidas'] ?? null;
-                                $nombreUnidadPedido = $unidadesMedida->firstWhere('id_u_medidas', $unidadPedido)->nombre ?? 'N/A';
+                            $pedidosPersonalizados = isset($recetaData['pedidos']) ? $recetaData['pedidos']->filter(function($pedido) {
+                            return isset($pedido['es_personalizado']) && $pedido['es_personalizado'];
+                            }) : collect([]);
+
+                            $unidadPedido = $recetaData['id_u_medidas'] ?? null;
+                            $nombreUnidadPedido = $unidadesMedida->firstWhere('id_u_medidas', $unidadPedido)->nombre ?? 'N/A';
                             @endphp
 
                             <!-- Fila principal -->
                             <tr class="production-item {{ $recetaData['es_personalizado'] ? 'personalizado-row' : '' }}" id="row-{{ $idReceta }}">
                                 <td>
-                                    <strong>{{ $receta->producto->nombre ?? 'N/A' }}</strong>
+
+                                    <strong>{{ $recetaCounter }}. {{ $receta->producto->nombre ?? 'N/A' }}</strong>
                                     @if($recetaData['es_personalizado'])
-                                    <span class="badge badge-warning ml-2">Personalizado</span>
+                                    <span class="badge badge-warning ml-2" style="color: #BFA100;">Contiene<br>personalizado</span>
                                     @endif
+
                                 </td>
                                 <td>
                                     {{ $receta->nombre ?? 'N/A' }}
                                     @if($pedidosPersonalizados->count() > 0)
-                                    <span class="badge badge-danger ml-2" data-toggle="tooltip"
+
+                                    <span class="badge badge-danger ml-2" data-toggle="tooltip" style="color: #BFA100;"
                                         title="{{ $pedidosPersonalizados->count() }} pedido(s) personalizado(s)">
-                                        <i class="fas fa-exclamation-circle"></i> {{ $pedidosPersonalizados->count() }}
+                                        <i class="fas fa-exclamation-circle" style="color: #BFA100;"></i> {{ $pedidosPersonalizados->count() }}
                                     </span>
                                     @endif
                                 </td>
@@ -180,36 +189,36 @@ use Illuminate\Support\Facades\Storage;
                                 </td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-toggle" data-toggle="buttons">
-    <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="0">
-    <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="0">
-    <input type="hidden" name="es_enviado[{{ $idReceta }}]" value="0">
-    <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="0">
-    
-    <label class="btn btn-sm btn-outline-primary estado-btn">
-        <input type="checkbox" name="es_iniciado[{{ $idReceta }}]" 
-               autocomplete="off" value="1"
-               onchange="actualizarEstados(this, {{ $idReceta }})"> Iniciar
-    </label>
-    <label class="btn btn-sm btn-outline-success estado-btn">
-        <input type="checkbox" name="es_terminado[{{ $idReceta }}]" 
-               autocomplete="off" value="1"
-               onchange="actualizarEstados(this, {{ $idReceta }})"> Terminar
-    </label>
-    <label class="btn btn-sm btn-outline-info estado-btn">
-        <input type="checkbox" name="es_enviado[{{ $idReceta }}]" 
-               autocomplete="off" value="1"
-               onchange="actualizarEstados(this, {{ $idReceta }})"> Enviar
-    </label>
-    <label class="btn btn-sm btn-outline-danger estado-btn">
-        <input type="checkbox" name="es_cancelado[{{ $idReceta }}]" 
-               autocomplete="off" value="1"
-               onchange="mostrarModalObservacion(this, {{ $idReceta }})"> Cancelar
-    </label>
-</div>
+                                        <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="0">
+                                        <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="0">
+                                        <input type="hidden" name="es_enviado[{{ $idReceta }}]" value="0">
+                                        <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="0">
+
+                                        <label class="btn btn-sm btn-outline-primary estado-btn">
+                                            <input type="checkbox" name="es_iniciado[{{ $idReceta }}]"
+                                                autocomplete="off" value="1"
+                                                onchange="actualizarEstados(this, {{ $idReceta }})"> Iniciar
+                                        </label>
+                                        <label class="btn btn-sm btn-outline-success estado-btn">
+                                            <input type="checkbox" name="es_terminado[{{ $idReceta }}]"
+                                                autocomplete="off" value="1"
+                                                onchange="actualizarEstados(this, {{ $idReceta }})"> Terminar
+                                        </label>
+                                        <label class="btn btn-sm btn-outline-info estado-btn">
+                                            <input type="checkbox" name="es_enviado[{{ $idReceta }}]"
+                                                autocomplete="off" value="1"
+                                                onchange="actualizarEstados(this, {{ $idReceta }})"> Enviar
+                                        </label>
+                                        <label class="btn btn-sm btn-outline-danger estado-btn">
+                                            <input type="checkbox" name="es_cancelado[{{ $idReceta }}]"
+                                                autocomplete="off" value="1"
+                                                onchange="mostrarModalObservacion(this, {{ $idReceta }})"> Cancelar
+                                        </label>
+                                    </div>
                                 </td>
                                 <td class="text-center">S/ {{ number_format($subtotalReceta, 2) }}</td>
                                 <td class="text-center total-receta" id="total-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
-                                <td class="text-center">{{ number_format($cantHarina, 2) }} kg</td>
+                                <td class="text-center">{{ number_format($cantHarina, 2) }} gramos</td>
                                 <td class="text-center">
                                     @if($receta->instructivo)
                                     <button type="button" class="btn btn-sm btn-outline-info"
@@ -228,26 +237,34 @@ use Illuminate\Support\Facades\Storage;
 
                             <!-- Filas de pedidos personalizados -->
                             @if($pedidosPersonalizados->count() > 0)
+                            @php
+                            $pedidoCounter = 1; // Contador para pedidos personalizados
+                            @endphp
                             @foreach($pedidosPersonalizados as $pedido)
                             <tr class="pedido-personalizado" data-recid="{{ $idReceta }}">
                                 <td colspan="12">
                                     <div class="d-flex justify-content-between align-items-center p-2">
                                         <div class="flex-grow-1">
                                             <div class="d-flex align-items-center">
-                                                <i class="fas fa-star text-warning mr-2"></i>
+                                                <!-- <i class="fas fa-star text-warning mr-2"></i> -->
                                                 <div>
-                                                    <strong class="d-block">Pedido Personalizado #{{ $pedido['id_pedidos_det'] ?? '' }}</strong>
+                                                    <strong class="d-block">{{ $recetaCounter }}.{{ $pedidoCounter }} Pedido Personalizado (Nº {{ $pedido['id_pedidos_det'] ?? '' }})</strong>
                                                     <p class="mb-1 small"><em>{{ $pedido['descripcion'] ?? 'Sin descripción' }}</em></p>
-                                                    @if(isset($pedido['foto_referencial']) && $pedido['foto_referencial'])
+                                                    <div class="d-flex align-items-center mt-1">
+                                                        <span class="badge badge-info mr-2" style="font-weight: bold;">
+                                                            Cantidad: {{ $pedido['cantidad'] }}
+                                                        </span>
+                                                        @if(isset($pedido['foto_referencial']) && $pedido['foto_referencial'])
                                                         @php
-                                                            $filename = str_replace('pedidos/', '', $pedido['foto_referencial']);
-                                                            $imageUrl = asset('storage/pedidos/'.$filename);
+                                                        $filename = str_replace('pedidos/', '', $pedido['foto_referencial']);
+                                                        $imageUrl = asset('storage/pedidos/'.$filename);
                                                         @endphp
-                                                        <button type="button" class="btn btn-xs btn-outline-primary view-image-btn" 
+                                                        <button type="button" class="btn btn-xs btn-outline-primary view-image-btn"
                                                             data-image-url="{{ $imageUrl }}">
                                                             <i class="fas fa-image"></i> Ver imagen
                                                         </button>
-                                                    @endif
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -256,7 +273,7 @@ use Illuminate\Support\Facades\Storage;
                                                 <label class="small text-muted mb-0">Costo Diseño</label>
                                                 <div class="input-group input-group-sm">
                                                     <div class="input-group-prepend">
-                                                        <span class="input-group-text">S/</span>
+                                                        <span class="input-group-text">S/.</span>
                                                     </div>
                                                     <input type="number"
                                                         name="costo_diseño[{{ $pedido['id_pedidos_det'] }}]"
@@ -271,8 +288,14 @@ use Illuminate\Support\Facades\Storage;
                                     </div>
                                 </td>
                             </tr>
+                            @php
+                            $pedidoCounter++; // Incrementar contador de pedidos
+                            @endphp
                             @endforeach
                             @endif
+                            @php
+                            $recetaCounter++; // Incrementar contador de recetas
+                            @endphp
                             @endforeach
                             @else
                             <tr>
@@ -413,6 +436,19 @@ use Illuminate\Support\Facades\Storage;
         max-width: 500px;
         padding: 20px;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .pedido-personalizado .badge-info {
+        font-size: 12px;
+        padding: 3px 8px;
+        font-weight: normal;
+        background-color: #FFD700;
+        color: black;
+    }
+
+    .pedido-personalizado .d-flex.align-items-center {
+        flex-wrap: wrap;
+        gap: 5px;
     }
 
     .notification-header {
@@ -586,240 +622,229 @@ use Illuminate\Support\Facades\Storage;
 </style>
 
 <script>
-// Función mejorada para actualizar estados
-// Función mejorada para actualizar estados
-function actualizarEstados(checkbox, idReceta) {
-    const name = checkbox.name;
-    const isChecked = checkbox.checked;
-    const row = document.getElementById(`row-${idReceta}`);
-    
-    // Actualizar el valor del campo oculto correspondiente
-    const hiddenInput = document.querySelector(`input[type="hidden"][name="${name}"]`);
-    if (hiddenInput) {
-        hiddenInput.value = isChecked ? '1' : '0';
-    }
-    
-    // Habilitar campos de costo diseño cuando se marca "Iniciar"
-    if (name === `es_iniciado[${idReceta}]` && isChecked) {
-        const costosDiseno = row.parentNode.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`);
-        costosDiseno.forEach(input => {
-            input.disabled = false;
-        });
-    }
-    
-    // Validar costos de diseño al marcar "Terminar"
-    if (name === `es_terminado[${idReceta}]` && isChecked) {
-        const tienePersonalizados = row.classList.contains('personalizado-row');
-        if (tienePersonalizados) {
-            const costosDiseno = row.parentNode.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`);
-            let faltanCostos = false;
-            const pedidosFaltantes = [];
-            
-            costosDiseno.forEach(input => {
-                if (!input.value || parseFloat(input.value) <= 0) {
-                    faltanCostos = true;
-                    const pedidoId = input.name.match(/\[(.*?)\]/)[1];
-                    pedidosFaltantes.push(pedidoId);
-                }
-            });
-            
-            if (faltanCostos) {
-                // Mostrar modal de error
-                const lista = document.getElementById('listaPedidosFaltantes');
-                lista.innerHTML = '';
-                pedidosFaltantes.forEach(id => {
-                    lista.innerHTML += `<li class="list-group-item">Pedido #${id}</li>`;
-                });
-                
-                $('#errorCostosModal').modal('show');
-                
-                // Desmarcar el checkbox
-                checkbox.checked = false;
-                if (hiddenInput) {
-                    hiddenInput.value = '0';
-                }
-                return false;
-            }
-        }
-    }
-    
-    // Si se marca "Terminar", también debe marcarse "Iniciar"
-    if (name === `es_terminado[${idReceta}]` && isChecked) {
-        const iniciarCheckbox = document.querySelector(`input[name="es_iniciado[${idReceta}]"]`);
-        if (iniciarCheckbox && !iniciarCheckbox.checked) {
-            iniciarCheckbox.checked = true;
-            const iniciarHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
-            if (iniciarHidden) {
-                iniciarHidden.value = '1';
-            }
-        }
-    }
-    
-    // Si se marca "Cancelar", desmarcar otros estados
-    if (name === `es_cancelado[${idReceta}]` && isChecked) {
-        const terminarCheckbox = document.querySelector(`input[name="es_terminado[${idReceta}]"]`);
-        const enviarCheckbox = document.querySelector(`input[name="es_enviado[${idReceta}]"]`);
-        
-        if (terminarCheckbox) {
-            terminarCheckbox.checked = false;
-            const terminarHidden = document.querySelector(`input[type="hidden"][name="es_terminado[${idReceta}]"]`);
-            if (terminarHidden) {
-                terminarHidden.value = '0';
-            }
-        }
-        
-        if (enviarCheckbox) {
-            enviarCheckbox.checked = false;
-            const enviarHidden = document.querySelector(`input[type="hidden"][name="es_enviado[${idReceta}]"]`);
-            if (enviarHidden) {
-                enviarHidden.value = '0';
-            }
-        }
-        
-        mostrarModalObservacion(checkbox, idReceta);
-    }
-    
-    return true;
-}
-
-// Evento submit mejorado
-document.getElementById('produccionForm').addEventListener('submit', function(e) {
-    console.log("Preparando envío del formulario...");
-    
-    // Agregar recetas al formulario
-    const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
-    recetas.forEach(input => {
-        const idReceta = input.name.match(/\[(.*?)\]/)[1];
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'id_recetas_cab[]';
-        hiddenInput.value = idReceta;
-        this.appendChild(hiddenInput);
-    });
-
-    // Verificar estados
-    let tieneEnviados = false;
-    const enviados = document.querySelectorAll('input[name^="es_enviado"]:checked');
-    
-    if (enviados.length === 0) {
-        if (!confirm('No has marcado ningún pedido como enviado. ¿Deseas continuar?')) {
-            e.preventDefault();
-            return false;
-        }
-    }
-    
-    // Mostrar datos en consola para depuración
-    const formData = new FormData(this);
-    const data = {};
-    formData.forEach((value, key) => {
-        data[key] = value;
-    });
-    console.log("Datos completos a enviar:", data);
-    
-    return true;
-});
-
-// Función para actualizar el total de una receta específica
-function actualizarTotalReceta(idReceta) {
-    const row = document.getElementById(`row-${idReceta}`);
-    const subtotalText = row.querySelector('td:nth-child(9)').textContent;
-    const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', ''));
-    let costoDisenoTotal = 0;
-    
-    // Sumar todos los costos de diseño de pedidos personalizados
-    document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`).forEach(input => {
-        const valor = parseFloat(input.value) || 0;
-        costoDisenoTotal += valor;
-    });
-    
-    // Actualizar el total con animación
-    const totalCell = document.getElementById(`total-${idReceta}`);
-    const nuevoTotal = subtotal + costoDisenoTotal;
-    totalCell.textContent = 'S/ ' + nuevoTotal.toFixed(2);
-    totalCell.classList.add('highlight');
-    
-    // Remover la clase de animación después de que termine
-    setTimeout(() => {
-        totalCell.classList.remove('highlight');
-    }, 1500);
-}
-
-function mostrarModalObservacion(checkbox, idReceta) {
-    const modal = $('#observacionModal');
-    const esCancelacion = checkbox !== null;
-    
-    // Configurar el modal según si es cancelación o observación normal
-    if (esCancelacion) {
-        $('#observacionModalLabel').text('Observación de Cancelación');
-        $('#observacionTexto').attr('placeholder', 'Ingrese el motivo de la cancelación...');
-    } else {
-        $('#observacionModalLabel').text('Agregar Observación');
-        $('#observacionTexto').attr('placeholder', 'Ingrese cualquier observación sobre esta producción...');
-    }
-    
-    // Cargar observación existente si hay
-    const observacionExistente = document.querySelector(`input[name="observaciones[${idReceta}]"]`)?.value || '';
-    $('#observacionTexto').val(observacionExistente);
-    
-    // Guardar referencia a la receta
-    $('#observacionRecetaId').val(idReceta);
-    $('#esCancelacion').val(esCancelacion ? '1' : '0');
-    
-    modal.modal('show');
-}
-
-function guardarObservacion() {
-    const idReceta = $('#observacionRecetaId').val();
-    const esCancelacion = $('#esCancelacion').val() === '1';
-    const observacion = $('#observacionTexto').val();
-    
-    // Crear o actualizar el input oculto para la observación
-    let inputObservacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
-    if (!inputObservacion) {
-        inputObservacion = document.createElement('input');
-        inputObservacion.type = 'hidden';
-        inputObservacion.name = `observaciones[${idReceta}]`;
-        document.getElementById('produccionForm').appendChild(inputObservacion);
-    }
-    inputObservacion.value = observacion;
-    
-    // Si es cancelación, mostrar badge
-    if (esCancelacion) {
+    // Función mejorada para actualizar estados
+    // Función mejorada para actualizar estados
+    function actualizarEstados(checkbox, idReceta) {
+        const name = checkbox.name;
+        const isChecked = checkbox.checked;
         const row = document.getElementById(`row-${idReceta}`);
-        let badge = row.querySelector('.badge-observacion-cancelacion');
-        
-        if (!badge) {
-            badge = document.createElement('span');
-            badge.className = 'badge badge-danger badge-observacion-cancelacion ml-2';
-            badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Cancelado';
-            badge.setAttribute('data-toggle', 'tooltip');
-            badge.setAttribute('title', observacion);
-            row.querySelector('td:first-child').appendChild(badge);
-            
-            // Inicializar tooltip
-            new bootstrap.Tooltip(badge);
-        } else {
-            // Actualizar tooltip si ya existe
-            badge.setAttribute('title', observacion);
-            const tooltipInstance = bootstrap.Tooltip.getInstance(badge);
-            if (tooltipInstance) {
-                tooltipInstance.dispose();
-                new bootstrap.Tooltip(badge);
+
+        // Actualizar el valor del campo oculto correspondiente
+        const hiddenInput = document.querySelector(`input[type="hidden"][name="${name}"]`);
+        if (hiddenInput) {
+            hiddenInput.value = isChecked ? '1' : '0';
+        }
+
+        // Habilitar campos de costo diseño cuando se marca "Iniciar"
+        if (name === `es_iniciado[${idReceta}]` && isChecked) {
+            const costosDiseno = row.parentNode.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`);
+            costosDiseno.forEach(input => {
+                input.disabled = false;
+            });
+        }
+
+        // Validar costos de diseño al marcar "Terminar"
+        if (name === `es_terminado[${idReceta}]` && isChecked) {
+            const tienePersonalizados = row.classList.contains('personalizado-row');
+            if (tienePersonalizados) {
+                const costosDiseno = row.parentNode.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`);
+                let faltanCostos = false;
+                const pedidosFaltantes = [];
+
+                costosDiseno.forEach(input => {
+                    if (!input.value || parseFloat(input.value) <= 0) {
+                        faltanCostos = true;
+                        const pedidoId = input.name.match(/\[(.*?)\]/)[1];
+                        pedidosFaltantes.push(pedidoId);
+                    }
+                });
+
+                if (faltanCostos) {
+                    // Mostrar modal de error
+                    const lista = document.getElementById('listaPedidosFaltantes');
+                    lista.innerHTML = '';
+                    pedidosFaltantes.forEach(id => {
+                        lista.innerHTML += `<li class="list-group-item">Pedido #${id}</li>`;
+                    });
+
+                    $('#errorCostosModal').modal('show');
+
+                    // Desmarcar el checkbox
+                    checkbox.checked = false;
+                    if (hiddenInput) {
+                        hiddenInput.value = '0';
+                    }
+                    return false;
+                }
             }
         }
+
+        // Si se marca "Terminar", también debe marcarse "Iniciar"
+        if (name === `es_terminado[${idReceta}]` && isChecked) {
+            const iniciarCheckbox = document.querySelector(`input[name="es_iniciado[${idReceta}]"]`);
+            if (iniciarCheckbox && !iniciarCheckbox.checked) {
+                iniciarCheckbox.checked = true;
+                const iniciarHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
+                if (iniciarHidden) {
+                    iniciarHidden.value = '1';
+                }
+            }
+        }
+
+        // Si se marca "Cancelar", desmarcar otros estados
+        if (name === `es_cancelado[${idReceta}]` && isChecked) {
+            const terminarCheckbox = document.querySelector(`input[name="es_terminado[${idReceta}]"]`);
+            const enviarCheckbox = document.querySelector(`input[name="es_enviado[${idReceta}]"]`);
+
+            if (terminarCheckbox) {
+                terminarCheckbox.checked = false;
+                const terminarHidden = document.querySelector(`input[type="hidden"][name="es_terminado[${idReceta}]"]`);
+                if (terminarHidden) {
+                    terminarHidden.value = '0';
+                }
+            }
+
+            if (enviarCheckbox) {
+                enviarCheckbox.checked = false;
+                const enviarHidden = document.querySelector(`input[type="hidden"][name="es_enviado[${idReceta}]"]`);
+                if (enviarHidden) {
+                    enviarHidden.value = '0';
+                }
+            }
+
+            mostrarModalObservacion(checkbox, idReceta);
+        }
+
+        return true;
     }
-    
-    $('#observacionModal').modal('hide');
-}
 
-// Función para cargar el instructivo en el modal
-function cargarInstructivo(idReceta) {
-    const modal = $('#instructivoModal');
-    const modalInstance = new bootstrap.Modal(modal[0]);
-    modalInstance.show();
+    // Evento submit mejorado
+    document.getElementById('produccionForm').addEventListener('submit', function(e) {
+        console.log("Preparando envío del formulario...");
 
-    // Mostrar spinner de carga
-    $('#instructivoContent').html(`
+        // Agregar recetas al formulario
+        const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
+        recetas.forEach(input => {
+            const idReceta = input.name.match(/\[(.*?)\]/)[1];
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'id_recetas_cab[]';
+            hiddenInput.value = idReceta;
+            this.appendChild(hiddenInput);
+        });
+
+        // Mostrar datos en consola para depuración
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+        });
+        console.log("Datos completos a enviar:", data);
+
+        return true;
+    });
+
+    // Función para actualizar el total de una receta específica
+    function actualizarTotalReceta(idReceta) {
+        const row = document.getElementById(`row-${idReceta}`);
+        const subtotalText = row.querySelector('td:nth-child(9)').textContent;
+        const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', ''));
+        let costoDisenoTotal = 0;
+
+        // Sumar todos los costos de diseño de pedidos personalizados
+        document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`).forEach(input => {
+            const valor = parseFloat(input.value) || 0;
+            costoDisenoTotal += valor;
+        });
+
+        // Actualizar el total con animación
+        const totalCell = document.getElementById(`total-${idReceta}`);
+        const nuevoTotal = subtotal + costoDisenoTotal;
+        totalCell.textContent = 'S/ ' + nuevoTotal.toFixed(2);
+        totalCell.classList.add('highlight');
+
+        // Remover la clase de animación después de que termine
+        setTimeout(() => {
+            totalCell.classList.remove('highlight');
+        }, 1500);
+    }
+
+    function mostrarModalObservacion(checkbox, idReceta) {
+        const modal = $('#observacionModal');
+        const esCancelacion = checkbox !== null;
+
+        // Configurar el modal según si es cancelación o observación normal
+        if (esCancelacion) {
+            $('#observacionModalLabel').text('Observación de Cancelación');
+            $('#observacionTexto').attr('placeholder', 'Ingrese el motivo de la cancelación...');
+        } else {
+            $('#observacionModalLabel').text('Agregar Observación');
+            $('#observacionTexto').attr('placeholder', 'Ingrese cualquier observación sobre esta producción...');
+        }
+
+        // Cargar observación existente si hay
+        const observacionExistente = document.querySelector(`input[name="observaciones[${idReceta}]"]`)?.value || '';
+        $('#observacionTexto').val(observacionExistente);
+
+        // Guardar referencia a la receta
+        $('#observacionRecetaId').val(idReceta);
+        $('#esCancelacion').val(esCancelacion ? '1' : '0');
+
+        modal.modal('show');
+    }
+
+    function guardarObservacion() {
+        const idReceta = $('#observacionRecetaId').val();
+        const esCancelacion = $('#esCancelacion').val() === '1';
+        const observacion = $('#observacionTexto').val();
+
+        // Crear o actualizar el input oculto para la observación
+        let inputObservacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
+        if (!inputObservacion) {
+            inputObservacion = document.createElement('input');
+            inputObservacion.type = 'hidden';
+            inputObservacion.name = `observaciones[${idReceta}]`;
+            document.getElementById('produccionForm').appendChild(inputObservacion);
+        }
+        inputObservacion.value = observacion;
+
+        // Si es cancelación, mostrar badge
+        if (esCancelacion) {
+            const row = document.getElementById(`row-${idReceta}`);
+            let badge = row.querySelector('.badge-observacion-cancelacion');
+
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'badge badge-danger badge-observacion-cancelacion ml-2';
+                badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Cancelado';
+                badge.setAttribute('data-toggle', 'tooltip');
+                badge.setAttribute('title', observacion);
+                row.querySelector('td:first-child').appendChild(badge);
+
+                // Inicializar tooltip
+                new bootstrap.Tooltip(badge);
+            } else {
+                // Actualizar tooltip si ya existe
+                badge.setAttribute('title', observacion);
+                const tooltipInstance = bootstrap.Tooltip.getInstance(badge);
+                if (tooltipInstance) {
+                    tooltipInstance.dispose();
+                    new bootstrap.Tooltip(badge);
+                }
+            }
+        }
+
+        $('#observacionModal').modal('hide');
+    }
+
+    // Función para cargar el instructivo en el modal
+    function cargarInstructivo(idReceta) {
+        const modal = $('#instructivoModal');
+        const modalInstance = new bootstrap.Modal(modal[0]);
+        modalInstance.show();
+
+        // Mostrar spinner de carga
+        $('#instructivoContent').html(`
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status">
                 <span class="sr-only">Cargando...</span>
@@ -828,18 +853,18 @@ function cargarInstructivo(idReceta) {
         </div>
     `);
 
-    // Hacer la petición AJAX
-    $.ajax({
-        url: "{{ route('recetas.show-instructivo') }}",
-        type: 'GET',
-        data: {
-            id_receta: idReceta
-        },
-        success: function(data) {
-            $('#instructivoContent').html(data);
-        },
-        error: function(xhr, status, error) {
-            $('#instructivoContent').html(`
+        // Hacer la petición AJAX
+        $.ajax({
+            url: "{{ route('recetas.show-instructivo') }}",
+            type: 'GET',
+            data: {
+                id_receta: idReceta
+            },
+            success: function(data) {
+                $('#instructivoContent').html(data);
+            },
+            error: function(xhr, status, error) {
+                $('#instructivoContent').html(`
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle"></i> Error al cargar el instructivo: ${xhr.statusText}
                 </div>
@@ -849,233 +874,175 @@ function cargarInstructivo(idReceta) {
                     </button>
                 </div>
             `);
-            console.error('Error al cargar instructivo:', error);
+                console.error('Error al cargar instructivo:', error);
+            }
+        });
+    }
+
+    // Función para mostrar la imagen en el modal
+    function mostrarImagen(url) {
+        const modal = $('#imageModal');
+        $('#modalImage').attr('src', url);
+        const modalInstance = new bootstrap.Modal(modal[0]);
+        modalInstance.show();
+    }
+
+    // Inicialización cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manejar eventos del modal para accesibilidad
+        const instructivoModal = document.getElementById('instructivoModal');
+        if (instructivoModal) {
+            instructivoModal.addEventListener('show.bs.modal', function() {
+                this.setAttribute('aria-hidden', 'false');
+            });
+
+            instructivoModal.addEventListener('hidden.bs.modal', function() {
+                this.setAttribute('aria-hidden', 'true');
+            });
+        }
+
+        // Inicializar tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Eventos para los botones de ver imagen
+        document.querySelectorAll('.view-image-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const imageUrl = this.getAttribute('data-image-url');
+                mostrarImagen(imageUrl);
+            });
+        });
+
+        // Asegurar que todos los campos necesarios se envíen
+        document.getElementById('produccionForm').addEventListener('submit', function(e) {
+            console.log("Preparando envío del formulario...");
+
+            // Agregar explícitamente las recetas que se están procesando
+            const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
+            recetas.forEach(input => {
+                const idReceta = input.name.match(/\[(.*?)\]/)[1];
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'id_recetas_cab[]';
+                hiddenInput.value = idReceta;
+                this.appendChild(hiddenInput);
+            });
+
+            // Verificar datos antes de enviar
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            console.log("Datos a enviar:", data);
+
+            // Validación de estados
+            let tieneEnviados = false;
+            let tieneCanceladosSinObservacion = false;
+
+            // Verificar cada receta
+            recetas.forEach(input => {
+                const idReceta = input.name.match(/\[(.*?)\]/)[1];
+
+                // Verificar si está marcado como enviado
+                const enviadoCheckbox = document.querySelector(`input[name="es_enviado[${idReceta}]"]`);
+                if (enviadoCheckbox && enviadoCheckbox.checked) {
+                    tieneEnviados = true;
+                }
+
+                // Verificar si está cancelado pero sin observación
+                const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
+                const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
+                if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
+                    tieneCanceladosSinObservacion = true;
+                }
+            });
+
+            // Mostrar advertencias si es necesario
+            if (!tieneEnviados) {
+                if (!confirm('No has marcado ningún pedido como enviado. ¿Deseas continuar?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+
+            if (tieneCanceladosSinObservacion) {
+                alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
+                e.preventDefault();
+                return false;
+            }
+
+            return true;
+        });
+        // Función para actualizar estados
+        function actualizarEstados(checkbox, idReceta) {
+            console.log(`Actualizando estado para receta ${idReceta}`);
+            const row = document.getElementById(`row-${idReceta}`);
+            const form = document.getElementById('produccionForm');
+
+            // Obtener todos los checkboxes relacionados
+            const iniciarCheck = row.querySelector(`input[name="es_iniciado[${idReceta}]"]`);
+            const terminarCheck = row.querySelector(`input[name="es_terminado[${idReceta}]"]`);
+            const enviarCheck = row.querySelector(`input[name="es_enviado[${idReceta}]"]`);
+            const cancelarCheck = row.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
+
+            // Actualizar los hidden inputs correspondientes
+            form.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`).value = iniciarCheck.checked ? '1' : '0';
+            form.querySelector(`input[type="hidden"][name="es_terminado[${idReceta}]"]`).value = terminarCheck.checked ? '1' : '0';
+            form.querySelector(`input[type="hidden"][name="es_enviado[${idReceta}]"]`).value = enviarCheck.checked ? '1' : '0';
+            form.querySelector(`input[type="hidden"][name="es_cancelado[${idReceta}]"]`).value = cancelarCheck.checked ? '1' : '0';
+
+            console.log(`Estados actualizados - Iniciado: ${iniciarCheck.checked}, Terminado: ${terminarCheck.checked}, Enviado: ${enviarCheck.checked}, Cancelado: ${cancelarCheck.checked}`);
+        }
+
+        // Función para actualizar el total
+        function actualizarTotalReceta(idReceta) {
+            console.log(`Actualizando total para receta ${idReceta}`);
+            const row = document.getElementById(`row-${idReceta}`);
+            const subtotalText = row.querySelector('td:nth-child(9)').textContent;
+            const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', ''));
+            let costoDisenoTotal = 0;
+
+            // Sumar todos los costos de diseño de pedidos personalizados
+            document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`).forEach(input => {
+                const valor = parseFloat(input.value) || 0;
+                costoDisenoTotal += valor;
+            });
+
+            // Actualizar el total
+            const totalCell = document.getElementById(`total-${idReceta}`);
+            const nuevoTotal = subtotal + costoDisenoTotal;
+            totalCell.textContent = 'S/ ' + nuevoTotal.toFixed(2);
+
+            console.log(`Total actualizado para receta ${idReceta}: ${nuevoTotal}`);
+        }
+
+        function mostrarErroresCancelados(ids) {
+            let html = '<p>Los siguientes registros cancelados necesitan observación:</p><ul>';
+            ids.forEach(id => {
+                html += `<li>Receta ID: ${id}</li>`;
+            });
+            html += '</ul>';
+
+            Swal.fire({
+                title: 'Observaciones faltantes',
+                html: html,
+                icon: 'error',
+                confirmButtonText: 'Entendido'
+            });
         }
     });
-}
 
-// Función para mostrar la imagen en el modal
-function mostrarImagen(url) {
-    const modal = $('#imageModal');
-    $('#modalImage').attr('src', url);
-    const modalInstance = new bootstrap.Modal(modal[0]);
-    modalInstance.show();
-}
-
-// Inicialización cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
-    // Manejar eventos del modal para accesibilidad
-    const instructivoModal = document.getElementById('instructivoModal');
-    if (instructivoModal) {
-        instructivoModal.addEventListener('show.bs.modal', function() {
-            this.setAttribute('aria-hidden', 'false');
-        });
-
-        instructivoModal.addEventListener('hidden.bs.modal', function() {
-            this.setAttribute('aria-hidden', 'true');
-        });
+    // Función para cerrar la notificación de equipo
+    function closeNotification() {
+        document.getElementById('equipoNotification').style.display = 'none';
     }
 
-    // Inicializar tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-
-    // Eventos para los botones de ver imagen
-    document.querySelectorAll('.view-image-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const imageUrl = this.getAttribute('data-image-url');
-            mostrarImagen(imageUrl);
-        });
-    });
-
-    // Validar formulario antes de enviar
-    // En el formulario, modifica el evento submit
-// const form = $('#produccionForm');
-// if (form.length) {
-//     form.on('submit', function(e) {
-//         console.log('Formulario enviado');
-//         console.log('Datos del formulario:', $(this).serializeArray());
-        
-//         let tieneEnviados = false;
-//         const canceladosSinObservacion = [];
-        
-//         // Verificar si hay al menos un enviado
-//         $('input[name^="es_enviado"]:checked').each(function() {
-//             tieneEnviados = true;
-//         });
-        
-//         // Verificar observaciones en cancelados
-//         $('input[name^="es_cancelado"]:checked').each(function() {
-//             const name = $(this).attr('name');
-//             const idReceta = name.match(/\[(.*?)\]/)[1];
-//             const observacion = $(`input[name="observaciones[${idReceta}]"]`).val();
-            
-//             if (!observacion) {
-//                 canceladosSinObservacion.push(idReceta);
-//             }
-//         });
-        
-//         if (!tieneEnviados) {
-//             console.warn('No hay producciones marcadas como enviadas');
-//             e.preventDefault();
-//             Swal.fire({
-//                 title: '¿Estás seguro?',
-//                 text: "No has marcado ningún pedido como enviado. ¿Deseas continuar?",
-//                 icon: 'warning',
-//                 showCancelButton: true,
-//                 confirmButtonColor: '#3085d6',
-//                 cancelButtonColor: '#d33',
-//                 confirmButtonText: 'Sí, guardar',
-//                 cancelButtonText: 'Cancelar'
-//             }).then((result) => {
-//                 if (result.isConfirmed) {
-//                     if (canceladosSinObservacion.length === 0) {
-//                         console.log('Enviando formulario a pesar de no tener enviados');
-//                         form.off('submit').submit();
-//                     } else {
-//                         mostrarErroresCancelados(canceladosSinObservacion);
-//                     }
-//                 }
-//             });
-//         }
-        
-//         if (canceladosSinObservacion.length > 0) {
-//             console.warn('Cancelados sin observación:', canceladosSinObservacion);
-//             e.preventDefault();
-//             mostrarErroresCancelados(canceladosSinObservacion);
-//         }
-//     });
-// }
-// Asegurar que todos los campos necesarios se envíen
-document.getElementById('produccionForm').addEventListener('submit', function(e) {
-    console.log("Preparando envío del formulario...");
-    
-    // Agregar explícitamente las recetas que se están procesando
-    const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
-    recetas.forEach(input => {
-        const idReceta = input.name.match(/\[(.*?)\]/)[1];
-        const hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.name = 'id_recetas_cab[]';
-        hiddenInput.value = idReceta;
-        this.appendChild(hiddenInput);
-    });
-
-    // Verificar datos antes de enviar
-    const formData = new FormData(this);
-    const data = Object.fromEntries(formData.entries());
-    console.log("Datos a enviar:", data);
-
-    // Validación de estados
-    let tieneEnviados = false;
-    let tieneCanceladosSinObservacion = false;
-    
-    // Verificar cada receta
-    recetas.forEach(input => {
-        const idReceta = input.name.match(/\[(.*?)\]/)[1];
-        
-        // Verificar si está marcado como enviado
-        const enviadoCheckbox = document.querySelector(`input[name="es_enviado[${idReceta}]"]`);
-        if (enviadoCheckbox && enviadoCheckbox.checked) {
-            tieneEnviados = true;
-        }
-        
-        // Verificar si está cancelado pero sin observación
-        const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
-        const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
-        if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
-            tieneCanceladosSinObservacion = true;
+    // Cerrar notificación al hacer click fuera de ella
+    document.addEventListener('click', function(event) {
+        const notification = document.getElementById('equipoNotification');
+        if (notification && !notification.contains(event.target)) {
+            closeNotification();
         }
     });
-
-    // Mostrar advertencias si es necesario
-    if (!tieneEnviados) {
-        if (!confirm('No has marcado ningún pedido como enviado. ¿Deseas continuar?')) {
-            e.preventDefault();
-            return false;
-        }
-    }
-    
-    if (tieneCanceladosSinObservacion) {
-        alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
-        e.preventDefault();
-        return false;
-    }
-    
-    return true;
-});
-// Función para actualizar estados
-function actualizarEstados(checkbox, idReceta) {
-    console.log(`Actualizando estado para receta ${idReceta}`);
-    const row = document.getElementById(`row-${idReceta}`);
-    const form = document.getElementById('produccionForm');
-    
-    // Obtener todos los checkboxes relacionados
-    const iniciarCheck = row.querySelector(`input[name="es_iniciado[${idReceta}]"]`);
-    const terminarCheck = row.querySelector(`input[name="es_terminado[${idReceta}]"]`);
-    const enviarCheck = row.querySelector(`input[name="es_enviado[${idReceta}]"]`);
-    const cancelarCheck = row.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
-    
-    // Actualizar los hidden inputs correspondientes
-    form.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`).value = iniciarCheck.checked ? '1' : '0';
-    form.querySelector(`input[type="hidden"][name="es_terminado[${idReceta}]"]`).value = terminarCheck.checked ? '1' : '0';
-    form.querySelector(`input[type="hidden"][name="es_enviado[${idReceta}]"]`).value = enviarCheck.checked ? '1' : '0';
-    form.querySelector(`input[type="hidden"][name="es_cancelado[${idReceta}]"]`).value = cancelarCheck.checked ? '1' : '0';
-    
-    console.log(`Estados actualizados - Iniciado: ${iniciarCheck.checked}, Terminado: ${terminarCheck.checked}, Enviado: ${enviarCheck.checked}, Cancelado: ${cancelarCheck.checked}`);
-}
-
-// Función para actualizar el total
-function actualizarTotalReceta(idReceta) {
-    console.log(`Actualizando total para receta ${idReceta}`);
-    const row = document.getElementById(`row-${idReceta}`);
-    const subtotalText = row.querySelector('td:nth-child(9)').textContent;
-    const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', ''));
-    let costoDisenoTotal = 0;
-    
-    // Sumar todos los costos de diseño de pedidos personalizados
-    document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`).forEach(input => {
-        const valor = parseFloat(input.value) || 0;
-        costoDisenoTotal += valor;
-    });
-    
-    // Actualizar el total
-    const totalCell = document.getElementById(`total-${idReceta}`);
-    const nuevoTotal = subtotal + costoDisenoTotal;
-    totalCell.textContent = 'S/ ' + nuevoTotal.toFixed(2);
-    
-    console.log(`Total actualizado para receta ${idReceta}: ${nuevoTotal}`);
-}
-    
-    function mostrarErroresCancelados(ids) {
-        let html = '<p>Los siguientes registros cancelados necesitan observación:</p><ul>';
-        ids.forEach(id => {
-            html += `<li>Receta ID: ${id}</li>`;
-        });
-        html += '</ul>';
-        
-        Swal.fire({
-            title: 'Observaciones faltantes',
-            html: html,
-            icon: 'error',
-            confirmButtonText: 'Entendido'
-        });
-    }
-});
-
-// Función para cerrar la notificación de equipo
-function closeNotification() {
-    document.getElementById('equipoNotification').style.display = 'none';
-}
-
-// Cerrar notificación al hacer click fuera de ella
-document.addEventListener('click', function(event) {
-    const notification = document.getElementById('equipoNotification');
-    if (notification && !notification.contains(event.target)) {
-        closeNotification();
-    }
-});
 </script>
 @endsection

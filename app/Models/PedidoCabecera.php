@@ -64,4 +64,9 @@ class PedidoCabecera extends Model
     {
         return $this->hasMany(PedidoDetalle::class, 'id_pedidos_cab');
     }
+    // En App\Models\PedidoCabecera
+    public function scopeDentroDeHoraLimite($query)
+    {
+        return $query->where('esta_dentro_de_hora', true);
+    }
 }

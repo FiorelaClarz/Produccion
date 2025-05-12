@@ -28,7 +28,8 @@ class RecetaCabecera extends Model
 
     protected $casts = [
         'status' => 'boolean',
-        'is_deleted' => 'boolean'
+        'is_deleted' => 'boolean',
+        'constante_peso_lata' => 'float',
     ];
 
     // Relación con Area

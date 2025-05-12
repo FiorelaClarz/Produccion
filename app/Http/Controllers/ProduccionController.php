@@ -101,8 +101,8 @@ public function guardarProduccionPersonal(Request $request)
         'es_iniciado' => 'sometimes|array',
         'es_terminado' => 'sometimes|array',
         'es_cancelado' => 'sometimes|array',
-        'es_enviado' => 'required|array', // Cambiado a required
-        'es_enviado.*' => 'required|boolean', // Asegurar que cada valor sea booleano
+        'es_enviado' => 'array', // Cambiado a required
+        'es_enviado.*' => 'boolean', // Asegurar que cada valor sea booleano
         'costo_diseño' => 'sometimes|array',
         'costo_diseño.*' => 'nullable|numeric|min:0',
         'observaciones' => 'sometimes|array',
@@ -140,7 +140,9 @@ public function guardarProduccionPersonal(Request $request)
                 ->get();
 
             $cantidadPedido = $pedidos->sum('cantidad');
-            $cantidadEsperada = $cantidadPedido * $receta->constante_crecimiento;
+            $cantidadEsperada = ($receta->id_areas == 1) 
+    ? $cantidadPedido * $receta->constante_peso_lata 
+    : $cantidadPedido * 1;
             $cantidadProducida = $request->cantidad_producida_real[$idReceta] ?? $cantidadEsperada;
 
             // Buscar componente de harina
@@ -153,7 +155,7 @@ public function guardarProduccionPersonal(Request $request)
             // Calcular subtotal
             $subtotalReceta = 0;
             foreach ($receta->detalles as $detalle) {
-                $subtotalReceta += $detalle->subtotal_receta * $cantidadPedido;
+                $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
             }
 
             // Determinar estados con valores por defecto
@@ -304,7 +306,9 @@ protected function calcularHarina($receta, $cantidadPedido)
         $cantidadPedido = $pedidosDetalle->sum('cantidad');
 
         // Calcular cantidad esperada (cantidad pedida * constante crecimiento)
-        $cantidadEsperada = $cantidadPedido * $recetaCabecera->constante_crecimiento;
+        $cantidadEsperada = ($recetaCabecera->id_areas == 1) 
+    ? $cantidadPedido * $recetaCabecera->constante_peso_lata 
+    : $cantidadPedido * 1;
 
         // Obtener el componente de harina si existe
         $recetaHarina = $recetaCabecera->detalles
