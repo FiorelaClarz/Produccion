@@ -22,63 +22,63 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class ProduccionController extends Controller
 {
     public function index()
-{
-    $usuario = Auth::user();
+    {
+        $usuario = Auth::user();
 
-    if ($usuario->id_roles == 3) {
-        // Lógica para vista personal
-        $fechaActual = Carbon::now()->toDateString();
-        $idAreaUsuario = $usuario->id_areas;
+        if ($usuario->id_roles == 3) {
+            // Lógica para vista personal
+            $fechaActual = Carbon::now()->toDateString();
+            $idAreaUsuario = $usuario->id_areas;
 
-        $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
-            ->where('status', true)
-            ->where('is_deleted', false)
-            ->whereDate('created_at', $fechaActual)
-            ->with(['usuario', 'area', 'turno'])
-            ->first();
+            $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
+                ->where('status', true)
+                ->where('is_deleted', false)
+                ->whereDate('created_at', $fechaActual)
+                ->with(['usuario', 'area', 'turno'])
+                ->first();
 
-        $pedidosDetalle = PedidoDetalle::with(['receta', 'receta.producto', 'receta.detalles', 'receta.detalles.producto', 'receta.instructivo', 'uMedida'])
-            ->whereDate('created_at', $fechaActual)
-            ->where('id_areas', $idAreaUsuario)
-            ->where('is_deleted', false)
-            ->whereHas('receta', function ($query) {
-                $query->whereNotNull('id_recetas')
-                    ->whereHas('producto')
-                    ->whereHas('detalles');
-            })
-            ->get(['id_pedidos_det', 'id_recetas', 'cantidad', 'es_personalizado', 'descripcion', 'foto_referencial', 'id_u_medidas', 'id_areas']);
+            $pedidosDetalle = PedidoDetalle::with(['receta', 'receta.producto', 'receta.detalles', 'receta.detalles.producto', 'receta.instructivo', 'uMedida'])
+                ->whereDate('created_at', $fechaActual)
+                ->where('id_areas', $idAreaUsuario)
+                ->where('is_deleted', false)
+                ->whereHas('receta', function ($query) {
+                    $query->whereNotNull('id_recetas')
+                        ->whereHas('producto')
+                        ->whereHas('detalles');
+                })
+                ->get(['id_pedidos_det', 'id_recetas', 'cantidad', 'es_personalizado', 'descripcion', 'foto_referencial', 'id_u_medidas', 'id_areas']);
 
-        $recetasAgrupadas = $pedidosDetalle->groupBy('id_recetas')->map(function ($items) {
-            $receta = $items->first()->receta;
-            return [
-                'cantidad_total' => $items->sum('cantidad'),
-                'es_personalizado' => $items->contains('es_personalizado', true),
-                'id_productos_api' => $items->first()->id_productos_api,
-                'id_u_medidas' => $items->first()->id_u_medidas,
-                'id_areas' => $items->first()->id_areas,
-                'receta' => $receta,
-                'pedidos' => $items
-            ];
-        })->filter(function ($item) {
-            return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
-        });
+            $recetasAgrupadas = $pedidosDetalle->groupBy('id_recetas')->map(function ($items) {
+                $receta = $items->first()->receta;
+                return [
+                    'cantidad_total' => $items->sum('cantidad'),
+                    'es_personalizado' => $items->contains('es_personalizado', true),
+                    'id_productos_api' => $items->first()->id_productos_api,
+                    'id_u_medidas' => $items->first()->id_u_medidas,
+                    'id_areas' => $items->first()->id_areas,
+                    'receta' => $receta,
+                    'pedidos' => $items
+                ];
+            })->filter(function ($item) {
+                return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
+            });
 
-        $unidadesMedida = UMedida::activos()->get();
+            $unidadesMedida = UMedida::activos()->get();
 
-        // Verifica si la solicitud es para la vista personal
-        if(request()->is('produccion/personal')) {
-            return view('produccion.index-personal', compact('recetasAgrupadas', 'unidadesMedida', 'usuario', 'equipoActivo'));
+            // Verifica si la solicitud es para la vista personal
+            if (request()->is('produccion/personal')) {
+                return view('produccion.index-personal', compact('recetasAgrupadas', 'unidadesMedida', 'usuario', 'equipoActivo'));
+            }
         }
+
+        // Para otros roles o vista normal
+        $producciones = ProduccionCabecera::with(['usuario', 'turno', 'produccionesDetalle'])
+            ->orderBy('fecha', 'desc')
+            ->orderBy('hora', 'desc')
+            ->get();
+
+        return view('produccion.index', compact('producciones'));
     }
-
-    // Para otros roles o vista normal
-    $producciones = ProduccionCabecera::with(['usuario', 'turno', 'produccionesDetalle'])
-        ->orderBy('fecha', 'desc')
-        ->orderBy('hora', 'desc')
-        ->get();
-
-    return view('produccion.index', compact('producciones'));
-}
 
     public function guardarProduccionPersonal(Request $request)
     {
@@ -218,12 +218,12 @@ class ProduccionController extends Controller
 
 
             if (auth()->user()->id_roles == 3) {
-    return redirect()->route('produccion.index-personal')
-    ->with('success', "Producción registrada correctamente");
-} else {
-    return redirect()->route('produccion.index')
-        ->with('success', "Producción registrada correctamente");
-}
+                return redirect()->route('produccion.index-personal')
+                    ->with('success', "Producción registrada correctamente");
+            } else {
+                return redirect()->route('produccion.index')
+                    ->with('success', "Producción registrada correctamente");
+            }
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al registrar la producción: ' . $e->getMessage(), [
