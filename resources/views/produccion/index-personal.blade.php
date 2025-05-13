@@ -191,7 +191,6 @@ use Illuminate\Support\Facades\Storage;
                                     <div class="btn-group btn-group-toggle" data-toggle="buttons">
                                         <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="0">
                                         <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="0">
-                                        <input type="hidden" name="es_enviado[{{ $idReceta }}]" value="0">
                                         <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="0">
 
                                         <label class="btn btn-sm btn-outline-primary estado-btn">
@@ -204,11 +203,7 @@ use Illuminate\Support\Facades\Storage;
                                                 autocomplete="off" value="1"
                                                 onchange="actualizarEstados(this, {{ $idReceta }})"> Terminar
                                         </label>
-                                        <label class="btn btn-sm btn-outline-info estado-btn">
-                                            <input type="checkbox" name="es_enviado[{{ $idReceta }}]"
-                                                autocomplete="off" value="1"
-                                                onchange="actualizarEstados(this, {{ $idReceta }})"> Enviar
-                                        </label>
+
                                         <label class="btn btn-sm btn-outline-danger estado-btn">
                                             <input type="checkbox" name="es_cancelado[{{ $idReceta }}]"
                                                 autocomplete="off" value="1"
@@ -623,7 +618,6 @@ use Illuminate\Support\Facades\Storage;
 
 <script>
     // Función mejorada para actualizar estados
-    // Función mejorada para actualizar estados
     function actualizarEstados(checkbox, idReceta) {
         const name = checkbox.name;
         const isChecked = checkbox.checked;
@@ -694,7 +688,6 @@ use Illuminate\Support\Facades\Storage;
         // Si se marca "Cancelar", desmarcar otros estados
         if (name === `es_cancelado[${idReceta}]` && isChecked) {
             const terminarCheckbox = document.querySelector(`input[name="es_terminado[${idReceta}]"]`);
-            const enviarCheckbox = document.querySelector(`input[name="es_enviado[${idReceta}]"]`);
 
             if (terminarCheckbox) {
                 terminarCheckbox.checked = false;
@@ -704,21 +697,13 @@ use Illuminate\Support\Facades\Storage;
                 }
             }
 
-            if (enviarCheckbox) {
-                enviarCheckbox.checked = false;
-                const enviarHidden = document.querySelector(`input[type="hidden"][name="es_enviado[${idReceta}]"]`);
-                if (enviarHidden) {
-                    enviarHidden.value = '0';
-                }
-            }
-
             mostrarModalObservacion(checkbox, idReceta);
         }
 
         return true;
     }
 
-    // Evento submit mejorado
+    // Modificamos el evento submit del formulario
     document.getElementById('produccionForm').addEventListener('submit', function(e) {
         console.log("Preparando envío del formulario...");
 
@@ -733,13 +718,31 @@ use Illuminate\Support\Facades\Storage;
             this.appendChild(hiddenInput);
         });
 
-        // Mostrar datos en consola para depuración
+        // Verificar datos antes de enviar
         const formData = new FormData(this);
-        const data = {};
-        formData.forEach((value, key) => {
-            data[key] = value;
+        const data = Object.fromEntries(formData.entries());
+        console.log("Datos a enviar:", data);
+
+        // Validación de estados
+        let tieneCanceladosSinObservacion = false;
+
+        // Verificar cada receta
+        recetas.forEach(input => {
+            const idReceta = input.name.match(/\[(.*?)\]/)[1];
+
+            // Verificar si está cancelado pero sin observación
+            const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
+            const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
+            if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
+                tieneCanceladosSinObservacion = true;
+            }
         });
-        console.log("Datos completos a enviar:", data);
+
+        if (tieneCanceladosSinObservacion) {
+            alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
+            e.preventDefault();
+            return false;
+        }
 
         return true;
     });
@@ -915,64 +918,49 @@ use Illuminate\Support\Facades\Storage;
             });
         });
 
-        // Asegurar que todos los campos necesarios se envíen
-        document.getElementById('produccionForm').addEventListener('submit', function(e) {
-            console.log("Preparando envío del formulario...");
+        // En el evento submit del formulario, modificar para eliminar la validación de enviados
+document.getElementById('produccionForm').addEventListener('submit', function(e) {
+    console.log("Preparando envío del formulario...");
 
-            // Agregar explícitamente las recetas que se están procesando
-            const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
-            recetas.forEach(input => {
-                const idReceta = input.name.match(/\[(.*?)\]/)[1];
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = 'id_recetas_cab[]';
-                hiddenInput.value = idReceta;
-                this.appendChild(hiddenInput);
-            });
+    // Agregar recetas al formulario
+    const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
+    recetas.forEach(input => {
+        const idReceta = input.name.match(/\[(.*?)\]/)[1];
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'id_recetas_cab[]';
+        hiddenInput.value = idReceta;
+        this.appendChild(hiddenInput);
+    });
 
-            // Verificar datos antes de enviar
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
-            console.log("Datos a enviar:", data);
+    // Verificar datos antes de enviar - ELIMINAR LA PARTE DE "tieneEnviados"
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    console.log("Datos a enviar:", data);
 
-            // Validación de estados
-            let tieneEnviados = false;
-            let tieneCanceladosSinObservacion = false;
+    // Validación de estados - SOLO MANTENER LA DE CANCELADOS SIN OBSERVACIÓN
+    let tieneCanceladosSinObservacion = false;
 
-            // Verificar cada receta
-            recetas.forEach(input => {
-                const idReceta = input.name.match(/\[(.*?)\]/)[1];
+    // Verificar cada receta
+    recetas.forEach(input => {
+        const idReceta = input.name.match(/\[(.*?)\]/)[1];
 
-                // Verificar si está marcado como enviado
-                const enviadoCheckbox = document.querySelector(`input[name="es_enviado[${idReceta}]"]`);
-                if (enviadoCheckbox && enviadoCheckbox.checked) {
-                    tieneEnviados = true;
-                }
+        // Verificar si está cancelado pero sin observación
+        const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
+        const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
+        if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
+            tieneCanceladosSinObservacion = true;
+        }
+    });
 
-                // Verificar si está cancelado pero sin observación
-                const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
-                const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
-                if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
-                    tieneCanceladosSinObservacion = true;
-                }
-            });
+    if (tieneCanceladosSinObservacion) {
+        alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
+        e.preventDefault();
+        return false;
+    }
 
-            // Mostrar advertencias si es necesario
-            if (!tieneEnviados) {
-                if (!confirm('No has marcado ningún pedido como enviado. ¿Deseas continuar?')) {
-                    e.preventDefault();
-                    return false;
-                }
-            }
-
-            if (tieneCanceladosSinObservacion) {
-                alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
-                e.preventDefault();
-                return false;
-            }
-
-            return true;
-        });
+    return true; // Permitir siempre el envío si no hay cancelados sin observación
+});
         // Función para actualizar estados
         function actualizarEstados(checkbox, idReceta) {
             console.log(`Actualizando estado para receta ${idReceta}`);

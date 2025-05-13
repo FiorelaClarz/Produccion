@@ -29,6 +29,7 @@ class ProduccionController extends Controller
             $fechaActual = Carbon::now()->toDateString();
             $idAreaUsuario = $usuario->id_areas;
 
+
             // Verificar si el usuario tiene un equipo activo
             $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
                 ->where('status', true)
@@ -37,20 +38,18 @@ class ProduccionController extends Controller
                 ->with(['usuario', 'area', 'turno'])
                 ->first();
 
-            // Obtener solo recetas que no tienen producción enviada
+            // Obtener recetas sin filtrar por es_enviado
             $pedidosDetalle = PedidoDetalle::with(['receta', 'receta.producto', 'receta.detalles', 'receta.detalles.producto', 'receta.instructivo', 'uMedida'])
                 ->whereDate('created_at', $fechaActual)
                 ->where('id_areas', $idAreaUsuario)
                 ->where('is_deleted', false)
-                ->whereHas('receta', function($query) {
+                ->whereHas('receta', function ($query) {
                     $query->whereNotNull('id_recetas')
                         ->whereHas('producto')
                         ->whereHas('detalles');
                 })
-                ->whereDoesntHave('receta.produccionesDetalle', function($query) {
-                    $query->where('es_enviado', true);
-                })
                 ->get(['id_pedidos_det', 'id_recetas', 'cantidad', 'es_personalizado', 'descripcion', 'foto_referencial', 'id_u_medidas', 'id_areas']);
+
 
             // Agrupar por receta y sumar cantidades
             $recetasAgrupadas = $pedidosDetalle->groupBy('id_recetas')->map(function ($items) {
@@ -83,192 +82,188 @@ class ProduccionController extends Controller
         return view('produccion.index', compact('producciones'));
     }
 
-public function guardarProduccionPersonal(Request $request)
-{
-    Log::info('Datos recibidos en guardarProduccionPersonal:', $request->all());
-    Log::info('Inicio de guardarProduccionPersonal');
-    Log::info('Datos recibidos:', $request->all());
+    public function guardarProduccionPersonal(Request $request)
+    {
+        Log::info('Datos recibidos en guardarProduccionPersonal:', $request->all());
+        Log::info('Inicio de guardarProduccionPersonal');
+        Log::info('Datos recibidos:', $request->all());
 
-    // Validación ajustada
-    $validated = $request->validate([
-        'id_equipos' => 'required|exists:equipos_cab,id_equipos_cab',
-        'id_recetas_cab' => 'required|array',
-        'id_recetas_cab.*' => 'exists:recetas_cab,id_recetas',
-        'cantidad_producida_real' => 'required|array',
-        'cantidad_producida_real.*' => 'numeric|min:0',
-        'id_u_medidas_prodcc' => 'required|array',
-        'id_u_medidas_prodcc.*' => 'exists:u_medidas,id_u_medidas',
-        'es_iniciado' => 'sometimes|array',
-        'es_terminado' => 'sometimes|array',
-        'es_cancelado' => 'sometimes|array',
-        'es_enviado' => 'array', // Cambiado a required
-        'es_enviado.*' => 'boolean', // Asegurar que cada valor sea booleano
-        'costo_diseño' => 'sometimes|array',
-        'costo_diseño.*' => 'nullable|numeric|min:0',
-        'observaciones' => 'sometimes|array',
-        'observaciones.*' => 'nullable|string|max:500'
-    ]);
+        // Validación ajustada
+        $validated = $request->validate([
+            'id_equipos' => 'required|exists:equipos_cab,id_equipos_cab',
+            'id_recetas_cab' => 'required|array',
+            'id_recetas_cab.*' => 'exists:recetas_cab,id_recetas',
+            'cantidad_producida_real' => 'required|array',
+            'cantidad_producida_real.*' => 'numeric|min:0',
+            'id_u_medidas_prodcc' => 'required|array',
+            'id_u_medidas_prodcc.*' => 'exists:u_medidas,id_u_medidas',
+            'es_iniciado' => 'sometimes|array',
+            'es_terminado' => 'sometimes|array',
+            'es_cancelado' => 'sometimes|array',
 
-    Log::info('Datos validados:', $validated);
-
-    DB::beginTransaction();
-
-    try {
-        $equipo = EquipoCabecera::findOrFail($request->id_equipos);
-        $usuario = auth()->user();
-
-        // Crear la cabecera de producción
-        $produccionCab = ProduccionCabecera::create([
-            'id_equipos' => $equipo->id_equipos_cab,
-            'id_turnos' => $equipo->id_turnos,
-            'id_usuario' => $usuario->id_usuarios,
-            'fecha' => Carbon::now()->format('Y-m-d'),
-            'hora' => Carbon::now()->format('H:i:s'),
-            'doc_interno' => 'PROD-' . Carbon::now()->format('YmdHis')
+            'costo_diseño' => 'sometimes|array',
+            'costo_diseño.*' => 'nullable|numeric|min:0',
+            'observaciones' => 'sometimes|array',
+            'observaciones.*' => 'nullable|string|max:500'
         ]);
 
-        Log::info('Cabecera de producción creada:', ['id' => $produccionCab->id_produccion_cab]);
+        Log::info('Datos validados:', $validated);
 
-        // Procesar cada receta
-        foreach ($request->id_recetas_cab as $idReceta) {
-            $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
-            
-            // Obtener pedidos del día para esta receta
-            $pedidos = PedidoDetalle::where('id_recetas', $idReceta)
-                ->whereDate('created_at', Carbon::today())
-                ->where('id_areas', $usuario->id_areas)
-                ->get();
+        DB::beginTransaction();
 
-            $cantidadPedido = $pedidos->sum('cantidad');
-            $cantidadEsperada = ($receta->id_areas == 1) 
-    ? $cantidadPedido * $receta->constante_peso_lata 
-    : $cantidadPedido * 1;
-            $cantidadProducida = $request->cantidad_producida_real[$idReceta] ?? $cantidadEsperada;
+        try {
+            $equipo = EquipoCabecera::findOrFail($request->id_equipos);
+            $usuario = auth()->user();
 
-            // Buscar componente de harina
-            $componenteHarina = $receta->detalles->first(function($item) {
-                return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
-            });
-            
-            $cantHarina = $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
-
-            // Calcular subtotal
-            $subtotalReceta = 0;
-            foreach ($receta->detalles as $detalle) {
-                $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
-            }
-
-            // Determinar estados con valores por defecto
-    $esIniciado = (bool)($request->es_iniciado[$idReceta] ?? false);
-    $esTerminado = (bool)($request->es_terminado[$idReceta] ?? false);
-    $esCancelado = (bool)($request->es_cancelado[$idReceta] ?? false);
-    $esEnviado = (bool)($request->es_enviado[$idReceta] ?? false);
-
-    // Validar que no se pueda terminar sin iniciar
-    if ($esTerminado && !$esIniciado) {
-        throw new \Exception("No se puede terminar una producción sin iniciarla");
-    }
-
-    // Validar costo diseño para pedidos personalizados
-    $costoDiseno = 0;
-    $pedidosPersonalizados = $pedidos->where('es_personalizado', true);
-    
-    if ($pedidosPersonalizados->count() > 0 && $esTerminado) {
-        foreach ($pedidosPersonalizados as $pedido) {
-            $costo = $request->costo_diseño[$pedido->id_pedidos_det] ?? 0;
-            if ($costo <= 0) {
-                throw new \Exception("Debe ingresar un costo de diseño válido para los pedidos personalizados");
-            }
-            $costoDiseno += floatval($costo);
-        }
-    }
-
-            // Crear detalle de producción
-            $produccionDet = ProduccionDetalle::create([
-                'id_produccion_cab' => $produccionCab->id_produccion_cab,
-                'id_productos_api' => $receta->id_productos_api,
-                'id_u_medidas' => $receta->id_u_medidas,
-                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
-                'id_recetas_cab' => $receta->id_recetas,
-                'id_recetas_det' => $componenteHarina ? $componenteHarina->id_recetas_det : null,
-                'id_areas' => $receta->id_areas,
-                'cantidad_pedido' => $cantidadPedido,
-                'cantidad_esperada' => $cantidadEsperada,
-                'cantidad_producida_real' => $cantidadProducida,
-                'es_iniciado' => $esIniciado,
-                'es_terminado' => $esTerminado,
-                'es_cancelado' => $esCancelado,
-                'es_enviado' => $esEnviado,
-                'costo_diseño' => $costoDiseno,
-                'subtotal_receta' => $subtotalReceta,
-                'total_receta' => $subtotalReceta + $costoDiseno,
-                'cant_harina' => $cantHarina,
-                'observaciones' => $request->observaciones[$idReceta] ?? null
+            // Crear la cabecera de producción
+            $produccionCab = ProduccionCabecera::create([
+                'id_equipos' => $equipo->id_equipos_cab,
+                'id_turnos' => $equipo->id_turnos,
+                'id_usuario' => $usuario->id_usuarios,
+                'fecha' => Carbon::now()->format('Y-m-d'),
+                'hora' => Carbon::now()->format('H:i:s'),
+                'doc_interno' => 'PROD-' . Carbon::now()->format('YmdHis')
             ]);
 
-            Log::info('Detalle de producción creado:', [
-                'id' => $produccionDet->id_produccion_det,
-                'receta_id' => $idReceta,
-                'cantidad_producida' => $cantidadProducida
+            Log::info('Cabecera de producción creada:', ['id' => $produccionCab->id_produccion_cab]);
+
+            // Procesar cada receta
+            foreach ($request->id_recetas_cab as $idReceta) {
+                $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
+
+                // Obtener pedidos del día para esta receta
+                $pedidos = PedidoDetalle::where('id_recetas', $idReceta)
+                    ->whereDate('created_at', Carbon::today())
+                    ->where('id_areas', $usuario->id_areas)
+                    ->get();
+
+                $cantidadPedido = $pedidos->sum('cantidad');
+                $cantidadEsperada = ($receta->id_areas == 1)
+                    ? $cantidadPedido * $receta->constante_peso_lata
+                    : $cantidadPedido * 1;
+                $cantidadProducida = $request->cantidad_producida_real[$idReceta] ?? $cantidadEsperada;
+
+                // Buscar componente de harina
+                $componenteHarina = $receta->detalles->first(function ($item) {
+                    return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
+                });
+
+                $cantHarina = $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
+
+                // Calcular subtotal
+                $subtotalReceta = 0;
+                foreach ($receta->detalles as $detalle) {
+                    $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
+                }
+
+                // Determinar estados con valores por defecto
+                $esIniciado = (bool)($request->es_iniciado[$idReceta] ?? false);
+                $esTerminado = (bool)($request->es_terminado[$idReceta] ?? false);
+                $esCancelado = (bool)($request->es_cancelado[$idReceta] ?? false);
+                $esEnviado = (bool)($request->es_enviado[$idReceta] ?? false);
+
+                // Validar que no se pueda terminar sin iniciar
+                if ($esTerminado && !$esIniciado) {
+                    throw new \Exception("No se puede terminar una producción sin iniciarla");
+                }
+
+                // Validar costo diseño para pedidos personalizados
+                $costoDiseno = 0;
+                $pedidosPersonalizados = $pedidos->where('es_personalizado', true);
+
+                if ($pedidosPersonalizados->count() > 0 && $esTerminado) {
+                    foreach ($pedidosPersonalizados as $pedido) {
+                        $costo = $request->costo_diseño[$pedido->id_pedidos_det] ?? 0;
+                        if ($costo <= 0) {
+                            throw new \Exception("Debe ingresar un costo de diseño válido para los pedidos personalizados");
+                        }
+                        $costoDiseno += floatval($costo);
+                    }
+                }
+
+                // Crear detalle de producción
+                $produccionDet = ProduccionDetalle::create([
+                    'id_produccion_cab' => $produccionCab->id_produccion_cab,
+                    'id_productos_api' => $receta->id_productos_api,
+                    'id_u_medidas' => $receta->id_u_medidas,
+                    'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
+                    'id_recetas_cab' => $receta->id_recetas,
+                    'id_recetas_det' => $componenteHarina ? $componenteHarina->id_recetas_det : null,
+                    'id_areas' => $receta->id_areas,
+                    'cantidad_pedido' => $cantidadPedido,
+                    'cantidad_esperada' => $cantidadEsperada,
+                    'cantidad_producida_real' => $cantidadProducida,
+                    'es_iniciado' => $esIniciado,
+                    'es_terminado' => $esTerminado,
+                    'es_cancelado' => $esCancelado,
+                    'costo_diseño' => $costoDiseno,
+                    'subtotal_receta' => $subtotalReceta,
+                    'total_receta' => $subtotalReceta + $costoDiseno,
+                    'cant_harina' => $cantHarina,
+                    'observaciones' => $request->observaciones[$idReceta] ?? null
+                ]);
+
+                Log::info('Detalle de producción creado:', [
+                    'id' => $produccionDet->id_produccion_det,
+                    'receta_id' => $idReceta,
+                    'cantidad_producida' => $cantidadProducida
+                ]);
+
+                // Actualizar estado de los pedidos
+                $this->actualizarEstadosPedidos($pedidos, $esIniciado, $esTerminado, $esCancelado);
+            }
+
+            DB::commit();
+            $total = $produccionCab->produccionesDetalle()->count();
+
+          
+            return redirect()->route('produccion.index')
+                ->with('success', "Producción registrada correctamente");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al registrar la producción: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
             ]);
-
-            // Actualizar estado de los pedidos
-            $this->actualizarEstadosPedidos($pedidos, $esIniciado, $esTerminado, $esCancelado);
-        }
-
-        DB::commit();
-        
-        $enviados = $produccionCab->produccionesDetalle()->where('es_enviado', true)->count();
-        $total = $produccionCab->produccionesDetalle()->count();
-
-        return redirect()->route('produccion.index')
-            ->with('success', "Producción registrada correctamente. Se enviaron {$enviados} de {$total} registros.");
-            
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error al registrar la producción: ' . $e->getMessage(), [
-            'exception' => $e,
-            'trace' => $e->getTraceAsString()
-        ]);
-        return back()->with('error', 'Error al registrar la producción: ' . $e->getMessage())
-                    ->withInput();
-    }
-}
-
-// Métodos auxiliares
-protected function calcularCostoDiseno($request, $idReceta)
-{
-    if (empty($request->costo_diseño)) return 0;
-    
-    $total = 0;
-    foreach ($request->costo_diseño as $pedidoId => $costo) {
-        $pedido = PedidoDetalle::find($pedidoId);
-        if ($pedido && $pedido->id_recetas == $idReceta) {
-            $total += (float)$costo;
+            return back()->with('error', 'Error al registrar la producción: ' . $e->getMessage())
+                ->withInput();
         }
     }
-    return $total;
-}
 
-protected function calcularSubtotal($receta, $cantidadPedido)
-{
-    return $receta->detalles->sum(fn($detalle) => $detalle->subtotal_receta * $cantidadPedido);
-}
+    // Métodos auxiliares
+    protected function calcularCostoDiseno($request, $idReceta)
+    {
+        if (empty($request->costo_diseño)) return 0;
 
-protected function calcularTotal($receta, $cantidadPedido, $request, $idReceta)
-{
-    $subtotal = $this->calcularSubtotal($receta, $cantidadPedido);
-    $costoDiseno = $this->calcularCostoDiseno($request, $idReceta);
-    return $subtotal + $costoDiseno;
-}
+        $total = 0;
+        foreach ($request->costo_diseño as $pedidoId => $costo) {
+            $pedido = PedidoDetalle::find($pedidoId);
+            if ($pedido && $pedido->id_recetas == $idReceta) {
+                $total += (float)$costo;
+            }
+        }
+        return $total;
+    }
 
-protected function calcularHarina($receta, $cantidadPedido)
-{
-    $componenteHarina = $receta->detalles->first(function($item) {
-        return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
-    });
-    return $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
-}
+    protected function calcularSubtotal($receta, $cantidadPedido)
+    {
+        return $receta->detalles->sum(fn($detalle) => $detalle->subtotal_receta * $cantidadPedido);
+    }
+
+    protected function calcularTotal($receta, $cantidadPedido, $request, $idReceta)
+    {
+        $subtotal = $this->calcularSubtotal($receta, $cantidadPedido);
+        $costoDiseno = $this->calcularCostoDiseno($request, $idReceta);
+        return $subtotal + $costoDiseno;
+    }
+
+    protected function calcularHarina($receta, $cantidadPedido)
+    {
+        $componenteHarina = $receta->detalles->first(function ($item) {
+            return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
+        });
+        return $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
+    }
 
     protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado)
     {
@@ -281,7 +276,7 @@ protected function calcularHarina($receta, $cantidadPedido)
         } elseif ($esIniciado) {
             $estado = 3; // En proceso
         }
-        
+
         if ($estado !== null) {
             foreach ($pedidosDetalle as $pedidoDet) {
                 $pedidoDet->update(['id_estados' => $estado]);
@@ -306,9 +301,9 @@ protected function calcularHarina($receta, $cantidadPedido)
         $cantidadPedido = $pedidosDetalle->sum('cantidad');
 
         // Calcular cantidad esperada (cantidad pedida * constante crecimiento)
-        $cantidadEsperada = ($recetaCabecera->id_areas == 1) 
-    ? $cantidadPedido * $recetaCabecera->constante_peso_lata 
-    : $cantidadPedido * 1;
+        $cantidadEsperada = ($recetaCabecera->id_areas == 1)
+            ? $cantidadPedido * $recetaCabecera->constante_peso_lata
+            : $cantidadPedido * 1;
 
         // Obtener el componente de harina si existe
         $recetaHarina = $recetaCabecera->detalles
@@ -475,7 +470,7 @@ protected function calcularHarina($receta, $cantidadPedido)
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-   
+
 
     /**
      * Exportar producción a PDF

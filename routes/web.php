@@ -11,6 +11,7 @@ use App\Http\Controllers\UMedidaController;
 use App\Http\Controllers\RecetaController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\EquipoController;
+use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\HoraLimiteController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
@@ -188,21 +189,21 @@ Route::middleware(['auth'])->group(function () {
         });
     });
     // Ruta para acceder a las imágenes de pedidos
-Route::get('/storage/pedidos/{filename}', function ($filename) {
-    $path = storage_path('app/public/pedidos/' . $filename);
+    Route::get('/storage/pedidos/{filename}', function ($filename) {
+        $path = storage_path('app/public/pedidos/' . $filename);
 
-    if (!File::exists($path)) {
-        abort(404);
-    }
+        if (!File::exists($path)) {
+            abort(404);
+        }
 
-    $file = File::get($path);
-    $type = File::mimeType($path);
+        $file = File::get($path);
+        $type = File::mimeType($path);
 
-    $response = Response::make($file, 200);
-    $response->header("Content-Type", $type);
+        $response = Response::make($file, 200);
+        $response->header("Content-Type", $type);
 
-    return $response;
-})->name('pedidos.image')->where('filename', '.*'); // Acepta cualquier caracter en el nombre
+        return $response;
+    })->name('pedidos.image')->where('filename', '.*'); // Acepta cualquier caracter en el nombre
 
 
     // Rutas para equipos
@@ -264,10 +265,11 @@ Route::get('/storage/pedidos/{filename}', function ($filename) {
         Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
         Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
         Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
-     // Agrega esta nueva ruta:
-    Route::post('/actualizar', [ProduccionController::class, 'actualizarProduccion'])
-        ->name('produccion.actualizar');
-    
-    
+        // Agrega esta nueva ruta:
+        // Route::post('/actualizar', [ProduccionController::class, 'actualizarProduccion'])
+        //     ->name('produccion.actualizar');
+        Route::get('/produccion/filter-by-date', [ProduccionController::class, 'filterByDate'])
+    ->middleware('auth')
+    ->name('produccion.filter-by-date');
     });
 });
