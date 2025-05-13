@@ -6,6 +6,28 @@ use Illuminate\Support\Facades\Storage;
 @section('content')
 
 <div class="container">
+
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    @endif
+    
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ session('error') }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    @endif
+
+
+
+
     @if(!$equipoActivo)
     <!-- Notificación centrada para ingresar equipo de trabajo -->
     <div class="modal-notification" id="equipoNotification">
@@ -706,17 +728,6 @@ use Illuminate\Support\Facades\Storage;
     // Modificamos el evento submit del formulario
     document.getElementById('produccionForm').addEventListener('submit', function(e) {
         console.log("Preparando envío del formulario...");
-
-        // Agregar recetas al formulario
-        const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
-        recetas.forEach(input => {
-            const idReceta = input.name.match(/\[(.*?)\]/)[1];
-            const hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.name = 'id_recetas_cab[]';
-            hiddenInput.value = idReceta;
-            this.appendChild(hiddenInput);
-        });
 
         // Verificar datos antes de enviar
         const formData = new FormData(this);

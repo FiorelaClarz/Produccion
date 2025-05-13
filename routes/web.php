@@ -252,24 +252,20 @@ Route::middleware(['auth'])->group(function () {
 
     // Rutas de producción
     Route::prefix('produccion')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ProduccionController::class, 'index'])->name('produccion.index');
-        Route::get('/create', [\App\Http\Controllers\ProduccionController::class, 'create'])->name('produccion.create');
-        Route::post('/', [\App\Http\Controllers\ProduccionController::class, 'store'])->name('produccion.store');
-        Route::get('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'show'])->name('produccion.show');
-        Route::get('/{produccion}/edit', [\App\Http\Controllers\ProduccionController::class, 'edit'])->name('produccion.edit');
-        Route::put('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'update'])->name('produccion.update');
-        Route::delete('/{produccion}', [\App\Http\Controllers\ProduccionController::class, 'destroy'])->name('produccion.destroy');
+    // Rutas específicas primero
+    Route::get('/personal', [ProduccionController::class, 'index'])->name('produccion.index-personal');
+    Route::post('/guardar-personal', [ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
+    
+    // Rutas de recursos estándar después
+    Route::get('/', [ProduccionController::class, 'index'])->name('produccion.index');
+    Route::get('/create', [ProduccionController::class, 'create'])->name('produccion.create');
+    Route::post('/', [ProduccionController::class, 'store'])->name('produccion.store');
+    Route::get('/{produccion}', [ProduccionController::class, 'show'])->name('produccion.show');
+    Route::get('/{produccion}/edit', [ProduccionController::class, 'edit'])->name('produccion.edit');
+    Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
+    Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
 
-        // Rutas adicionales
-        Route::post('/guardar-personal', [\App\Http\Controllers\ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
-        Route::get('/{produccion}/pdf', [\App\Http\Controllers\ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
-        Route::get('/datos-graficos', [\App\Http\Controllers\ProduccionController::class, 'obtenerDatosGraficos'])->name('produccion.datos-graficos');
-        Route::get('/reportes', [\App\Http\Controllers\ProduccionController::class, 'reportes'])->name('produccion.reportes');
-        // Agrega esta nueva ruta:
-        // Route::post('/actualizar', [ProduccionController::class, 'actualizarProduccion'])
-        //     ->name('produccion.actualizar');
-        Route::get('/produccion/filter-by-date', [ProduccionController::class, 'filterByDate'])
-    ->middleware('auth')
-    ->name('produccion.filter-by-date');
-    });
+    // Otras rutas adicionales
+    Route::get('/{produccion}/pdf', [ProduccionController::class, 'exportarPdf'])->name('produccion.pdf');
+});
 });
