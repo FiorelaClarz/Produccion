@@ -11,8 +11,6 @@
                         <span class="badge bg-light text-primary">Versión {{ $instructivo->version }}</span>
                     </div>
                     <p class="mb-0"><small>Receta: {{ $instructivo->receta->nombre }}</small></p>
-                    <p class="mb-0"><small>Cantidad producida: {{ $cantidadProduccion }} {{ $instructivo->receta->uMedida->nombre }}</small></p>
-                    <p class="mb-0"><small>Factor de ajuste: {{ number_format($factor, 2) }}x</small></p>
                 </div>
                 
                 <div class="card-body p-0">
@@ -27,14 +25,7 @@
                                         <span class="text-muted">Rendimiento base:</span>
                                         <span class="fw-medium">{{ $receta->cant_rendimiento }} {{ $receta->uMedida->nombre }}</span>
                                     </li>
-                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Cantidad producida:</span>
-                                        <span class="fw-medium">{{ $cantidadProduccion }} {{ $receta->uMedida->nombre }}</span>
-                                    </li>
-                                    <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0 py-2 border-bottom">
-                                        <span class="text-muted">Factor de ajuste:</span>
-                                        <span class="fw-medium">{{ number_format($factor, 2) }}x</span>
-                                    </li>
+                                    
                                 </ul>
                                 
                                 <h5 class="text-primary mt-4 mb-3"><i class="fas fa-utensils me-2"></i>Ingredientes Ajustados</h5>
@@ -45,7 +36,6 @@
                                             <tr>
                                                 <th>Ingrediente</th>
                                                 <th class="text-end">Base</th>
-                                                <th class="text-end">Ajustado</th>
                                                 <th class="text-end">Unidad</th>
                                             </tr>
                                         </thead>
@@ -58,9 +48,7 @@
                                                 <td class="text-end">
                                                     {{ number_format($ingrediente['cantidad_base'], 2) }}
                                                 </td>
-                                                <td class="text-end">
-                                                    <strong>{{ number_format($ingrediente['cantidad'], 2) }}</strong>
-                                                </td>
+                                                
                                                 <td class="pe-0 text-end">
                                                     {{ $ingrediente['u_medida'] }}
                                                 </td>
@@ -100,7 +88,6 @@
                                                         @if($ingrediente)
                                                         <li>
                                                             {{ $ingrediente['nombre'] }}: 
-                                                            {{ number_format($ingrediente['cantidad'], 2) }} 
                                                             {{ $ingrediente['u_medida'] }}
                                                         </li>
                                                         @endif

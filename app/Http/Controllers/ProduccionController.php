@@ -25,8 +25,9 @@ class ProduccionController extends Controller
     {
         $usuario = Auth::user();
 
+
+
         if ($usuario->id_roles == 3) {
-            // Lógica para vista personal
             $fechaActual = Carbon::now()->toDateString();
             $idAreaUsuario = $usuario->id_areas;
 
@@ -37,6 +38,14 @@ class ProduccionController extends Controller
                 ->with(['usuario', 'area', 'turno'])
                 ->first();
 
+            // Al inicio del método index()
+            Log::info('Accediendo a producción personal', [
+                'user_id' => $usuario->id_usuarios,
+                'area_id' => $usuario->id_areas,
+                'fecha' => $fechaActual
+            ]);
+
+            // Obtener todos los pedidos del día
             $pedidosDetalle = PedidoDetalle::with(['receta', 'receta.producto', 'receta.detalles', 'receta.detalles.producto', 'receta.instructivo', 'uMedida'])
                 ->whereDate('created_at', $fechaActual)
                 ->where('id_areas', $idAreaUsuario)
@@ -46,29 +55,148 @@ class ProduccionController extends Controller
                         ->whereHas('producto')
                         ->whereHas('detalles');
                 })
-                ->get(['id_pedidos_det', 'id_recetas', 'cantidad', 'es_personalizado', 'descripcion', 'foto_referencial', 'id_u_medidas', 'id_areas']);
+                ->get(['id_pedidos_det', 'id_recetas', 'cantidad', 'es_personalizado', 'descripcion', 'foto_referencial', 'id_u_medidas', 'id_areas', 'id_estados']);
 
-            $recetasAgrupadas = $pedidosDetalle->groupBy('id_recetas')->map(function ($items) {
-                $receta = $items->first()->receta;
-                return [
-                    'cantidad_total' => $items->sum('cantidad'),
-                    'es_personalizado' => $items->contains('es_personalizado', true),
-                    'id_productos_api' => $items->first()->id_productos_api,
-                    'id_u_medidas' => $items->first()->id_u_medidas,
-                    'id_areas' => $items->first()->id_areas,
-                    'receta' => $receta,
-                    'pedidos' => $items
-                ];
-            })->filter(function ($item) {
-                return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
-            });
+            // Después de obtener los pedidos
+            Log::debug('Pedidos obtenidos', [
+                'total_pedidos' => $pedidosDetalle->count(),
+                'estados_distribucion' => $pedidosDetalle->groupBy('id_estados')->map->count()
+            ]);
 
-            $unidadesMedida = UMedida::activos()->get();
 
-            // Verifica si la solicitud es para la vista personal
-            if (request()->is('produccion/personal')) {
-                return view('produccion.index-personal', compact('recetasAgrupadas', 'unidadesMedida', 'usuario', 'equipoActivo'));
-            }
+
+
+
+// Primero separamos los pedidos terminados/cancelados de los pendientes
+        $pedidosPendientes = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == null || $pedido->id_estados < 4; // 4 = terminado, 5 = cancelado
+        });
+
+        $pedidosTerminados = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == 4; // 4 = terminado
+        });
+
+        $pedidosCancelados = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == 5; // 5 = cancelado
+        });
+
+        // Agrupar por receta y estado - solo para pedidos pendientes
+        $recetasAgrupadasPendientes = $pedidosPendientes->groupBy('id_recetas')->map(function ($items) {
+            $receta = $items->first()->receta;
+            $estadoGeneral = $this->determinarEstadoGeneral($items);
+            
+            return [
+                'cantidad_total' => $items->sum('cantidad'),
+                'es_personalizado' => $items->contains('es_personalizado', true),
+                'id_productos_api' => $items->first()->id_productos_api,
+                'id_u_medidas' => $items->first()->id_u_medidas,
+                'id_areas' => $items->first()->id_areas,
+                'receta' => $receta,
+                'pedidos' => $items,
+                'estado_general' => $estadoGeneral
+            ];
+        })->filter(function ($item) {
+            return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
+        });
+
+        // Agrupar pedidos terminados
+// Agrupar pedidos terminados
+$recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(function ($items) {
+    $receta = $items->first()->receta;
+    
+    return [
+        'cantidad_total' => $items->sum('cantidad'),
+        'cantidad_producida_real' => $items->first()->cantidad_producida_real ?? $items->sum('cantidad'), // Asegúrate de incluir esto
+        'es_personalizado' => $items->contains('es_personalizado', true),
+        'id_productos_api' => $items->first()->id_productos_api,
+        'id_u_medidas' => $items->first()->id_u_medidas,
+        'id_areas' => $items->first()->id_areas,
+        'receta' => $receta,
+        'pedidos' => $items,
+        'estado_general' => 'terminado'
+    ];
+})->filter(function ($item) {
+    return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
+});
+        // Agrupar pedidos cancelados
+        $recetasAgrupadasCanceladas = $pedidosCancelados->groupBy('id_recetas')->map(function ($items) {
+            $receta = $items->first()->receta;
+            
+            return [
+                'cantidad_total' => $items->sum('cantidad'),
+                'es_personalizado' => $items->contains('es_personalizado', true),
+                'id_productos_api' => $items->first()->id_productos_api,
+                'id_u_medidas' => $items->first()->id_u_medidas,
+                'id_areas' => $items->first()->id_areas,
+                'receta' => $receta,
+                'pedidos' => $items,
+                'estado_general' => 'cancelado'
+            ];
+        })->filter(function ($item) {
+            return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
+        });
+
+
+
+
+            // // Agrupar por receta y estado
+            // $recetasAgrupadas = $pedidosDetalle->groupBy('id_recetas')->map(function ($items) {
+            //     $receta = $items->first()->receta;
+            //     $estadoGeneral = $this->determinarEstadoGeneral($items);
+
+            //     return [
+            //         'cantidad_total' => $items->sum('cantidad'),
+            //         'es_personalizado' => $items->contains('es_personalizado', true),
+            //         'id_productos_api' => $items->first()->id_productos_api,
+            //         'id_u_medidas' => $items->first()->id_u_medidas,
+            //         'id_areas' => $items->first()->id_areas,
+            //         'receta' => $receta,
+            //         'pedidos' => $items,
+            //         'estado_general' => $estadoGeneral
+            //     ];
+            // })->filter(function ($item) {
+            //     return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
+            // });
+
+            // // Después de agrupar por receta
+            // Log::debug('Recetas agrupadas', [
+            //     'total_recetas' => $recetasAgrupadas->count(),
+            //     'estados_distribucion' => $recetasAgrupadas->groupBy('estado_general')->map->count()
+            // ]);
+
+            // Filtrar por estado según parámetro de URL
+             // Filtrar por estado según parámetro de URL
+        $estadoFiltro = request()->query('estado', 'pendientes');
+        
+        $recetasFiltradas = collect();
+        
+        switch ($estadoFiltro) {
+            case 'terminados':
+                $recetasFiltradas = $recetasAgrupadasTerminadas;
+                break;
+            case 'cancelados':
+                $recetasFiltradas = $recetasAgrupadasCanceladas;
+                break;
+            case 'pendientes':
+            default:
+                $recetasFiltradas = $recetasAgrupadasPendientes;
+                break;
+        }
+
+        $unidadesMedida = UMedida::activos()->get();
+
+        if (request()->is('produccion/personal')) {
+            return view('produccion.index-personal', [
+                'recetasAgrupadas' => $recetasFiltradas,
+                'unidadesMedida' => $unidadesMedida,
+                'usuario' => $usuario,
+                'equipoActivo' => $equipoActivo,
+                'estadoActual' => $estadoFiltro,
+                'totalPendientes' => $recetasAgrupadasPendientes->count(),
+                'totalTerminados' => $recetasAgrupadasTerminadas->count(),
+                'totalCancelados' => $recetasAgrupadasCanceladas->count()
+            ]);
+        }
         }
 
         // Para otros roles o vista normal
@@ -79,6 +207,36 @@ class ProduccionController extends Controller
 
         return view('produccion.index', compact('producciones'));
     }
+
+
+    // Métodos auxiliares para determinar estados
+    protected function determinarEstadoGeneral($pedidos)
+    {
+        if ($pedidos->where('id_estados', 5)->count() > 0) {
+            return 'cancelado';
+        }
+        if ($pedidos->where('id_estados', 4)->count() > 0) {
+            return 'terminado';
+        }
+        if ($pedidos->where('id_estados', 3)->count() > 0) {
+            return 'en_proceso';
+        }
+        return 'pendiente';
+    }
+
+    protected function cumpleFiltroEstado($recetaAgrupada, $filtro)
+    {
+        switch ($filtro) {
+            case 'terminados':
+                return $recetaAgrupada['estado_general'] === 'terminado';
+            case 'cancelados':
+                return $recetaAgrupada['estado_general'] === 'cancelado';
+            case 'pendientes':
+            default:
+                return in_array($recetaAgrupada['estado_general'], ['pendiente', 'en_proceso']);
+        }
+    }
+
 
     public function guardarProduccionPersonal(Request $request)
     {
@@ -271,23 +429,35 @@ class ProduccionController extends Controller
     }
 
     protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado)
-    {
-        $estado = null;
+{
+    $estado = null;
 
-        if ($esCancelado) {
-            $estado = 5; // Cancelado
-        } elseif ($esTerminado) {
-            $estado = 4; // Terminado
-        } elseif ($esIniciado) {
-            $estado = 3; // En proceso
-        }
+    if ($esCancelado) {
+        $estado = 5; // Cancelado
+    } elseif ($esTerminado) {
+        $estado = 4; // Terminado
+    } elseif ($esIniciado) {
+        $estado = 3; // En proceso
+    }
 
-        if ($estado !== null) {
-            foreach ($pedidosDetalle as $pedidoDet) {
+    if ($estado !== null) {
+        foreach ($pedidosDetalle as $pedidoDet) {
+            // Solo actualizamos el estado si no está ya terminado o cancelado
+            if ($pedidoDet->id_estados != 4 && $pedidoDet->id_estados != 5) {
                 $pedidoDet->update(['id_estados' => $estado]);
+                Log::info("Actualizado estado del pedido", [
+                    'pedido_id' => $pedidoDet->id_pedidos_det,
+                    'nuevo_estado' => $estado
+                ]);
+            } else {
+                Log::info("Pedido no actualizado - ya tiene estado final", [
+                    'pedido_id' => $pedidoDet->id_pedidos_det,
+                    'estado_actual' => $pedidoDet->id_estados
+                ]);
             }
         }
     }
+}
 
     // Modificación en el método procesarRecetaProduccion()
     protected function procesarRecetaProduccion($idReceta, $key, $request, $produccionCabecera, $usuario)

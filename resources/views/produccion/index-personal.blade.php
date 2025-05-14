@@ -52,7 +52,33 @@ use Illuminate\Support\Facades\Storage;
     </div>
     @endif
 
-    <h1 class="mb-4 text-center">Producción del Día</h1>
+<div class="row mb-4">
+    <div class="col-12">
+        <ul class="nav nav-tabs" id="productionTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link {{ $estadoActual === 'pendientes' ? 'active' : '' }}" 
+                   href="{{ route('produccion.index-personal', ['estado' => 'pendientes']) }}">
+                    <i class="fas fa-clock mr-2"></i>Pendientes
+                    <span class="badge badge-primary ml-2">{{ $totalPendientes }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $estadoActual === 'terminados' ? 'active' : '' }}" 
+                   href="{{ route('produccion.index-personal', ['estado' => 'terminados']) }}">
+                    <i class="fas fa-check-circle mr-2"></i>Terminados
+                    <span class="badge badge-success ml-2">{{ $totalTerminados }}</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $estadoActual === 'cancelados' ? 'active' : '' }}" 
+                   href="{{ route('produccion.index-personal', ['estado' => 'cancelados']) }}">
+                    <i class="fas fa-times-circle mr-2"></i>Cancelados
+                    <span class="badge badge-danger ml-2">{{ $totalCancelados }}</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
 
     @if($equipoActivo)
     <div class="card equipo-card mb-4">
@@ -192,58 +218,89 @@ use Illuminate\Support\Facades\Storage;
                                 <td class="text-center">{{ number_format($cantidadPedido, 2) }}</td>
                                 <td class="text-center">{{ $nombreUnidadPedido }}</td>
                                 <td class="text-center">{{ number_format($cantidadEsperada, 2) }}</td>
+                               <td class="text-center">
+    @if($estadoActual === 'pendientes')
+        <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
+            class="form-control form-control-sm production-input"
+            step="0.01" min="0"
+            value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}"
+            {{ $recetaData['es_personalizado'] ? '' : 'readonly' }}">
+    @else
+        {{ number_format($recetaData['cantidad_producida_real'] ?? $cantidadEsperada, 2) }}
+    @endif
+</td>
+<td class="text-center">
+    @if($estadoActual === 'pendientes')
+        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm">
+            @foreach($unidadesMedida as $unidad)
+            <option value="{{ $unidad->id_u_medidas }}"
+                {{ $unidad->id_u_medidas == $recetaData['id_u_medidas'] ? 'selected' : '' }}>
+                {{ $unidad->nombre }}
+            </option>
+            @endforeach
+        </select>
+    @else
+        {{ $unidadesMedida->firstWhere('id_u_medidas', $recetaData['id_u_medidas_prodcc'] ?? $recetaData['id_u_medidas'])->nombre ?? 'N/A' }}
+    @endif
+</td>
+                                
                                 <td class="text-center">
-                                    <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
-                                        class="form-control form-control-sm production-input"
-                                        step="0.01" min="0"
-                                        value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}"
-                                        {{ $recetaData['es_personalizado'] ? '' : 'readonly' }}">
-                                </td>
-                                <td class="text-center">
-                                    <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm">
-                                        @foreach($unidadesMedida as $unidad)
-                                        <option value="{{ $unidad->id_u_medidas }}"
-                                            {{ $unidad->id_u_medidas == $recetaData['id_u_medidas'] ? 'selected' : '' }}>
-                                            {{ $unidad->nombre }}
-                                        </option>
-                                        @endforeach
-                                    </select>
-                                </td>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                                        <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="0">
-                                        <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="0">
-                                        <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="0">
+    @if($estadoActual === 'pendientes')
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="0">
+            <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="0">
+            <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="0">
 
-                                        <label class="btn btn-sm btn-outline-primary estado-btn">
-                                            <input type="checkbox" name="es_iniciado[{{ $idReceta }}]"
-                                                autocomplete="off" value="1"
-                                                onchange="actualizarEstados(this, {{ $idReceta }})"> Iniciar
-                                        </label>
-                                        <label class="btn btn-sm btn-outline-success estado-btn">
-                                            <input type="checkbox" name="es_terminado[{{ $idReceta }}]"
-                                                autocomplete="off" value="1"
-                                                onchange="actualizarEstados(this, {{ $idReceta }})"> Terminar
-                                        </label>
-
-                                        <label class="btn btn-sm btn-outline-danger estado-btn">
-                                            <input type="checkbox" name="es_cancelado[{{ $idReceta }}]"
-                                                autocomplete="off" value="1"
-                                                onchange="mostrarModalObservacion(this, {{ $idReceta }})"> Cancelar
-                                        </label>
-                                    </div>
-                                </td>
+            <label class="btn btn-sm btn-outline-primary estado-btn {{ $recetaData['estado_general'] === 'en_proceso' ? 'active' : '' }}">
+                <input type="checkbox" name="es_iniciado[{{ $idReceta }}]"
+                    autocomplete="off" value="1"
+                    onchange="actualizarEstados(this, {{ $idReceta }})"
+                    {{ $recetaData['estado_general'] === 'en_proceso' ? 'checked' : '' }}> Iniciar
+            </label>
+            <label class="btn btn-sm btn-outline-success estado-btn {{ $recetaData['estado_general'] === 'terminado' ? 'active' : '' }}">
+                <input type="checkbox" name="es_terminado[{{ $idReceta }}]"
+                    autocomplete="off" value="1"
+                    onchange="actualizarEstados(this, {{ $idReceta }})"
+                    {{ $recetaData['estado_general'] === 'terminado' ? 'checked' : '' }}> Terminar
+            </label>
+            <label class="btn btn-sm btn-outline-danger estado-btn {{ $recetaData['estado_general'] === 'cancelado' ? 'active' : '' }}">
+                <input type="checkbox" name="es_cancelado[{{ $idReceta }}]"
+                    autocomplete="off" value="1"
+                    onchange="mostrarModalObservacion(this, {{ $idReceta }})"
+                    {{ $recetaData['estado_general'] === 'cancelado' ? 'checked' : '' }}> Cancelar
+            </label>
+        </div>
+    @else
+        <div class="estado-final">
+            @if($recetaData['estado_general'] === 'terminado')
+                <span class="badge badge-success">
+                    <i class="fas fa-check-circle"></i> Terminado
+                </span>
+                @if($recetaData['es_personalizado'])
+                    <small class="text-muted d-block">Costo diseño: S/ {{ number_format($recetaData['costo_diseño'] ?? 0, 2) }}</small>
+                @endif
+            @elseif($recetaData['estado_general'] === 'cancelado')
+                <span class="badge badge-danger">
+                    <i class="fas fa-times-circle"></i> Cancelado
+                </span>
+                @if(!empty($recetaData['observaciones']))
+                    <small class="text-muted d-block">Obs: {{ Str::limit($recetaData['observaciones'], 30) }}</small>
+                @endif
+            @endif
+        </div>
+    @endif
+</td>
                                 <td class="text-center">S/ {{ number_format($subtotalReceta, 2) }}</td>
                                 <td class="text-center total-receta" id="total-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
                                 <td class="text-center">{{ number_format($cantHarina, 2) }} gramos</td>
                                 <td class="text-center">
                                     @if($receta->instructivo)
-                                    <button type="button" class="btn btn-sm btn-outline-info"
-                                        data-toggle="tooltip" title="Ver instructivo"
-                                        onclick="cargarInstructivo({{ $receta->id_recetas }})">
-                                        <i class="fas fa-book-open"></i>
-                                    </button>
-                                    @endif
+<button type="button" class="btn btn-sm btn-outline-info"
+    data-toggle="tooltip" title="Ver instructivo"
+    onclick="cargarInstructivo({{ $receta->id_recetas }}, '{{ $recetaData['estado_general'] }}')">
+    <i class="fas fa-book-open"></i>
+</button>
+@endif
                                     <button type="button" class="btn btn-sm btn-outline-secondary"
                                         data-toggle="tooltip" title="Agregar observación"
                                         onclick="mostrarModalObservacion(null, {{ $idReceta }})">
@@ -327,7 +384,7 @@ use Illuminate\Support\Facades\Storage;
                     </table>
                 </div>
 
-                @if($recetasAgrupadas && count($recetasAgrupadas) > 0 && $equipoActivo)
+                @if($recetasAgrupadas && count($recetasAgrupadas) > 0 && $equipoActivo && $estadoActual === 'pendientes')
                 <div class="form-group mt-4 text-center">
                     <button type="submit" class="btn btn-primary btn-lg btn-save">
                         <i class="fas fa-save mr-2"></i> Guardar Producción
@@ -636,6 +693,54 @@ use Illuminate\Support\Facades\Storage;
     .btn-observacion:hover {
         transform: scale(1.1);
     }
+
+    /* Estilos para las pestañas */
+    .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+        font-weight: 600;
+        padding: 12px 20px;
+        transition: all 0.3s;
+    }
+
+    .nav-tabs .nav-link:hover {
+        border: none;
+        color: #4e73df;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #4e73df;
+        background-color: transparent;
+        border-bottom: 3px solid #4e73df;
+    }
+
+    .nav-tabs .nav-link .badge {
+        font-size: 0.7rem;
+        position: relative;
+        top: -1px;
+    }
+
+    /* Estilos para el contenido de cada pestaña */
+    .tab-content {
+        padding: 20px 0;
+    }
+
+    /* Estilos específicos para cada estado */
+    .production-item.terminado {
+        background-color: #e8f5e9 !important;
+    }
+
+    .production-item.cancelado {
+        background-color: #ffebee !important;
+    }
+
+    .production-item.en-proceso {
+        background-color: #e3f2fd !important;
+    }
 </style>
 
 <script>
@@ -852,46 +957,47 @@ use Illuminate\Support\Facades\Storage;
     }
 
     // Función para cargar el instructivo en el modal
-    function cargarInstructivo(idReceta) {
-        const modal = $('#instructivoModal');
-        const modalInstance = new bootstrap.Modal(modal[0]);
-        modalInstance.show();
+    function cargarInstructivo(idReceta, estado) {
+    const modal = $('#instructivoModal');
+    const modalInstance = new bootstrap.Modal(modal[0]);
+    modalInstance.show();
 
-        // Mostrar spinner de carga
-        $('#instructivoContent').html(`
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Cargando...</span>
-            </div>
-            <p class="mt-3">Cargando instructivo...</p>
+    // Mostrar spinner de carga
+    $('#instructivoContent').html(`
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Cargando...</span>
         </div>
+        <p class="mt-3">Cargando instructivo...</p>
+    </div>
     `);
 
-        // Hacer la petición AJAX
-        $.ajax({
-            url: "{{ route('recetas.show-instructivo') }}",
-            type: 'GET',
-            data: {
-                id_receta: idReceta
-            },
-            success: function(data) {
-                $('#instructivoContent').html(data);
-            },
-            error: function(xhr, status, error) {
-                $('#instructivoContent').html(`
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Error al cargar el instructivo: ${xhr.statusText}
-                </div>
-                <div class="text-center">
-                    <button class="btn btn-primary" onclick="cargarInstructivo(${idReceta})">
-                        <i class="fas fa-sync-alt"></i> Intentar nuevamente
-                    </button>
-                </div>
+    // Hacer la petición AJAX
+    $.ajax({
+        url: "{{ route('recetas.show-instructivo') }}",
+        type: 'GET',
+        data: {
+            id_receta: idReceta,
+            estado: estado // Pasamos el estado actual
+        },
+        success: function(data) {
+            $('#instructivoContent').html(data);
+        },
+        error: function(xhr, status, error) {
+            $('#instructivoContent').html(`
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> Error al cargar el instructivo: ${xhr.statusText}
+            </div>
+            <div class="text-center">
+                <button class="btn btn-primary" onclick="cargarInstructivo(${idReceta}, '${estado}')">
+                    <i class="fas fa-sync-alt"></i> Intentar nuevamente
+                </button>
+            </div>
             `);
-                console.error('Error al cargar instructivo:', error);
-            }
-        });
-    }
+            console.error('Error al cargar instructivo:', error);
+        }
+    });
+}
 
     // Función para mostrar la imagen en el modal
     function mostrarImagen(url) {
@@ -927,6 +1033,13 @@ use Illuminate\Support\Facades\Storage;
                 const imageUrl = this.getAttribute('data-image-url');
                 mostrarImagen(imageUrl);
             });
+        });
+
+        document.querySelectorAll('.production-item').forEach(row => {
+            const estado = row.dataset.estado;
+            if (estado) {
+                row.classList.add(estado);
+            }
         });
 
         // En el evento submit del formulario, modificar para eliminar la validación de enviados
@@ -974,8 +1087,9 @@ use Illuminate\Support\Facades\Storage;
         });
         // Función para actualizar estados
         function actualizarEstados(checkbox, idReceta) {
-            console.log(`Actualizando estado para receta ${idReceta}`);
+            console.log(`Actualizando estado para receta ${idReceta}`, checkbox.name, checkbox.checked);
             const row = document.getElementById(`row-${idReceta}`);
+
             const form = document.getElementById('produccionForm');
 
             // Obtener todos los checkboxes relacionados
@@ -991,6 +1105,23 @@ use Illuminate\Support\Facades\Storage;
             form.querySelector(`input[type="hidden"][name="es_cancelado[${idReceta}]"]`).value = cancelarCheck.checked ? '1' : '0';
 
             console.log(`Estados actualizados - Iniciado: ${iniciarCheck.checked}, Terminado: ${terminarCheck.checked}, Enviado: ${enviarCheck.checked}, Cancelado: ${cancelarCheck.checked}`);
+
+
+            if (row) {
+                row.className = 'production-item';
+
+                if (checkbox.name.includes('es_cancelado') && checkbox.checked) {
+                    row.classList.add('cancelado');
+                } else if (checkbox.name.includes('es_terminado') && checkbox.checked) {
+                    row.classList.add('terminado');
+                } else if (checkbox.name.includes('es_iniciado') && checkbox.checked) {
+                    row.classList.add('en-proceso');
+                }
+            }
+
+            console.log(`Estado actualizado para fila ${idReceta}`);
+
+
         }
 
         // Función para actualizar el total
