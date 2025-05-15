@@ -31,7 +31,9 @@ class ProduccionDetalle extends Model
         'subtotal_receta',
         'total_receta',
         'cant_harina',
-        'observaciones'
+        'observaciones',
+        'es_personalizado',
+    'id_pedido_detalle'
     ];
 
     protected $casts = [

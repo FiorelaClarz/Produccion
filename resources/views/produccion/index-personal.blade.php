@@ -215,7 +215,16 @@ use Illuminate\Support\Facades\Storage;
                                     </span>
                                     @endif
                                 </td>
-                                <td class="text-center">{{ number_format($cantidadPedido, 2) }}</td>
+                               
+<td class="text-center">
+    @if($estadoActual === 'pendientes')
+        {{ number_format($recetaData['cantidad_total'], 2) }}
+    @elseif($estadoActual === 'terminados')
+        {{ number_format($recetaData['pedidos']->where('id_estados', 4)->sum('cantidad'), 2) }}
+    @elseif($estadoActual === 'cancelados')
+        {{ number_format($recetaData['pedidos']->where('id_estados', 5)->sum('cantidad'), 2) }}
+    @endif
+</td>
                                 <td class="text-center">{{ $nombreUnidadPedido }}</td>
                                 <td class="text-center">{{ number_format($cantidadEsperada, 2) }}</td>
                                <td class="text-center">
@@ -830,38 +839,18 @@ use Illuminate\Support\Facades\Storage;
         return true;
     }
 
-    // Modificamos el evento submit del formulario
-    document.getElementById('produccionForm').addEventListener('submit', function(e) {
-        console.log("Preparando envío del formulario...");
-
-        // Verificar datos antes de enviar
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-        console.log("Datos a enviar:", data);
-
-        // Validación de estados
-        let tieneCanceladosSinObservacion = false;
-
-        // Verificar cada receta
-        recetas.forEach(input => {
-            const idReceta = input.name.match(/\[(.*?)\]/)[1];
-
-            // Verificar si está cancelado pero sin observación
-            const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
-            const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
-            if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
-                tieneCanceladosSinObservacion = true;
-            }
-        });
-
-        if (tieneCanceladosSinObservacion) {
-            alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
-            e.preventDefault();
-            return false;
-        }
-
-        return true;
-    });
+document.getElementById('produccionForm').addEventListener('submit', function(e) {
+    const terminados = document.querySelectorAll('input[name^="es_terminado"]:checked');
+    const cancelados = document.querySelectorAll('input[name^="es_cancelado"]:checked');
+    
+    if (terminados.length === 0 && cancelados.length === 0) {
+        e.preventDefault();
+        alert('Debes marcar al menos una receta como terminada o cancelada para guardar.');
+        return false;
+    }
+    
+    return true;
+});
 
     // Función para actualizar el total de una receta específica
     function actualizarTotalReceta(idReceta) {

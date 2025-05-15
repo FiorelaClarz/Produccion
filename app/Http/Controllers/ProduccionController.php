@@ -237,7 +237,22 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
         }
     }
 
-
+/**
+ * Guarda la producción realizada por el personal verificando primero si ya existe
+ * una cabecera de producción para el mismo equipo, usuario, turno y fecha.
+ * 
+ * Este método evita la duplicación de cabeceras de producción cuando:
+ * - El mismo usuario
+ * - En el mismo equipo
+ * - Durante el mismo turno
+ * - En el mismo día
+ * 
+ * Si encuentra una cabecera existente, la reutiliza en lugar de crear una nueva.
+ * Solo crea nuevos registros en produccion_det para las recetas marcadas.
+ * 
+ * @param  \Illuminate\Http\Request  $request
+ * @return \Illuminate\Http\Response
+ */
     public function guardarProduccionPersonal(Request $request)
     {
         Log::info('Datos recibidos en guardarProduccionPersonal:', $request->all());
@@ -264,29 +279,71 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
         ]);
 
         Log::info('Datos validados:', $validated);
-
+// [Mantén los logs y validaciones existentes...]
         DB::beginTransaction();
 
         try {
-            $equipo = EquipoCabecera::findOrFail($request->id_equipos);
-            $usuario = auth()->user();
+             $equipo = EquipoCabecera::findOrFail($request->id_equipos);
+        $usuario = auth()->user();
+        $fechaActual = Carbon::now()->format('Y-m-d');
 
-            // Crear la cabecera de producción
+        /**
+         * Buscar cabecera de producción existente para evitar duplicados.
+         * 
+         * Criterios de búsqueda:
+         * - Mismo equipo (id_equipos)
+         * - Mismo usuario (id_usuario)
+         * - Mismo turno (id_turnos)
+         * - Misma fecha (fecha)
+         * 
+         * Esto asegura que un usuario solo tenga una cabecera por día por equipo y turno.
+         */
+        $produccionCab = ProduccionCabecera::where('id_equipos', $equipo->id_equipos_cab)
+            ->where('id_usuario', $usuario->id_usuarios)
+            ->where('id_turnos', $equipo->id_turnos)
+            ->whereDate('fecha', $fechaActual)
+            ->first();
+
+        if (!$produccionCab) {
+            /**
+             * Crear nueva cabecera solo si no existe una para los criterios anteriores.
+             * 
+             * La cabecera contiene:
+             * - Referencia al equipo
+             * - Turno actual
+             * - Usuario responsable
+             * - Fecha y hora actual
+             * - Número de documento interno único
+             */
             $produccionCab = ProduccionCabecera::create([
                 'id_equipos' => $equipo->id_equipos_cab,
                 'id_turnos' => $equipo->id_turnos,
                 'id_usuario' => $usuario->id_usuarios,
-                'fecha' => Carbon::now()->format('Y-m-d'),
+                'fecha' => $fechaActual,
                 'hora' => Carbon::now()->format('H:i:s'),
                 'doc_interno' => 'PROD-' . Carbon::now()->format('YmdHis')
             ]);
-
-            Log::info('Cabecera de producción creada:', ['id' => $produccionCab->id_produccion_cab]);
+            Log::info('Nueva cabecera de producción creada:', ['id' => $produccionCab->id_produccion_cab]);
+        } else {
+            Log::info('Usando cabecera de producción existente:', ['id' => $produccionCab->id_produccion_cab]);
+        }
             // Eliminar posibles duplicados en las recetas
             $idRecetas = array_unique($request->id_recetas_cab);
             Log::info('Recetas a procesar (sin duplicados):', $idRecetas);
-            // Procesar cada receta
+            /**
+         * Procesar cada receta marcada como terminada o cancelada.
+         * 
+         * Para cada receta:
+         * 1. Verificar si está marcada para terminar o cancelar
+         * 2. Obtener datos de la receta y pedidos asociados
+         * 3. Calcular cantidades y costos
+         * 4. Crear registro en produccion_det
+         * 5. Actualizar estados de pedidos
+         */
             foreach ($idRecetas as $idReceta) {
+if (!($request->es_terminado[$idReceta] ?? false) && !($request->es_cancelado[$idReceta] ?? false)) {
+    continue; // Saltar esta receta si no está terminada ni cancelada
+}                
                 $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
 
                 // Obtener pedidos del día para esta receta
@@ -295,7 +352,10 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
                     ->where('id_areas', $usuario->id_areas)
                     ->get();
 
-                $cantidadPedido = $pedidos->sum('cantidad');
+                $pedidosFiltrados = $pedidos->filter(function($pedido) {
+    return $pedido->id_estados == null || $pedido->id_estados < 4; // Solo pendientes y en proceso
+});
+$cantidadPedido = $pedidosFiltrados->sum('cantidad');
                 $cantidadEsperada = ($receta->id_areas == 1)
                     ? $cantidadPedido * $receta->constante_peso_lata
                     : $cantidadPedido * 1;
@@ -428,7 +488,7 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
         return $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
     }
 
-    protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado)
+protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado)
 {
     $estado = null;
 
@@ -442,18 +502,9 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
 
     if ($estado !== null) {
         foreach ($pedidosDetalle as $pedidoDet) {
-            // Solo actualizamos el estado si no está ya terminado o cancelado
-            if ($pedidoDet->id_estados != 4 && $pedidoDet->id_estados != 5) {
+            // Solo actualizar pedidos que no tienen estado final
+            if (!in_array($pedidoDet->id_estados, [4, 5])) {
                 $pedidoDet->update(['id_estados' => $estado]);
-                Log::info("Actualizado estado del pedido", [
-                    'pedido_id' => $pedidoDet->id_pedidos_det,
-                    'nuevo_estado' => $estado
-                ]);
-            } else {
-                Log::info("Pedido no actualizado - ya tiene estado final", [
-                    'pedido_id' => $pedidoDet->id_pedidos_det,
-                    'estado_actual' => $pedidoDet->id_estados
-                ]);
             }
         }
     }
