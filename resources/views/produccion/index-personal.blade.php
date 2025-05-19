@@ -1,12 +1,8 @@
-@php
-use Illuminate\Support\Facades\Storage;
-@endphp
 @extends('layouts.app')
 
 @section('content')
-
 <div class="container">
-
+    <!-- Notificaciones de sesión -->
     @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
         {{ session('success') }}
@@ -25,11 +21,8 @@ use Illuminate\Support\Facades\Storage;
     </div>
     @endif
 
-
-
-
+    <!-- Notificación para ingresar equipo de trabajo -->
     @if(!$equipoActivo)
-    <!-- Notificación centrada para ingresar equipo de trabajo -->
     <div class="modal-notification" id="equipoNotification">
         <div class="notification-content">
             <div class="notification-header">
@@ -52,34 +45,36 @@ use Illuminate\Support\Facades\Storage;
     </div>
     @endif
 
-<div class="row mb-4">
-    <div class="col-12">
-        <ul class="nav nav-tabs" id="productionTabs" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link {{ $estadoActual === 'pendientes' ? 'active' : '' }}" 
-                   href="{{ route('produccion.index-personal', ['estado' => 'pendientes']) }}">
-                    <i class="fas fa-clock mr-2"></i>Pendientes
-                    <span class="badge badge-primary ml-2">{{ $totalPendientes }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ $estadoActual === 'terminados' ? 'active' : '' }}" 
-                   href="{{ route('produccion.index-personal', ['estado' => 'terminados']) }}">
-                    <i class="fas fa-check-circle mr-2"></i>Terminados
-                    <span class="badge badge-success ml-2">{{ $totalTerminados }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ $estadoActual === 'cancelados' ? 'active' : '' }}" 
-                   href="{{ route('produccion.index-personal', ['estado' => 'cancelados']) }}">
-                    <i class="fas fa-times-circle mr-2"></i>Cancelados
-                    <span class="badge badge-danger ml-2">{{ $totalCancelados }}</span>
-                </a>
-            </li>
-        </ul>
+    <!-- Pestañas de estados -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="productionTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link {{ $estadoActual === 'pendientes' ? 'active' : '' }}" 
+                       href="{{ route('produccion.index-personal', ['estado' => 'pendientes']) }}">
+                        <i class="fas fa-clock mr-2"></i>Pendientes
+                        <span class="badge badge-primary ml-2">{{ $totalPendientes }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $estadoActual === 'terminados' ? 'active' : '' }}" 
+                       href="{{ route('produccion.index-personal', ['estado' => 'terminados']) }}">
+                        <i class="fas fa-check-circle mr-2"></i>Terminados
+                        <span class="badge badge-success ml-2">{{ $totalTerminados }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $estadoActual === 'cancelados' ? 'active' : '' }}" 
+                       href="{{ route('produccion.index-personal', ['estado' => 'cancelados']) }}">
+                        <i class="fas fa-times-circle mr-2"></i>Cancelados
+                        <span class="badge badge-danger ml-2">{{ $totalCancelados }}</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
-</div>
 
+    <!-- Información del equipo activo -->
     @if($equipoActivo)
     <div class="card equipo-card mb-4">
         <div class="card-header equipo-card-header">
@@ -126,6 +121,7 @@ use Illuminate\Support\Facades\Storage;
     </div>
     @endif
 
+    <!-- Tarjeta principal de producción -->
     <div class="card shadow mb-4 production-card">
         <div class="card-header py-3 production-card-header">
             <div class="d-flex justify-content-between align-items-center">
@@ -158,6 +154,7 @@ use Illuminate\Support\Facades\Storage;
                                 <th class="text-center">Unidad Producción</th>
                                 <th class="text-center">Estado</th>
                                 <th class="text-center">Subtotal</th>
+                                <th class="text-center">Costo Diseño</th>
                                 <th class="text-center">Total</th>
                                 <th class="text-center">Harina</th>
                                 <th class="text-center">Acciones</th>
@@ -166,150 +163,171 @@ use Illuminate\Support\Facades\Storage;
                         <tbody>
                             @if($recetasAgrupadas && count($recetasAgrupadas) > 0)
                             @php
-                            $recetaCounter = 1; // Contador para recetas agrupadas
+                            $recetaCounter = 1;
                             @endphp
                             @foreach($recetasAgrupadas as $idReceta => $recetaData)
                             @php
                             $receta = $recetaData['receta'];
-                            $cantidadPedido = $recetaData['cantidad_total'];
-
+                            
+                            // Separar pedidos personalizados y no personalizados
+                            $pedidosNoPersonalizados = $recetaData['pedidos']->where('es_personalizado', false);
+                            $pedidosPersonalizados = $recetaData['pedidos']->where('es_personalizado', true);
+                            
+                            $cantidadNoPersonalizada = $pedidosNoPersonalizados->sum('cantidad');
                             $cantidadEsperada = ($receta->id_areas == 1)
-                            ? $cantidadPedido * $receta->constante_peso_lata
-                            : $cantidadPedido * 1;
+                                ? $cantidadNoPersonalizada * $receta->constante_peso_lata
+                                : $cantidadNoPersonalizada;
+
+                            // Determinar si debemos deshabilitar controles
+                            $disableControls = $cantidadNoPersonalizada == 0 && $pedidosPersonalizados->count() > 0;
 
                             $subtotalReceta = 0;
                             foreach ($receta->detalles as $detalle) {
-                            $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada ;
+                                $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
                             }
 
                             $componenteHarina = $receta->detalles->first(function($item) {
-                            return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
+                                return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
                             });
                             $cantHarina = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperada : 0;
-
-                            $pedidosPersonalizados = isset($recetaData['pedidos']) ? $recetaData['pedidos']->filter(function($pedido) {
-                            return isset($pedido['es_personalizado']) && $pedido['es_personalizado'];
-                            }) : collect([]);
+                            $idHarina = $componenteHarina ? $componenteHarina->id_recetas_det : null;
 
                             $unidadPedido = $recetaData['id_u_medidas'] ?? null;
                             $nombreUnidadPedido = $unidadesMedida->firstWhere('id_u_medidas', $unidadPedido)->nombre ?? 'N/A';
                             @endphp
 
-                            <!-- Fila principal -->
+                            <!-- Fila principal para receta agrupada -->
                             <tr class="production-item {{ $recetaData['es_personalizado'] ? 'personalizado-row' : '' }}" id="row-{{ $idReceta }}">
                                 <td>
-
                                     <strong>{{ $recetaCounter }}. {{ $receta->producto->nombre ?? 'N/A' }}</strong>
-                                    @if($recetaData['es_personalizado'])
+                                    @if($pedidosPersonalizados->count() > 0)
                                     <span class="badge badge-warning ml-2" style="color: #BFA100;">Contiene<br>personalizado</span>
                                     @endif
-
                                 </td>
                                 <td>
                                     {{ $receta->nombre ?? 'N/A' }}
                                     @if($pedidosPersonalizados->count() > 0)
-
                                     <span class="badge badge-danger ml-2" data-toggle="tooltip" style="color: #BFA100;"
                                         title="{{ $pedidosPersonalizados->count() }} pedido(s) personalizado(s)">
                                         <i class="fas fa-exclamation-circle" style="color: #BFA100;"></i> {{ $pedidosPersonalizados->count() }}
                                     </span>
                                     @endif
                                 </td>
-                               
-<td class="text-center">
-    @if($estadoActual === 'pendientes')
-        {{ number_format($recetaData['cantidad_total'], 2) }}
-    @elseif($estadoActual === 'terminados')
-        {{ number_format($recetaData['pedidos']->where('id_estados', 4)->sum('cantidad'), 2) }}
-    @elseif($estadoActual === 'cancelados')
-        {{ number_format($recetaData['pedidos']->where('id_estados', 5)->sum('cantidad'), 2) }}
-    @endif
-</td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        {{ number_format($cantidadNoPersonalizada, 2) }}
+                                    @elseif($estadoActual === 'terminados')
+                                        {{ number_format($pedidosNoPersonalizados->where('id_estados', 4)->sum('cantidad'), 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        {{ number_format($pedidosNoPersonalizados->where('id_estados', 5)->sum('cantidad'), 2) }}
+                                    @endif
+                                </td>
                                 <td class="text-center">{{ $nombreUnidadPedido }}</td>
                                 <td class="text-center">{{ number_format($cantidadEsperada, 2) }}</td>
-                               <td class="text-center">
-    @if($estadoActual === 'pendientes')
-        <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
-            class="form-control form-control-sm production-input"
-            step="0.01" min="0"
-            value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}"
-            {{ $recetaData['es_personalizado'] ? '' : 'readonly' }}">
-    @else
-        {{ number_format($recetaData['cantidad_producida_real'] ?? $cantidadEsperada, 2) }}
-    @endif
-</td>
-<td class="text-center">
-    @if($estadoActual === 'pendientes')
-        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm">
-            @foreach($unidadesMedida as $unidad)
-            <option value="{{ $unidad->id_u_medidas }}"
-                {{ $unidad->id_u_medidas == $recetaData['id_u_medidas'] ? 'selected' : '' }}>
-                {{ $unidad->nombre }}
-            </option>
-            @endforeach
-        </select>
-    @else
-        {{ $unidadesMedida->firstWhere('id_u_medidas', $recetaData['id_u_medidas_prodcc'] ?? $recetaData['id_u_medidas'])->nombre ?? 'N/A' }}
-    @endif
-</td>
-                                
                                 <td class="text-center">
-    @if($estadoActual === 'pendientes')
-        <div class="btn-group btn-group-toggle" data-toggle="buttons">
-            <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="0">
-            <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="0">
-            <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="0">
+                                    @if($estadoActual === 'pendientes')
+                                        <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
+                                            class="form-control form-control-sm production-input"
+                                            step="0.01" min="0"
+                                            value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}"
+                                            {{ $disableControls ? 'disabled' : '' }}>
+                                    @else
+                                        {{ number_format($recetaData['cantidad_producida_real'] ?? $cantidadEsperada, 2) }}
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm" {{ $disableControls ? 'disabled' : '' }}>
+                                            @foreach($unidadesMedida as $unidad)
+                                            <option value="{{ $unidad->id_u_medidas }}"
+                                                {{ $unidad->id_u_medidas == $recetaData['id_u_medidas'] ? 'selected' : '' }}>
+                                                {{ $unidad->nombre }}
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        {{ $unidadesMedida->firstWhere('id_u_medidas', $recetaData['id_u_medidas_prodcc'] ?? $recetaData['id_u_medidas'])->nombre ?? 'N/A' }}
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                                            <!-- Campos ocultos para el estado real -->
+                                            <input type="hidden" name="es_iniciado[{{ $idReceta }}]" value="{{ $recetaData['estado_general'] === 'en_proceso' ? '1' : '0' }}">
+                                            <input type="hidden" name="es_terminado[{{ $idReceta }}]" value="{{ $recetaData['estado_general'] === 'terminado' ? '1' : '0' }}">
+                                            <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="{{ $recetaData['estado_general'] === 'cancelado' ? '1' : '0' }}">
 
-            <label class="btn btn-sm btn-outline-primary estado-btn {{ $recetaData['estado_general'] === 'en_proceso' ? 'active' : '' }}">
-                <input type="checkbox" name="es_iniciado[{{ $idReceta }}]"
-                    autocomplete="off" value="1"
-                    onchange="actualizarEstados(this, {{ $idReceta }})"
-                    {{ $recetaData['estado_general'] === 'en_proceso' ? 'checked' : '' }}> Iniciar
-            </label>
-            <label class="btn btn-sm btn-outline-success estado-btn {{ $recetaData['estado_general'] === 'terminado' ? 'active' : '' }}">
-                <input type="checkbox" name="es_terminado[{{ $idReceta }}]"
-                    autocomplete="off" value="1"
-                    onchange="actualizarEstados(this, {{ $idReceta }})"
-                    {{ $recetaData['estado_general'] === 'terminado' ? 'checked' : '' }}> Terminar
-            </label>
-            <label class="btn btn-sm btn-outline-danger estado-btn {{ $recetaData['estado_general'] === 'cancelado' ? 'active' : '' }}">
-                <input type="checkbox" name="es_cancelado[{{ $idReceta }}]"
-                    autocomplete="off" value="1"
-                    onchange="mostrarModalObservacion(this, {{ $idReceta }})"
-                    {{ $recetaData['estado_general'] === 'cancelado' ? 'checked' : '' }}> Cancelar
-            </label>
-        </div>
-    @else
-        <div class="estado-final">
-            @if($recetaData['estado_general'] === 'terminado')
-                <span class="badge badge-success">
-                    <i class="fas fa-check-circle"></i> Terminado
-                </span>
-                @if($recetaData['es_personalizado'])
-                    <small class="text-muted d-block">Costo diseño: S/ {{ number_format($recetaData['costo_diseño'] ?? 0, 2) }}</small>
-                @endif
-            @elseif($recetaData['estado_general'] === 'cancelado')
-                <span class="badge badge-danger">
-                    <i class="fas fa-times-circle"></i> Cancelado
-                </span>
-                @if(!empty($recetaData['observaciones']))
-                    <small class="text-muted d-block">Obs: {{ Str::limit($recetaData['observaciones'], 30) }}</small>
-                @endif
-            @endif
-        </div>
-    @endif
-</td>
-                                <td class="text-center">S/ {{ number_format($subtotalReceta, 2) }}</td>
+                                            <!-- Checkbox UI para Iniciar -->
+                                            <label class="btn btn-sm btn-outline-primary estado-btn {{ $recetaData['estado_general'] === 'en_proceso' ? 'active' : '' }} {{ $disableControls ? 'disabled' : '' }}">
+                                                <input type="checkbox" name="es_iniciado_ui[{{ $idReceta }}]"
+                                                    autocomplete="off" 
+                                                    onchange="manejarEstado(this, {{ $idReceta }})"
+                                                    {{ $recetaData['estado_general'] === 'en_proceso' ? 'checked' : '' }}
+                                                    {{ $disableControls ? 'disabled' : '' }}> Iniciar
+                                            </label>
+
+                                            <!-- Checkbox UI para Terminar -->
+                                            <label class="btn btn-sm btn-outline-success estado-btn {{ $recetaData['estado_general'] === 'terminado' ? 'active' : '' }}" 
+                                                id="terminar-btn-{{ $idReceta }}"
+                                                style="{{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'pointer-events: none; opacity: 0.65;' }}">
+                                                <input type="checkbox" name="es_terminado_ui[{{ $idReceta }}]"
+                                                    autocomplete="off" 
+                                                    onchange="manejarEstado(this, {{ $idReceta }})"
+                                                    {{ $recetaData['estado_general'] === 'terminado' ? 'checked' : '' }}
+                                                    {{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'disabled' }}> Terminar
+                                            </label>
+                                            
+                                            <!-- Checkbox UI para Cancelar -->
+                                            <label class="btn btn-sm btn-outline-danger estado-btn {{ $recetaData['estado_general'] === 'cancelado' ? 'active' : '' }} {{ $disableControls ? 'disabled' : '' }}">
+                                                <input type="checkbox" name="es_cancelado_ui[{{ $idReceta }}]"
+                                                    autocomplete="off" 
+                                                    onchange="manejarEstado(this, {{ $idReceta }})"
+                                                    {{ $recetaData['estado_general'] === 'cancelado' ? 'checked' : '' }}
+                                                    {{ $disableControls ? 'disabled' : '' }}> Cancelar
+                                            </label>
+                                        </div>
+                                    @else
+                                        <div class="estado-final">
+                                            @if($recetaData['estado_general'] === 'terminado')
+                                                <span class="badge badge-success">
+                                                    <i class="fas fa-check-circle"></i> Terminado
+                                                </span>
+                                            @elseif($recetaData['estado_general'] === 'cancelado')
+                                                <span class="badge badge-danger">
+                                                    <i class="fas fa-times-circle"></i> Cancelado
+                                                </span>
+                                                @if(!empty($recetaData['observaciones']))
+                                                    <small class="text-muted d-block">Obs: {{ Str::limit($recetaData['observaciones'], 30) }}</small>
+                                                @endif
+                                            @endif
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="text-center subtotal-receta" id="subtotal-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
+                                <td class="text-center" id="costo-diseno-{{ $idReceta }}">S/ 0.00</td>
                                 <td class="text-center total-receta" id="total-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
-                                <td class="text-center">{{ number_format($cantHarina, 2) }} gramos</td>
+                                <td class="text-center">
+                                    {{ number_format($cantHarina, 2) }} gramos
+                                    <input type="hidden" name="id_recetas_det_harina[{{ $idReceta }}]" value="{{ $idHarina }}">
+                                </td>
                                 <td class="text-center">
                                     @if($receta->instructivo)
-<button type="button" class="btn btn-sm btn-outline-info"
-    data-toggle="tooltip" title="Ver instructivo"
-    onclick="cargarInstructivo({{ $receta->id_recetas }}, '{{ $recetaData['estado_general'] }}')">
-    <i class="fas fa-book-open"></i>
-</button>
-@endif
+                                    <button type="button" class="btn btn-sm btn-outline-info" id="btn-instructivo-{{ $idReceta }}" {{ $disableControls ? 'disabled' : '' }}
+                                        data-toggle="tooltip" title="Ver instructivo"
+                                        onclick="cargarInstructivo({{ $receta->id_recetas }}, '{{ $recetaData['estado_general'] }}')">
+                                        <i class="fas fa-book-open"></i>
+                                    </button>
+                                    @endif
+                                    
+                                    <!-- Botón para ver detalles de pedidos personalizados -->
+                                    @if($pedidosPersonalizados->count() > 0)
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        data-toggle="modal" data-target="#detallesModal"
+                                        onclick="mostrarDetallesPersonales({{ $idReceta }})">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    @endif
+                                    
                                     <button type="button" class="btn btn-sm btn-outline-secondary"
                                         data-toggle="tooltip" title="Agregar observación"
                                         onclick="mostrarModalObservacion(null, {{ $idReceta }})">
@@ -321,68 +339,198 @@ use Illuminate\Support\Facades\Storage;
                             <!-- Filas de pedidos personalizados -->
                             @if($pedidosPersonalizados->count() > 0)
                             @php
-                            $pedidoCounter = 1; // Contador para pedidos personalizados
+                            $pedidoCounter = 1;
                             @endphp
                             @foreach($pedidosPersonalizados as $pedido)
+                            @php
+                            $esIniciado = $pedido->id_estados == 3; // 3 = En proceso
+                            $estadoGeneral = $pedido->id_estados == 5 ? 'cancelado' : 
+                                            ($pedido->id_estados == 4 ? 'terminado' :
+                                            ($pedido->id_estados == 3 ? 'en_proceso' : 'pendiente'));
+                            
+                            $cantidadPersonalizada = $pedido->cantidad;
+                            $cantidadEsperadaPersonalizada = ($receta->id_areas == 1)
+                                ? $cantidadPersonalizada * $receta->constante_peso_lata
+                                : $cantidadPersonalizada;
+                            
+                            $subtotalPersonalizado = 0;
+                            foreach ($receta->detalles as $detalle) {
+                                $subtotalPersonalizado += $detalle->subtotal_receta * $cantidadEsperadaPersonalizada;
+                            }
+                            
+                            $harinaPersonalizada = $componenteHarina ? $componenteHarina->cantidad * $cantidadPersonalizada : 0;
+                            
+                            $imagenUrl = $pedido->foto_referencial ? asset('storage/' . str_replace('pedidos/', 'pedidos/', $pedido->foto_referencial)) : null;
+                            @endphp
+
                             <tr class="pedido-personalizado" data-recid="{{ $idReceta }}">
-                                <td colspan="12">
-                                    <div class="d-flex justify-content-between align-items-center p-2">
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center">
-                                                <!-- <i class="fas fa-star text-warning mr-2"></i> -->
-                                                <div>
-                                                    <strong class="d-block">{{ $recetaCounter }}.{{ $pedidoCounter }} Pedido Personalizado (Nº {{ $pedido['id_pedidos_det'] ?? '' }})</strong>
-                                                    <p class="mb-1 small"><em>{{ $pedido['descripcion'] ?? 'Sin descripción' }}</em></p>
-                                                    <div class="d-flex align-items-center mt-1">
-                                                        <span class="badge badge-info mr-2" style="font-weight: bold;">
-                                                            Cantidad: {{ $pedido['cantidad'] }}
-                                                        </span>
-                                                        @if(isset($pedido['foto_referencial']) && $pedido['foto_referencial'])
-                                                        @php
-                                                        $filename = str_replace('pedidos/', '', $pedido['foto_referencial']);
-                                                        $imageUrl = asset('storage/pedidos/'.$filename);
-                                                        @endphp
-                                                        <button type="button" class="btn btn-xs btn-outline-primary view-image-btn"
-                                                            data-image-url="{{ $imageUrl }}">
-                                                            <i class="fas fa-image"></i> Ver imagen
-                                                        </button>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="ml-3">
-                                            <div class="form-group mb-0">
-                                                <label class="small text-muted mb-0">Costo Diseño</label>
-                                                <div class="input-group input-group-sm">
-                                                    <div class="input-group-prepend">
-                                                        <span class="input-group-text">S/.</span>
-                                                    </div>
-                                                    <input type="number"
-                                                        name="costo_diseño[{{ $pedido['id_pedidos_det'] }}]"
-                                                        class="form-control form-control-sm costo-diseno"
-                                                        step="0.01" min="0"
-                                                        value="{{ old("costo_diseño.".$pedido['id_pedidos_det'], 0) }}"
-                                                        disabled
-                                                        onchange="actualizarTotalReceta({{ $idReceta }})">
-                                                </div>
-                                            </div>
-                                        </div>
+                                <td colspan="2">
+                                    <div class="d-flex align-items-center">
+                                        <strong class="mr-2">{{ $recetaCounter }}.{{ $pedidoCounter }}. {{ $receta->producto->nombre ?? 'N/A' }}</strong>
+                                        <span class="badge badge-warning">Personalizado</span>
+                                        <button type="button" class="btn btn-xs btn-info ml-2" 
+                                            data-toggle="tooltip" title="{{ $pedido->descripcion ?? 'Sin descripción' }}">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
                                     </div>
+                                    <small class="text-muted">Pedido #{{ $pedido->id_pedidos_det }}</small>
+                                </td>
+                                <td class="text-center">{{ number_format($cantidadPersonalizada, 2) }}</td>
+                                <td class="text-center">{{ $nombreUnidadPedido }}</td>
+                                <td class="text-center">{{ number_format($cantidadEsperadaPersonalizada, 2) }}</td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        <input type="number" name="cantidad_producida_real_personalizado[{{ $pedido->id_pedidos_det }}]"
+                                            class="form-control form-control-sm production-input"
+                                            step="0.01" min="0"
+                                            value="{{ old("cantidad_producida_real_personalizado.$pedido->id_pedidos_det", $cantidadPersonalizada) }}"
+                                            {{ $esIniciado ? '' : 'disabled' }}>
+                                    @else
+                                        {{ number_format($cantidadPersonalizada, 2) }}
+                                    @endif
+                                </td>
+                                <td class="text-center">{{ $nombreUnidadPedido }}</td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                                            <input type="hidden" name="es_iniciado_personalizado[{{ $pedido->id_pedidos_det }}]" value="0">
+                                            <input type="hidden" name="es_terminado_personalizado[{{ $pedido->id_pedidos_det }}]" value="0">
+                                            <input type="hidden" name="es_cancelado_personalizado[{{ $pedido->id_pedidos_det }}]" value="0">
+
+                                            <label class="btn btn-sm btn-outline-primary estado-btn {{ $pedido->id_estados == 3 ? 'active' : '' }}">
+                                                <input type="checkbox" name="es_iniciado_personalizado[{{ $pedido->id_pedidos_det }}]"
+                                                    autocomplete="off" value="1"
+                                                    onchange="manejarEstadoPersonalizado(this, {{ $pedido->id_pedidos_det }}, {{ $idReceta }})"
+                                                    {{ $pedido->id_estados == 3 ? 'checked' : '' }}> Iniciar
+                                            </label>
+                                            
+                                            <label class="btn btn-sm btn-outline-success estado-btn {{ $pedido->id_estados == 4 ? 'active' : '' }} {{ $pedido->id_estados == 3 ? '' : 'disabled' }}" 
+                                               id="terminar-btn-{{ $pedido->id_pedidos_det }}">
+                                                <input type="checkbox" name="es_terminado_personalizado[{{ $pedido->id_pedidos_det }}]"
+                                                       autocomplete="off" value="1"
+                                                       onchange="manejarEstadoPersonalizado(this, {{ $pedido->id_pedidos_det }}, {{ $idReceta }})"
+                                                       {{ $pedido->id_estados == 4 ? 'checked' : '' }}>
+                                                Terminar
+                                            </label>
+                                            
+                                            <label class="btn btn-sm btn-outline-danger estado-btn {{ $pedido->id_estados == 5 ? 'active' : '' }}">
+                                                <input type="checkbox" name="es_cancelado_personalizado[{{ $pedido->id_pedidos_det }}]"
+                                                    autocomplete="off" value="1"
+                                                    onchange="manejarEstadoPersonalizado(this, {{ $pedido->id_pedidos_det }}, {{ $idReceta }})"
+                                                    {{ $pedido->id_estados == 5 ? 'checked' : '' }}> Cancelar
+                                            </label>
+                                        </div>
+                                    @else
+                                        <span class="badge badge-secondary">
+                                            @if($pedido->id_estados == 4)
+                                                <i class="fas fa-check-circle"></i> Terminado
+                                            @elseif($pedido->id_estados == 5)
+                                                <i class="fas fa-times-circle"></i> Cancelado
+                                            @else
+                                                <i class="fas fa-clock"></i> Pendiente
+                                            @endif
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="text-center">S/ {{ number_format($subtotalPersonalizado, 2) }}</td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">S/</span>
+                                        </div>
+                                        <input type="number"
+                                            name="costo_diseño[{{ $pedido->id_pedidos_det }}]"
+                                            class="form-control form-control-sm costo-diseno"
+                                            step="0.01" min="0"
+                                            value="{{ old("costo_diseño.".$pedido->id_pedidos_det, $pedido->costo_diseño ?? 0) }}"
+                                            {{ $esIniciado ? '' : 'disabled' }}
+                                            onchange="actualizarTotales({{ $idReceta }})">
+                                    </div>
+                                    @else
+                                        S/ {{ number_format($pedido->costo_diseño ?? 0, 2) }}
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    S/ {{ number_format($subtotalPersonalizado + ($pedido->costo_diseño ?? 0), 2) }}
+                                </td>
+                                <td class="text-center">
+                                    {{ number_format($harinaPersonalizada, 2) }} g
+                                    <input type="hidden" name="id_recetas_det_harina_personalizado[{{ $pedido->id_pedidos_det }}]" value="{{ $idHarina }}">
+                                </td>
+                                <td class="text-center">
+                                    @if($imagenUrl)
+                                    <button type="button" class="btn btn-xs btn-primary view-image-btn"
+                                        data-image-url="{{ $imagenUrl }}">
+                                        <i class="fas fa-image"></i>
+                                    </button>
+                                    @endif
+                                    
+                                    @if($receta->instructivo)
+                                    <button type="button" class="btn btn-xs btn-outline-info" 
+                                        data-toggle="tooltip" title="Ver instructivo"
+                                        onclick="cargarInstructivo({{ $receta->id_recetas }}, '{{ $estadoGeneral ?? 'pendiente' }}')">
+                                        <i class="fas fa-book-open"></i>
+                                    </button>
+                                    @endif
+                                    
+                                    <button type="button" class="btn btn-xs btn-outline-secondary"
+                                        data-toggle="tooltip" title="Agregar observación"
+                                        onclick="mostrarModalObservacionPersonalizado({{ $pedido->id_pedidos_det }}, {{ $idReceta }})">
+                                        <i class="fas fa-comment"></i>
+                                    </button>
                                 </td>
                             </tr>
                             @php
-                            $pedidoCounter++; // Incrementar contador de pedidos
+                            $pedidoCounter++;
                             @endphp
                             @endforeach
+
+                            <!-- Fila de totales cuando hay pedidos personalizados -->
+                            <tr class="total-receta-agrupada bg-light">
+                                <td colspan="2" class="text-right"><strong>Totales:</strong></td>
+                                <td class="text-center">{{ number_format($cantidadNoPersonalizada + $pedidosPersonalizados->sum('cantidad'), 2) }}</td>
+                                <td class="text-center"></td>
+                                <td class="text-center">{{ number_format($cantidadEsperada + $pedidosPersonalizados->sum('cantidad') * ($receta->id_areas == 1 ? $receta->constante_peso_lata : 1), 2) }}</td>
+                                <td class="text-center">{{ number_format(($recetaData['cantidad_producida_real'] ?? $cantidadEsperada) + $pedidosPersonalizados->sum('cantidad'), 2) }}</td>
+                                <td class="text-center"></td>
+                                <td class="text-center"></td>
+                                <td class="text-center">S/ {{ number_format($subtotalReceta + $pedidosPersonalizados->sum(function($p) use ($receta) {
+                                    $cant = $p->cantidad;
+                                    $esperada = $receta->id_areas == 1 ? $cant * $receta->constante_peso_lata : $cant;
+                                    $subtotal = 0;
+                                    foreach ($receta->detalles as $detalle) {
+                                        $subtotal += $detalle->subtotal_receta * $esperada;
+                                    }
+                                    return $subtotal;
+                                }), 2) }}</td>
+                                <td class="text-center" id="total-costo-diseno-{{ $idReceta }}">S/ {{ number_format($pedidosPersonalizados->sum('costo_diseño'), 2) }}</td>
+                                <td class="text-center" id="total-general-{{ $idReceta }}">S/ {{ number_format($subtotalReceta + $pedidosPersonalizados->sum(function($p) use ($receta) {
+                                    $cant = $p->cantidad;
+                                    $esperada = $receta->id_areas == 1 ? $cant * $receta->constante_peso_lata : $cant;
+                                    $subtotal = 0;
+                                    foreach ($receta->detalles as $detalle) {
+                                        $subtotal += $detalle->subtotal_receta * $esperada;
+                                    }
+                                    return $subtotal + ($p->costo_diseño ?? 0);
+                                }), 2) }}</td>
+                                <td class="text-center">
+                                    {{ number_format($cantHarina + $pedidosPersonalizados->sum(function($p) use ($componenteHarina, $receta) {
+                                        $cant = $p->cantidad;
+                                        $esperada = $receta->id_areas == 1 ? $cant * $receta->constante_peso_lata : $cant;
+                                        return $componenteHarina ? $componenteHarina->cantidad * $esperada : 0;
+                                    }), 2) }} g
+                                </td>
+                                <td class="text-center"></td>
+                            </tr>
                             @endif
                             @php
-                            $recetaCounter++; // Incrementar contador de recetas
+                            $recetaCounter++;
                             @endphp
                             @endforeach
                             @else
                             <tr>
-                                <td colspan="12" class="text-center text-muted py-4 no-orders">
+                                <td colspan="13" class="text-center text-muted py-4 no-orders">
                                     <i class="fas fa-info-circle fa-3x mb-3"></i>
                                     <h4>No hay pedidos para producción hoy</h4>
                                     <p class="text-muted">Los pedidos aparecerán aquí cuando sean asignados a tu área.</p>
@@ -440,6 +588,26 @@ use Illuminate\Support\Facades\Storage;
             </div>
             <div class="modal-body text-center">
                 <img id="modalImage" src="" class="img-fluid" alt="Imagen de referencia del pedido" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para detalles de pedidos personalizados -->
+<div class="modal fade" id="detallesModal" tabindex="-1" aria-labelledby="detallesModalLabel">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="detallesModalLabel">Detalles de Pedidos Personalizados</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="detallesModalContent">
+                <!-- Contenido se llenará dinámicamente -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
@@ -738,6 +906,34 @@ use Illuminate\Support\Facades\Storage;
         padding: 20px 0;
     }
 
+    .estado-btn {
+        min-width: 80px;
+        text-align: center;
+    }
+    .estado-btn.disabled {
+        opacity: 0.65;
+        pointer-events: none;
+    }
+
+    /* Agrega esto al final de tus estilos */
+    .estado-btn {
+        position: relative;
+    }
+    .estado-btn.disabled {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    .estado-btn input[type="checkbox"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        margin: 0;
+        cursor: pointer;
+    }
+
     /* Estilos específicos para cada estado */
     .production-item.terminado {
         background-color: #e8f5e9 !important;
@@ -750,418 +946,815 @@ use Illuminate\Support\Facades\Storage;
     .production-item.en-proceso {
         background-color: #e3f2fd !important;
     }
+
+    /* Animación para cambios en totales */
+    .highlight {
+        animation: highlight 1s;
+    }
+
+    @keyframes highlight {
+        0% { background-color: #fffde7; }
+        100% { background-color: transparent; }
+    }
 </style>
 
 <script>
-    // Función mejorada para actualizar estados
-    function actualizarEstados(checkbox, idReceta) {
-        const name = checkbox.name;
-        const isChecked = checkbox.checked;
-        const row = document.getElementById(`row-${idReceta}`);
+/**
+ * Sistema de gestión de estados de producción
+ * 
+ * Este script maneja la lógica de la interfaz de producción, incluyendo:
+ * - Control de estados (iniciar, terminar, cancelar)
+ * - Validaciones de formulario
+ * - Manejo de modales
+ * - Cálculo de totales
+ */
 
-        // Actualizar el valor del campo oculto correspondiente
-        const hiddenInput = document.querySelector(`input[type="hidden"][name="${name}"]`);
-        if (hiddenInput) {
-            hiddenInput.value = isChecked ? '1' : '0';
-        }
+// Sistema de logging mejorado
+function logAction(message, data = {}) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${message}`, data);
+}
 
-        // Habilitar campos de costo diseño cuando se marca "Iniciar"
-        if (name === `es_iniciado[${idReceta}]` && isChecked) {
-            const costosDiseno = row.parentNode.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`);
-            costosDiseno.forEach(input => {
-                input.disabled = false;
-            });
-        }
+/**
+ * Maneja el cambio de estado de una receta
+ * @param {HTMLInputElement} checkbox - El checkbox que disparó el evento
+ * @param {string|number} idReceta - ID de la receta afectada
+ */
+function manejarEstado(checkbox, idReceta) {
+    const tipo = checkbox.name.split('[')[0]; // 'es_iniciado_ui', 'es_terminado_ui' o 'es_cancelado_ui'
+    const isChecked = checkbox.checked;
 
-        // Validar costos de diseño al marcar "Terminar"
-        if (name === `es_terminado[${idReceta}]` && isChecked) {
-            const tienePersonalizados = row.classList.contains('personalizado-row');
-            if (tienePersonalizados) {
-                const costosDiseno = row.parentNode.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`);
-                let faltanCostos = false;
-                const pedidosFaltantes = [];
+    logAction(`Cambio de estado - Receta: ${idReceta}, Tipo: ${tipo}, Estado: ${isChecked}`);
 
-                costosDiseno.forEach(input => {
-                    if (!input.value || parseFloat(input.value) <= 0) {
-                        faltanCostos = true;
-                        const pedidoId = input.name.match(/\[(.*?)\]/)[1];
-                        pedidosFaltantes.push(pedidoId);
-                    }
-                });
-
-                if (faltanCostos) {
-                    // Mostrar modal de error
-                    const lista = document.getElementById('listaPedidosFaltantes');
-                    lista.innerHTML = '';
-                    pedidosFaltantes.forEach(id => {
-                        lista.innerHTML += `<li class="list-group-item">Pedido #${id}</li>`;
-                    });
-
-                    $('#errorCostosModal').modal('show');
-
-                    // Desmarcar el checkbox
-                    checkbox.checked = false;
-                    if (hiddenInput) {
-                        hiddenInput.value = '0';
-                    }
-                    return false;
-                }
-            }
-        }
-
-        // Si se marca "Terminar", también debe marcarse "Iniciar"
-        if (name === `es_terminado[${idReceta}]` && isChecked) {
-            const iniciarCheckbox = document.querySelector(`input[name="es_iniciado[${idReceta}]"]`);
-            if (iniciarCheckbox && !iniciarCheckbox.checked) {
-                iniciarCheckbox.checked = true;
-                const iniciarHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
-                if (iniciarHidden) {
-                    iniciarHidden.value = '1';
-                }
-            }
-        }
-
-        // Si se marca "Cancelar", desmarcar otros estados
-        if (name === `es_cancelado[${idReceta}]` && isChecked) {
-            const terminarCheckbox = document.querySelector(`input[name="es_terminado[${idReceta}]"]`);
-
-            if (terminarCheckbox) {
-                terminarCheckbox.checked = false;
-                const terminarHidden = document.querySelector(`input[type="hidden"][name="es_terminado[${idReceta}]"]`);
-                if (terminarHidden) {
-                    terminarHidden.value = '0';
-                }
-            }
-
-            mostrarModalObservacion(checkbox, idReceta);
-        }
-
-        return true;
+    // Actualizar el campo oculto correspondiente
+    const nombreCampoOculto = tipo.replace('_ui', '');
+    const hiddenInput = document.querySelector(`input[type="hidden"][name="${nombreCampoOculto}[${idReceta}]"]`);
+    
+    if (hiddenInput) {
+        hiddenInput.value = isChecked ? '1' : '0';
+        logAction(`Campo oculto actualizado - ${hiddenInput.name}: ${hiddenInput.value}`);
     }
 
+    // Lógica específica para cada tipo de estado
+    if (tipo === 'es_iniciado_ui') {
+        if (isChecked) {
+            // Habilitar controles relacionados
+            habilitarControlesReceta(idReceta, true);
+            
+            // Desmarcar otros estados (excepto iniciado)
+            desmarcarOtrosEstados(idReceta, tipo, true);
+        } else {
+            // Deshabilitar controles si se desmarca
+            habilitarControlesReceta(idReceta, false);
+        }
+    } else if (tipo === 'es_terminado_ui' && isChecked) {
+        // Validar antes de terminar
+        if (!validarTerminado(idReceta)) {
+            checkbox.checked = false;
+            return;
+        }
+        
+        // Asegurar que iniciado también esté marcado
+        const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_ui[${idReceta}]"]`);
+        const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
+        
+        if (iniciadoCheckbox && !iniciadoCheckbox.checked) {
+            iniciadoCheckbox.checked = true;
+            if (iniciadoHidden) iniciadoHidden.value = '1';
+            logAction('Forzado estado iniciado a true');
+        }
+        
+        desmarcarOtrosEstados(idReceta, tipo, true);
+    } else if (tipo === 'es_cancelado_ui' && isChecked) {
+        desmarcarOtrosEstados(idReceta, tipo, true);
+        mostrarModalCancelacion(checkbox, idReceta);
+    }
+
+    // Mostrar estado actual en consola
+    mostrarEstadoActual(idReceta);
+}
+
+/**
+ * Habilita/deshabilita controles de una receta
+ * @param {string|number} idReceta - ID de la receta
+ * @param {boolean} habilitar - True para habilitar, false para deshabilitar
+ */
+function habilitarControlesReceta(idReceta, habilitar) {
+    // Cantidad producida
+    const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
+    if (cantidadInput) {
+        cantidadInput.disabled = !habilitar;
+        logAction(`Cantidad producida ${habilitar ? 'habilitada' : 'deshabilitada'}`);
+    }
+
+    // Unidad de medida
+    const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
+    if (unidadSelect) {
+        unidadSelect.disabled = !habilitar;
+        logAction(`Unidad de medida ${habilitar ? 'habilitada' : 'deshabilitada'}`);
+    }
+
+    // Botón Terminar
+    const terminarBtn = document.getElementById(`terminar-btn-${idReceta}`);
+    if (terminarBtn) {
+        if (habilitar) {
+            terminarBtn.style.pointerEvents = 'auto';
+            terminarBtn.style.opacity = '1';
+            terminarBtn.classList.remove('disabled');
+        } else {
+            terminarBtn.style.pointerEvents = 'none';
+            terminarBtn.style.opacity = '0.65';
+            terminarBtn.classList.add('disabled');
+        }
+        
+        const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+        if (terminarCheckbox) terminarCheckbox.disabled = !habilitar;
+        logAction(`Botón Terminar ${habilitar ? 'habilitado' : 'deshabilitado'}`);
+    }
+}
+
+/**
+ * Desmarca otros estados cuando se selecciona uno
+ * @param {string|number} idReceta - ID de la receta
+ * @param {string} tipoActual - Tipo de estado actual ('es_iniciado_ui', etc.)
+ * @param {boolean} mantenerIniciado - Si se debe mantener el estado iniciado
+ */
+function desmarcarOtrosEstados(idReceta, tipoActual, mantenerIniciado = false) {
+    const estados = ['es_iniciado_ui', 'es_terminado_ui', 'es_cancelado_ui'];
+    
+    estados.forEach(tipo => {
+        if (tipo !== tipoActual && !(mantenerIniciado && tipo === 'es_iniciado_ui')) {
+            // Desmarcar checkbox UI
+            const checkboxUI = document.querySelector(`input[name="${tipo}[${idReceta}]"]`);
+            if (checkboxUI) checkboxUI.checked = false;
+            
+            // Actualizar campo oculto (elimina '_ui' del nombre)
+            const nombreCampoOculto = tipo.replace('_ui', '');
+            const hiddenInput = document.querySelector(`input[type="hidden"][name="${nombreCampoOculto}[${idReceta}]"]`);
+            if (hiddenInput) hiddenInput.value = '0';
+        }
+    });
+}
+
+/**
+ * Valida si se puede marcar como terminado
+ * @param {string|number} idReceta - ID de la receta
+ * @returns {boolean} True si es válido, false si no
+ */
+function validarTerminado(idReceta) {
+    const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
+    
+    if (!cantidadInput || !cantidadInput.value || parseFloat(cantidadInput.value) <= 0) {
+        alert('Debe ingresar una cantidad producida válida antes de terminar.');
+        logAction('Validación fallida - Cantidad producida inválida', {
+            receta_id: idReceta,
+            valor: cantidadInput?.value
+        });
+        return false;
+    }
+    
+    logAction('Validación para terminar exitosa', { receta_id: idReceta });
+    return true;
+}
+
+/**
+ * Muestra el estado actual de una receta en consola
+ * @param {string|number} idReceta - ID de la receta
+ */
+function mostrarEstadoActual(idReceta) {
+    try {
+        const estado = {
+            iniciado: document.querySelector(`input[name="es_iniciado_ui[${idReceta}]"]`)?.checked || false,
+            terminado: document.querySelector(`input[name="es_terminado_ui[${idReceta}]"]`)?.checked || false,
+            cancelado: document.querySelector(`input[name="es_cancelado_ui[${idReceta}]"]`)?.checked || false,
+            cantidad: document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`)?.value || '0',
+            cantidad_disabled: document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`)?.disabled || true,
+            unidad_disabled: document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`)?.disabled || true
+        };
+
+        logAction(`Estado actual - Receta ${idReceta}`, estado);
+    } catch (error) {
+        logAction('Error al mostrar estado actual', { error: error.message });
+    }
+}
+
+/**
+ * Sistema de gestión de estados para pedidos personalizados
+ * 
+ * Este sistema maneja tres estados principales:
+ * 1. Iniciado (es_iniciado_personalizado)
+ * 2. Terminado (es_terminado_personalizado)
+ * 3. Cancelado (es_cancelado_personalizado)
+ * 
+ * Cada estado tiene su propio campo oculto y checkbox UI:
+ * - Campo oculto: es_iniciado_personalizado[id], es_terminado_personalizado[id], es_cancelado_personalizado[id]
+ * - Checkbox UI: es_iniciado_personalizado_ui[id], es_terminado_personalizado_ui[id], es_cancelado_personalizado_ui[id]
+ */
+
+/**
+ * Maneja el cambio de estado de un pedido personalizado
+ * @param {HTMLInputElement} checkbox - El checkbox que disparó el evento
+ * @param {string|number} idPedido - ID del pedido personalizado
+ * @param {string|number} idReceta - ID de la receta padre
+ */
+function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
+    console.log('=== INICIO DE MANEJO DE ESTADO PERSONALIZADO ===');
+    console.log('Checkbox que disparó el evento:', checkbox);
+    console.log('ID del pedido:', idPedido);
+    console.log('ID de la receta:', idReceta);
+    console.log('Nombre del checkbox:', checkbox.name);
+    console.log('Estado del checkbox:', checkbox.checked);
+
+    // Extraer el tipo de estado del nombre del checkbox
+    const tipo = checkbox.name.split('[')[0];
+    const isChecked = checkbox.checked;
+
+    console.log('Tipo de estado:', tipo);
+    console.log('¿Está marcado?:', isChecked);
+
+    // Actualizar el campo oculto correspondiente
+    const nombreCampoOculto = tipo.replace('_ui', '');
+    const hiddenInput = document.querySelector(`input[type="hidden"][name="${nombreCampoOculto}[${idPedido}]"]`);
+    
+    console.log('Campo oculto encontrado:', hiddenInput);
+    
+    if (hiddenInput) {
+        hiddenInput.value = isChecked ? '1' : '0';
+        console.log('Valor actualizado del campo oculto:', hiddenInput.value);
+    }
+
+    // Lógica específica para cada tipo de estado
+    if (tipo === 'es_iniciado_personalizado') {
+        console.log('=== MANEJANDO ESTADO INICIADO ===');
+        if (isChecked) {
+            console.log('Marcando como iniciado...');
+            // Habilitar controles relacionados
+            habilitarControlesPersonalizado(idPedido, true);
+            
+            // Desmarcar otros estados (excepto iniciado)
+            desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
+            
+            // Actualizar el estado del botón terminar
+            const terminarBtn = document.getElementById(`terminar-btn-${idPedido}`);
+            console.log('Botón terminar encontrado:', terminarBtn);
+            
+            if (terminarBtn) {
+                terminarBtn.style.pointerEvents = 'auto';
+                terminarBtn.style.opacity = '1';
+                terminarBtn.classList.remove('disabled');
+                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+                if (terminarCheckbox) {
+                    terminarCheckbox.disabled = false;
+                    console.log('Checkbox de terminar habilitado');
+                }
+            }
+        } else {
+            console.log('Desmarcando iniciado...');
+            // Deshabilitar controles si se desmarca
+            habilitarControlesPersonalizado(idPedido, false);
+            
+            // Deshabilitar el botón terminar
+            const terminarBtn = document.getElementById(`terminar-btn-${idPedido}`);
+            if (terminarBtn) {
+                terminarBtn.style.pointerEvents = 'none';
+                terminarBtn.style.opacity = '0.65';
+                terminarBtn.classList.add('disabled');
+                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+                if (terminarCheckbox) {
+                    terminarCheckbox.disabled = true;
+                    console.log('Checkbox de terminar deshabilitado');
+                }
+            }
+        }
+    }
+
+    // Mostrar estado actual en consola
+    mostrarEstadoActualPersonalizado(idPedido);
+    console.log('=== FIN DE MANEJO DE ESTADO PERSONALIZADO ===');
+}
+
+/**
+ * Muestra el estado actual de un pedido personalizado en consola
+ * @param {string|number} idPedido - ID del pedido personalizado
+ */
+function mostrarEstadoActualPersonalizado(idPedido) {
+    console.log('=== MOSTRANDO ESTADO ACTUAL PERSONALIZADO ===');
+    console.log('ID del pedido:', idPedido);
+    
+    try {
+        // Obtener el estado actual del checkbox
+        const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_personalizado[${idPedido}]"]`);
+        const terminadoCheckbox = document.querySelector(`input[name="es_terminado_personalizado[${idPedido}]"]`);
+        const canceladoCheckbox = document.querySelector(`input[name="es_cancelado_personalizado[${idPedido}]"]`);
+        
+        console.log('Checkbox iniciado encontrado:', iniciadoCheckbox);
+        console.log('Checkbox terminado encontrado:', terminadoCheckbox);
+        console.log('Checkbox cancelado encontrado:', canceladoCheckbox);
+        
+        // Obtener el estado de los controles
+        const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
+        const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
+        
+        console.log('Input cantidad encontrado:', cantidadInput);
+        console.log('Input costo encontrado:', costoInput);
+        
+        const estado = {
+            iniciado: iniciadoCheckbox ? iniciadoCheckbox.checked : false,
+            terminado: terminadoCheckbox ? terminadoCheckbox.checked : false,
+            cancelado: canceladoCheckbox ? canceladoCheckbox.checked : false,
+            cantidad: cantidadInput ? cantidadInput.value : '0',
+            cantidad_disabled: cantidadInput ? cantidadInput.disabled : true,
+            costo_disabled: costoInput ? costoInput.disabled : true
+        };
+
+        console.log('Estado actual:', estado);
+        console.log('=== FIN DE MOSTRAR ESTADO ACTUAL PERSONALIZADO ===');
+    } catch (error) {
+        console.error('Error al mostrar estado actual:', error);
+    }
+}
+
+/**
+ * Habilita/deshabilita controles de un pedido personalizado
+ * @param {string|number} idPedido - ID del pedido personalizado
+ * @param {boolean} habilitar - True para habilitar, false para deshabilitar
+ */
+function habilitarControlesPersonalizado(idPedido, habilitar) {
+    // Cantidad producida
+    const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
+    if (cantidadInput) {
+        cantidadInput.disabled = !habilitar;
+        logAction(`Cantidad producida personalizada ${habilitar ? 'habilitada' : 'deshabilitada'}`, {
+            pedido_id: idPedido,
+            control: 'cantidad',
+            disabled: !habilitar,
+            valor: cantidadInput.value
+        });
+    }
+
+    // Costo diseño
+    const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
+    if (costoInput) {
+        costoInput.disabled = !habilitar;
+        logAction(`Costo diseño ${habilitar ? 'habilitado' : 'deshabilitado'}`, {
+            pedido_id: idPedido,
+            control: 'costo',
+            disabled: !habilitar,
+            valor: costoInput.value
+        });
+    }
+
+    // Botón Terminar
+    const terminarBtn = document.getElementById(`terminar-btn-${idPedido}`);
+    if (terminarBtn) {
+        if (habilitar) {
+            terminarBtn.style.pointerEvents = 'auto';
+            terminarBtn.style.opacity = '1';
+            terminarBtn.classList.remove('disabled');
+        } else {
+            terminarBtn.style.pointerEvents = 'none';
+            terminarBtn.style.opacity = '0.65';
+            terminarBtn.classList.add('disabled');
+        }
+        
+        const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+        if (terminarCheckbox) {
+            terminarCheckbox.disabled = !habilitar;
+            logAction(`Botón Terminar personalizado ${habilitar ? 'habilitado' : 'deshabilitado'}`, {
+                pedido_id: idPedido,
+                control: 'terminar',
+                disabled: !habilitar,
+                checked: terminarCheckbox.checked
+            });
+        }
+    }
+}
+
+/**
+ * Desmarca otros estados cuando se selecciona uno en pedido personalizado
+ * @param {string|number} idPedido - ID del pedido personalizado
+ * @param {string} tipoActual - Tipo de estado actual
+ * @param {boolean} mantenerIniciado - Si se debe mantener el estado iniciado
+ */
+function desmarcarOtrosEstadosPersonalizado(idPedido, tipoActual, mantenerIniciado = false) {
+    const estados = ['es_iniciado_personalizado', 'es_terminado_personalizado', 'es_cancelado_personalizado'];
+    
+    estados.forEach(tipo => {
+        if (tipo !== tipoActual && !(mantenerIniciado && tipo === 'es_iniciado_personalizado')) {
+            // Desmarcar checkbox UI
+            const checkboxUI = document.querySelector(`input[name="${tipo}[${idPedido}]"]`);
+            if (checkboxUI) {
+                checkboxUI.checked = false;
+                logAction(`Estado desmarcado - ${tipo}`, {
+                    pedido_id: idPedido,
+                    estado: tipo
+                });
+            }
+            
+            // Actualizar campo oculto
+            const nombreCampoOculto = tipo.replace('_ui', '');
+            const hiddenInput = document.querySelector(`input[type="hidden"][name="${nombreCampoOculto}[${idPedido}]"]`);
+            if (hiddenInput) {
+                hiddenInput.value = '0';
+                logAction(`Campo oculto actualizado - ${hiddenInput.name}: 0`, {
+                    pedido_id: idPedido,
+                    campo: hiddenInput.name
+                });
+            }
+        }
+    });
+}
+
+/**
+ * Valida un pedido personalizado antes de marcarlo como terminado
+ * @param {HTMLInputElement} checkbox - Checkbox que disparó el evento
+ * @param {string|number} idPedido - ID del pedido
+ * @param {string|number} idReceta - ID de la receta padre
+ * @returns {boolean} True si es válido, false si no
+ */
+function validarTerminadoPersonalizado(checkbox, idPedido, idReceta) {
+    // Validar que esté iniciado primero
+    const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_personalizado[${idPedido}]"]`);
+    if (!iniciadoCheckbox || !iniciadoCheckbox.checked) {
+        alert('Debe iniciar el pedido personalizado antes de terminarlo.');
+        logAction('Validación fallida - No está iniciado', {
+            pedido_id: idPedido,
+            receta_id: idReceta
+        });
+        return false;
+    }
+    
+    // Validar cantidad producida
+    const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
+    if (!cantidadInput || !cantidadInput.value || parseFloat(cantidadInput.value) <= 0) {
+        alert('Debe ingresar una cantidad producida válida para este pedido personalizado.');
+        logAction('Validación fallida - Cantidad inválida', {
+            pedido_id: idPedido,
+            receta_id: idReceta,
+            cantidad: cantidadInput?.value
+        });
+        return false;
+    }
+    
+    // Validar costo diseño
+    const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
+    if (!costoInput || !costoInput.value || parseFloat(costoInput.value) <= 0) {
+        alert('Debe ingresar un costo de diseño válido (mayor que cero) para este pedido personalizado.');
+        logAction('Validación fallida - Costo diseño inválido', {
+            pedido_id: idPedido,
+            receta_id: idReceta,
+            costo: costoInput?.value
+        });
+        return false;
+    }
+    
+    logAction('Validación para terminar pedido personalizado exitosa', { 
+        pedido_id: idPedido,
+        receta_id: idReceta 
+    });
+    return true;
+}
+
+/**
+ * Carga el instructivo de una receta via AJAX
+ * @param {string|number} idReceta - ID de la receta
+ * @param {string} estado - Estado actual de la receta
+ */
+function cargarInstructivo(idReceta, estado) {
+    const modal = $('#instructivoModal');
+    
+    $('#instructivoContent').html(`
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Cargando...</span>
+            </div>
+            <p class="mt-3">Cargando instructivo...</p>
+        </div>
+    `);
+    
+    modal.modal('show');
+
+    $.ajax({
+        url: "{{ route('recetas.show-instructivo') }}",
+        type: 'GET',
+        data: { 
+            id_receta: idReceta, 
+            estado: estado || 'pendiente'
+        },
+        success: function(data) {
+            $('#instructivoContent').html(data);
+        },
+        error: function(xhr) {
+            logAction('Error al cargar instructivo', {
+                receta_id: idReceta,
+                error: xhr.responseText
+            });
+            $('#instructivoContent').html(`
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Error al cargar el instructivo
+                </div>
+            `);
+        }
+    });
+}
+
+/**
+ * Muestra detalles de pedidos personalizados en un modal
+ * @param {string|number} idReceta - ID de la receta
+ */
+function mostrarDetallesPersonales(idReceta) {
+    const recetaData = {!! json_encode($recetasAgrupadas) !!}[idReceta];
+    
+    if (!recetaData) {
+        logAction('No se encontraron datos para la receta', { receta_id: idReceta });
+        return;
+    }
+
+    // Filtrar solo pedidos personalizados
+    const pedidosPersonalizados = recetaData.pedidos.filter(p => p.es_personalizado);
+    
+    if (pedidosPersonalizados.length === 0) {
+        logAction('No hay pedidos personalizados para esta receta', { receta_id: idReceta });
+        return;
+    }
+
+    let html = '<div class="row">';
+    
+    pedidosPersonalizados.forEach((pedido, index) => {
+        const imagenUrl = pedido.foto_referencial 
+            ? '{{ asset("storage") }}/' + pedido.foto_referencial.replace('pedidos/', 'pedidos/')
+            : null;
+        
+        html += `
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Pedido #${pedido.id_pedidos_det}</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Descripción:</h6>
+                        <p class="text-muted">${pedido.descripcion || 'Sin descripción'}</p>
+                        
+                        ${imagenUrl ? `
+                        <div class="mt-3">
+                            <h6>Imagen de referencia:</h6>
+                            <img src="${imagenUrl}" class="img-fluid rounded border" alt="Imagen de referencia" style="max-height: 200px; cursor: pointer;"
+                                 onclick="mostrarImagenModal('${imagenUrl}')">
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="card-footer bg-white">
+                        <small class="text-muted">Cantidad: ${pedido.cantidad}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Cerrar fila cada 2 elementos
+        if ((index + 1) % 2 === 0) {
+            html += '</div><div class="row">';
+        }
+    });
+    
+    html += '</div>';
+    document.getElementById('detallesModalContent').innerHTML = html;
+}
+
+/**
+ * Muestra una imagen en un modal
+ * @param {string} imageUrl - URL de la imagen a mostrar
+ */
+function mostrarImagenModal(imageUrl) {
+    $('#modalImage').attr('src', imageUrl);
+    $('#imageModal').modal('show');
+}
+
+/**
+ * Actualiza los totales cuando cambia el costo de diseño
+ * @param {string|number} idReceta - ID de la receta
+ */
+function actualizarTotales(idReceta) {
+    let totalCostoDiseno = 0;
+    let subtotalPersonalizados = 0;
+    
+    // Sumar costos de diseño y subtotales de personalizados
+    document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"]`).forEach(row => {
+        const costoInput = row.querySelector('input.costo-diseno');
+        if (costoInput) {
+            const costo = parseFloat(costoInput.value) || 0;
+            totalCostoDiseno += costo;
+            
+            // Obtener subtotal del pedido personalizado
+            const subtotalText = row.cells[8].textContent;
+            const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
+            subtotalPersonalizados += subtotal;
+            
+            // Actualizar total para esta fila
+            const totalFila = subtotal + costo;
+            row.cells[10].textContent = 'S/ ' + totalFila.toFixed(2);
+        }
+    });
+    
+    // Obtener subtotal de la receta base
+    const subtotalText = document.getElementById(`subtotal-${idReceta}`).textContent;
+    const subtotalBase = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
+    
+    // Calcular total general (suma de subtotal base + subtotal personalizados + costos diseño)
+    const totalGeneral = subtotalBase + subtotalPersonalizados + totalCostoDiseno;
+    
+    // Actualizar displays
+    document.getElementById(`total-costo-diseno-${idReceta}`).textContent = 'S/ ' + totalCostoDiseno.toFixed(2);
+    document.getElementById(`total-general-${idReceta}`).textContent = 'S/ ' + totalGeneral.toFixed(2);
+    
+    // Actualizar total por fila de receta principal
+    document.getElementById(`total-${idReceta}`).textContent = 'S/ ' + (subtotalBase + totalCostoDiseno).toFixed(2);
+    
+    // Animación para destacar el cambio
+    document.getElementById(`total-costo-diseno-${idReceta}`).classList.add('highlight');
+    setTimeout(() => {
+        document.getElementById(`total-costo-diseno-${idReceta}`).classList.remove('highlight');
+    }, 1000);
+}
+
+// Validación del formulario al enviar
 document.getElementById('produccionForm').addEventListener('submit', function(e) {
+    // Verificar recetas normales
     const terminados = document.querySelectorAll('input[name^="es_terminado"]:checked');
     const cancelados = document.querySelectorAll('input[name^="es_cancelado"]:checked');
     
-    if (terminados.length === 0 && cancelados.length === 0) {
+    // Verificar pedidos personalizados
+    const terminadosPersonalizados = document.querySelectorAll('input[name^="es_terminado_personalizado"]:checked');
+    const canceladosPersonalizados = document.querySelectorAll('input[name^="es_cancelado_personalizado"]:checked');
+    
+    if (terminados.length === 0 && cancelados.length === 0 && 
+        terminadosPersonalizados.length === 0 && canceladosPersonalizados.length === 0) {
         e.preventDefault();
-        alert('Debes marcar al menos una receta como terminada o cancelada para guardar.');
+        alert('Debes marcar al menos una receta o pedido personalizado como terminado o cancelado para guardar.');
+        return false;
+    }
+    
+    // Verificar cancelados sin observación
+    let canceladosSinObservacion = [];
+    
+    // Para recetas normales
+    cancelados.forEach(checkbox => {
+        const name = checkbox.name;
+        const idReceta = name.match(/\[(.*?)\]/)[1];
+        const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`)?.value;
+        
+        if (!observacion) {
+            canceladosSinObservacion.push(`Receta ${idReceta}`);
+        }
+    });
+    
+    // Para pedidos personalizados
+    canceladosPersonalizados.forEach(checkbox => {
+        const name = checkbox.name;
+        const idPedido = name.match(/\[(.*?)\]/)[1];
+        const observacion = document.querySelector(`input[name="observaciones_personalizado[${idPedido}]"]`)?.value;
+        
+        if (!observacion) {
+            canceladosSinObservacion.push(`Pedido personalizado ${idPedido}`);
+        }
+    });
+    
+    if (canceladosSinObservacion.length > 0) {
+        e.preventDefault();
+        alert('Los siguientes ítems cancelados necesitan una observación:\n' + 
+              canceladosSinObservacion.join('\n'));
         return false;
     }
     
     return true;
 });
 
-    // Función para actualizar el total de una receta específica
-    function actualizarTotalReceta(idReceta) {
-        const row = document.getElementById(`row-${idReceta}`);
-        const subtotalText = row.querySelector('td:nth-child(9)').textContent;
-        const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', ''));
-        let costoDisenoTotal = 0;
-
-        // Sumar todos los costos de diseño de pedidos personalizados
-        document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`).forEach(input => {
-            const valor = parseFloat(input.value) || 0;
-            costoDisenoTotal += valor;
-        });
-
-        // Actualizar el total con animación
-        const totalCell = document.getElementById(`total-${idReceta}`);
-        const nuevoTotal = subtotal + costoDisenoTotal;
-        totalCell.textContent = 'S/ ' + nuevoTotal.toFixed(2);
-        totalCell.classList.add('highlight');
-
-        // Remover la clase de animación después de que termine
-        setTimeout(() => {
-            totalCell.classList.remove('highlight');
-        }, 1500);
-    }
-
-    function mostrarModalObservacion(checkbox, idReceta) {
-        const modal = $('#observacionModal');
-        const esCancelacion = checkbox !== null;
-
-        // Configurar el modal según si es cancelación o observación normal
-        if (esCancelacion) {
-            $('#observacionModalLabel').text('Observación de Cancelación');
-            $('#observacionTexto').attr('placeholder', 'Ingrese el motivo de la cancelación...');
-        } else {
-            $('#observacionModalLabel').text('Agregar Observación');
-            $('#observacionTexto').attr('placeholder', 'Ingrese cualquier observación sobre esta producción...');
-        }
-
-        // Cargar observación existente si hay
-        const observacionExistente = document.querySelector(`input[name="observaciones[${idReceta}]"]`)?.value || '';
-        $('#observacionTexto').val(observacionExistente);
-
-        // Guardar referencia a la receta
-        $('#observacionRecetaId').val(idReceta);
-        $('#esCancelacion').val(esCancelacion ? '1' : '0');
-
-        modal.modal('show');
-    }
-
-    function guardarObservacion() {
-        const idReceta = $('#observacionRecetaId').val();
-        const esCancelacion = $('#esCancelacion').val() === '1';
-        const observacion = $('#observacionTexto').val();
-
-        // Crear o actualizar el input oculto para la observación
-        let inputObservacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
-        if (!inputObservacion) {
-            inputObservacion = document.createElement('input');
-            inputObservacion.type = 'hidden';
-            inputObservacion.name = `observaciones[${idReceta}]`;
-            document.getElementById('produccionForm').appendChild(inputObservacion);
-        }
-        inputObservacion.value = observacion;
-
-        // Si es cancelación, mostrar badge
-        if (esCancelacion) {
-            const row = document.getElementById(`row-${idReceta}`);
-            let badge = row.querySelector('.badge-observacion-cancelacion');
-
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'badge badge-danger badge-observacion-cancelacion ml-2';
-                badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> Cancelado';
-                badge.setAttribute('data-toggle', 'tooltip');
-                badge.setAttribute('title', observacion);
-                row.querySelector('td:first-child').appendChild(badge);
-
-                // Inicializar tooltip
-                new bootstrap.Tooltip(badge);
-            } else {
-                // Actualizar tooltip si ya existe
-                badge.setAttribute('title', observacion);
-                const tooltipInstance = bootstrap.Tooltip.getInstance(badge);
-                if (tooltipInstance) {
-                    tooltipInstance.dispose();
-                    new bootstrap.Tooltip(badge);
-                }
-            }
-        }
-
-        $('#observacionModal').modal('hide');
-    }
-
-    // Función para cargar el instructivo en el modal
-    function cargarInstructivo(idReceta, estado) {
-    const modal = $('#instructivoModal');
-    const modalInstance = new bootstrap.Modal(modal[0]);
-    modalInstance.show();
-
-    // Mostrar spinner de carga
-    $('#instructivoContent').html(`
-    <div class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-            <span class="sr-only">Cargando...</span>
-        </div>
-        <p class="mt-3">Cargando instructivo...</p>
-    </div>
-    `);
-
-    // Hacer la petición AJAX
-    $.ajax({
-        url: "{{ route('recetas.show-instructivo') }}",
-        type: 'GET',
-        data: {
-            id_receta: idReceta,
-            estado: estado // Pasamos el estado actual
-        },
-        success: function(data) {
-            $('#instructivoContent').html(data);
-        },
-        error: function(xhr, status, error) {
-            $('#instructivoContent').html(`
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle"></i> Error al cargar el instructivo: ${xhr.statusText}
-            </div>
-            <div class="text-center">
-                <button class="btn btn-primary" onclick="cargarInstructivo(${idReceta}, '${estado}')">
-                    <i class="fas fa-sync-alt"></i> Intentar nuevamente
-                </button>
-            </div>
-            `);
-            console.error('Error al cargar instructivo:', error);
-        }
-    });
+// Cerrar notificación de equipo
+function closeNotification() {
+    document.getElementById('equipoNotification').style.display = 'none';
 }
 
-    // Función para mostrar la imagen en el modal
-    function mostrarImagen(url) {
-        const modal = $('#imageModal');
-        $('#modalImage').attr('src', url);
-        const modalInstance = new bootstrap.Modal(modal[0]);
-        modalInstance.show();
+// Inicialización cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    logAction('Página cargada - Inicializando seguimiento de estados');
+    
+    // Configuración de tooltips de Bootstrap
+    if (typeof $.fn.tooltip === 'function') {
+        $('[data-toggle="tooltip"]').tooltip();
     }
-
-    // Inicialización cuando el DOM esté listo
-    document.addEventListener('DOMContentLoaded', function() {
-        // Manejar eventos del modal para accesibilidad
-        const instructivoModal = document.getElementById('instructivoModal');
-        if (instructivoModal) {
-            instructivoModal.addEventListener('show.bs.modal', function() {
-                this.setAttribute('aria-hidden', 'false');
-            });
-
-            instructivoModal.addEventListener('hidden.bs.modal', function() {
-                this.setAttribute('aria-hidden', 'true');
-            });
-        }
-
-        // Inicializar tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function(tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-
-        // Eventos para los botones de ver imagen
-        document.querySelectorAll('.view-image-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const imageUrl = this.getAttribute('data-image-url');
-                mostrarImagen(imageUrl);
-            });
-        });
-
-        document.querySelectorAll('.production-item').forEach(row => {
-            const estado = row.dataset.estado;
-            if (estado) {
-                row.classList.add(estado);
+    
+    // Delegación de eventos para mejor rendimiento
+    document.getElementById('dataTable').addEventListener('change', function(e) {
+        if (e.target.matches('input[name^="es_iniciado"], input[name^="es_terminado"], input[name^="es_cancelado"]')) {
+            const id = e.target.name.match(/\[(.*?)\]/)[1];
+            if (e.target.name.startsWith('es_iniciado_personalizado')) {
+                manejarEstadoPersonalizado(e.target, id, e.target.closest('tr').dataset.recid);
+            } else if (e.target.name.startsWith('es_terminado_personalizado')) {
+                manejarEstadoPersonalizado(e.target, id, e.target.closest('tr').dataset.recid);
             }
-        });
-
-        // En el evento submit del formulario, modificar para eliminar la validación de enviados
-        document.getElementById('produccionForm').addEventListener('submit', function(e) {
-            console.log("Preparando envío del formulario...");
-
-            // Agregar recetas al formulario
-            const recetas = document.querySelectorAll('input[name^="cantidad_producida_real"]');
-            recetas.forEach(input => {
-                const idReceta = input.name.match(/\[(.*?)\]/)[1];
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.name = 'id_recetas_cab[]';
-                hiddenInput.value = idReceta;
-                this.appendChild(hiddenInput);
-            });
-
-            // Verificar datos antes de enviar - ELIMINAR LA PARTE DE "tieneEnviados"
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
-            console.log("Datos a enviar:", data);
-
-            // Validación de estados - SOLO MANTENER LA DE CANCELADOS SIN OBSERVACIÓN
-            let tieneCanceladosSinObservacion = false;
-
-            // Verificar cada receta
-            recetas.forEach(input => {
-                const idReceta = input.name.match(/\[(.*?)\]/)[1];
-
-                // Verificar si está cancelado pero sin observación
-                const canceladoCheckbox = document.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
-                const observacion = document.querySelector(`input[name="observaciones[${idReceta}]"]`);
-                if (canceladoCheckbox && canceladoCheckbox.checked && (!observacion || !observacion.value)) {
-                    tieneCanceladosSinObservacion = true;
-                }
-            });
-
-            if (tieneCanceladosSinObservacion) {
-                alert('Hay pedidos cancelados sin observación. Por favor, agrega una observación para los pedidos cancelados.');
-                e.preventDefault();
-                return false;
-            }
-
-            return true; // Permitir siempre el envío si no hay cancelados sin observación
-        });
-        // Función para actualizar estados
-        function actualizarEstados(checkbox, idReceta) {
-            console.log(`Actualizando estado para receta ${idReceta}`, checkbox.name, checkbox.checked);
-            const row = document.getElementById(`row-${idReceta}`);
-
-            const form = document.getElementById('produccionForm');
-
-            // Obtener todos los checkboxes relacionados
-            const iniciarCheck = row.querySelector(`input[name="es_iniciado[${idReceta}]"]`);
-            const terminarCheck = row.querySelector(`input[name="es_terminado[${idReceta}]"]`);
-            const enviarCheck = row.querySelector(`input[name="es_enviado[${idReceta}]"]`);
-            const cancelarCheck = row.querySelector(`input[name="es_cancelado[${idReceta}]"]`);
-
-            // Actualizar los hidden inputs correspondientes
-            form.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`).value = iniciarCheck.checked ? '1' : '0';
-            form.querySelector(`input[type="hidden"][name="es_terminado[${idReceta}]"]`).value = terminarCheck.checked ? '1' : '0';
-            form.querySelector(`input[type="hidden"][name="es_enviado[${idReceta}]"]`).value = enviarCheck.checked ? '1' : '0';
-            form.querySelector(`input[type="hidden"][name="es_cancelado[${idReceta}]"]`).value = cancelarCheck.checked ? '1' : '0';
-
-            console.log(`Estados actualizados - Iniciado: ${iniciarCheck.checked}, Terminado: ${terminarCheck.checked}, Enviado: ${enviarCheck.checked}, Cancelado: ${cancelarCheck.checked}`);
-
-
-            if (row) {
-                row.className = 'production-item';
-
-                if (checkbox.name.includes('es_cancelado') && checkbox.checked) {
-                    row.classList.add('cancelado');
-                } else if (checkbox.name.includes('es_terminado') && checkbox.checked) {
-                    row.classList.add('terminado');
-                } else if (checkbox.name.includes('es_iniciado') && checkbox.checked) {
-                    row.classList.add('en-proceso');
-                }
-            }
-
-            console.log(`Estado actualizado para fila ${idReceta}`);
-
-
         }
-
-        // Función para actualizar el total
-        function actualizarTotalReceta(idReceta) {
-            console.log(`Actualizando total para receta ${idReceta}`);
-            const row = document.getElementById(`row-${idReceta}`);
-            const subtotalText = row.querySelector('td:nth-child(9)').textContent;
-            const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', ''));
-            let costoDisenoTotal = 0;
-
-            // Sumar todos los costos de diseño de pedidos personalizados
-            document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"] input.costo-diseno`).forEach(input => {
-                const valor = parseFloat(input.value) || 0;
-                costoDisenoTotal += valor;
-            });
-
-            // Actualizar el total
-            const totalCell = document.getElementById(`total-${idReceta}`);
-            const nuevoTotal = subtotal + costoDisenoTotal;
-            totalCell.textContent = 'S/ ' + nuevoTotal.toFixed(2);
-
-            console.log(`Total actualizado para receta ${idReceta}: ${nuevoTotal}`);
-        }
-
-        function mostrarErroresCancelados(ids) {
-            let html = '<p>Los siguientes registros cancelados necesitan observación:</p><ul>';
-            ids.forEach(id => {
-                html += `<li>Receta ID: ${id}</li>`;
-            });
-            html += '</ul>';
-
-            Swal.fire({
-                title: 'Observaciones faltantes',
-                html: html,
-                icon: 'error',
-                confirmButtonText: 'Entendido'
-            });
+    });
+    
+    // Mostrar imágenes al hacer clic
+    $(document).on('click', '.view-image-btn', function() {
+        const imageUrl = $(this).data('image-url');
+        $('#modalImage').attr('src', imageUrl);
+        $('#imageModal').modal('show');
+    });
+    
+     // Mostrar estado inicial de todas las recetas
+    document.querySelectorAll('tr.production-item').forEach(row => {
+        const idReceta = row.id.split('-')[1];
+        if (idReceta) {
+            mostrarEstadoActual(idReceta);
         }
     });
 
-    // Función para cerrar la notificación de equipo
-    function closeNotification() {
-        document.getElementById('equipoNotification').style.display = 'none';
+    // Mostrar estado completo cada 5 segundos (solo en desarrollo)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        setInterval(() => {
+            logAction('Estado actual del sistema (actualización periódica)');
+            document.querySelectorAll('tr.production-item').forEach(row => {
+                const idReceta = row.id.split('-')[1];
+                if (idReceta) mostrarEstadoActual(idReceta);
+            });
+        }, 5000);
     }
+});
 
-    // Cerrar notificación al hacer click fuera de ella
-    document.addEventListener('click', function(event) {
-        const notification = document.getElementById('equipoNotification');
-        if (notification && !notification.contains(event.target)) {
-            closeNotification();
-        }
+/**
+ * Muestra el modal para agregar observación a una receta
+ * @param {number|null} idPedido - ID del pedido (null para receta normal)
+ * @param {number} idReceta - ID de la receta
+ */
+function mostrarModalObservacion(idPedido, idReceta) {
+    $('#observacionModalLabel').text(idPedido ? 'Observación para Pedido Personalizado' : 'Observación para Receta');
+    $('#observacionTexto').attr('placeholder', idPedido ? 'Ingrese observación para este pedido...' : 'Ingrese observación para esta receta...');
+    $('#observacionRecetaId').val(idReceta);
+    $('#esCancelacion').val('0');
+    
+    // Guardar referencia al pedido si existe
+    if (idPedido) {
+        $('#observacionModal').data('pedido-id', idPedido);
+    } else {
+        $('#observacionModal').removeData('pedido-id');
+    }
+    
+    // Cargar observación existente si hay
+    const inputName = idPedido 
+        ? `observaciones_personalizado[${idPedido}]` 
+        : `observaciones[${idReceta}]`;
+    
+    const observacionExistente = document.querySelector(`input[name="${inputName}"]`)?.value || '';
+    $('#observacionTexto').val(observacionExistente);
+    
+    $('#observacionModal').modal('show');
+}
+
+/**
+ * Muestra el modal para agregar observación a un pedido personalizado
+ * @param {number} idPedido - ID del pedido
+ * @param {number} idReceta - ID de la receta padre
+ */
+function mostrarModalObservacionPersonalizado(idPedido, idReceta) {
+    mostrarModalObservacion(idPedido, idReceta);
+}
+
+// Cierra la notificación de equipo
+function closeNotification() {
+    document.getElementById('equipoNotification').style.display = 'none';
+    logAction('Notificación de equipo cerrada por el usuario');
+}
+
+// Exportar funciones para acceso global (solo en desarrollo)
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.productionDebug = {
+        mostrarEstadoActual,
+        habilitarControlesReceta,
+        validarTerminado,
+        logAction
+    };
+}
+
+// Agregar event listener para monitorear cambios en los checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== INICIALIZANDO MONITOREO DE CHECKBOXES ===');
+    // Monitorear cambios en checkboxes de pedidos personalizados
+    const checkboxes = document.querySelectorAll('input[name^="es_iniciado_personalizado"], input[name^="es_terminado_personalizado"], input[name^="es_cancelado_personalizado"]');
+    console.log('Checkboxes encontrados:', checkboxes.length);
+    
+    checkboxes.forEach(checkbox => {
+        console.log('Agregando listener a checkbox:', checkbox.name);
+        checkbox.addEventListener('change', function() {
+            console.log('Checkbox cambiado:', this.name);
+            const idPedido = this.name.match(/\[(.*?)\]/)[1];
+            const idReceta = this.closest('tr').dataset.recid;
+            console.log('ID Pedido:', idPedido);
+            console.log('ID Receta:', idReceta);
+            manejarEstadoPersonalizado(this, idPedido, idReceta);
+        });
     });
+    console.log('=== FIN DE INICIALIZACIÓN DE MONITOREO ===');
+});
 </script>
+
 @endsection

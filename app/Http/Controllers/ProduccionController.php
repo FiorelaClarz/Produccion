@@ -24,192 +24,142 @@ class ProduccionController extends Controller
     public function index()
     {
         $usuario = Auth::user();
+        $estadoActual = request()->query('estado', 'pendientes');
+        $fechaActual = Carbon::now()->toDateString();
+        $idAreaUsuario = $usuario->id_areas;
 
+        // Verificar equipo activo del usuario
+        $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
+            ->where('status', true)
+            ->where('is_deleted', false)
+            ->whereDate('created_at', $fechaActual)
+            ->with(['usuario', 'area', 'turno'])
+            ->first();
 
+        // Obtener todos los pedidos del día para el área del usuario
+        $pedidosDetalle = PedidoDetalle::with([
+                'receta', 
+                'receta.producto', 
+                'receta.detalles', 
+                'receta.detalles.producto', 
+                'receta.instructivo', 
+                'uMedida'
+            ])
+            ->whereDate('created_at', $fechaActual)
+            ->where('id_areas', $idAreaUsuario)
+            ->where('is_deleted', false)
+            ->whereHas('receta', function($query) {
+                $query->whereNotNull('id_recetas')
+                    ->whereHas('producto')
+                    ->whereHas('detalles');
+            })
+            ->get();
 
-        if ($usuario->id_roles == 3) {
-            $fechaActual = Carbon::now()->toDateString();
-            $idAreaUsuario = $usuario->id_areas;
-
-            $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
-                ->where('status', true)
-                ->where('is_deleted', false)
-                ->whereDate('created_at', $fechaActual)
-                ->with(['usuario', 'area', 'turno'])
-                ->first();
-
-            // Al inicio del método index()
-            Log::info('Accediendo a producción personal', [
-                'user_id' => $usuario->id_usuarios,
-                'area_id' => $usuario->id_areas,
-                'fecha' => $fechaActual
-            ]);
-
-            // Obtener todos los pedidos del día
-            $pedidosDetalle = PedidoDetalle::with(['receta', 'receta.producto', 'receta.detalles', 'receta.detalles.producto', 'receta.instructivo', 'uMedida'])
-                ->whereDate('created_at', $fechaActual)
-                ->where('id_areas', $idAreaUsuario)
-                ->where('is_deleted', false)
-                ->whereHas('receta', function ($query) {
-                    $query->whereNotNull('id_recetas')
-                        ->whereHas('producto')
-                        ->whereHas('detalles');
-                })
-                ->get(['id_pedidos_det', 'id_recetas', 'cantidad', 'es_personalizado', 'descripcion', 'foto_referencial', 'id_u_medidas', 'id_areas', 'id_estados']);
-
-            // Después de obtener los pedidos
-            Log::debug('Pedidos obtenidos', [
-                'total_pedidos' => $pedidosDetalle->count(),
-                'estados_distribucion' => $pedidosDetalle->groupBy('id_estados')->map->count()
-            ]);
-
-
-
-
-
-// Primero separamos los pedidos terminados/cancelados de los pendientes
+        // Separar pedidos por estado
         $pedidosPendientes = $pedidosDetalle->filter(function($pedido) {
-            return $pedido->id_estados == null || $pedido->id_estados < 4; // 4 = terminado, 5 = cancelado
+            return $pedido->id_estados == null || $pedido->id_estados < 4;
         });
 
         $pedidosTerminados = $pedidosDetalle->filter(function($pedido) {
-            return $pedido->id_estados == 4; // 4 = terminado
+            return $pedido->id_estados == 4;
         });
 
         $pedidosCancelados = $pedidosDetalle->filter(function($pedido) {
-            return $pedido->id_estados == 5; // 5 = cancelado
+            return $pedido->id_estados == 5;
         });
 
-        // Agrupar por receta y estado - solo para pedidos pendientes
-        $recetasAgrupadasPendientes = $pedidosPendientes->groupBy('id_recetas')->map(function ($items) {
-            $receta = $items->first()->receta;
-            $estadoGeneral = $this->determinarEstadoGeneral($items);
-            
-            return [
-                'cantidad_total' => $items->sum('cantidad'),
-                'es_personalizado' => $items->contains('es_personalizado', true),
-                'id_productos_api' => $items->first()->id_productos_api,
-                'id_u_medidas' => $items->first()->id_u_medidas,
-                'id_areas' => $items->first()->id_areas,
-                'receta' => $receta,
-                'pedidos' => $items,
-                'estado_general' => $estadoGeneral
-            ];
-        })->filter(function ($item) {
-            return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
-        });
-
-        // Agrupar pedidos terminados
-// Agrupar pedidos terminados
-$recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(function ($items) {
-    $receta = $items->first()->receta;
-    
-    return [
-        'cantidad_total' => $items->sum('cantidad'),
-        'cantidad_producida_real' => $items->first()->cantidad_producida_real ?? $items->sum('cantidad'), // Asegúrate de incluir esto
-        'es_personalizado' => $items->contains('es_personalizado', true),
-        'id_productos_api' => $items->first()->id_productos_api,
-        'id_u_medidas' => $items->first()->id_u_medidas,
-        'id_areas' => $items->first()->id_areas,
-        'receta' => $receta,
-        'pedidos' => $items,
-        'estado_general' => 'terminado'
-    ];
-})->filter(function ($item) {
-    return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
-});
-        // Agrupar pedidos cancelados
-        $recetasAgrupadasCanceladas = $pedidosCancelados->groupBy('id_recetas')->map(function ($items) {
-            $receta = $items->first()->receta;
-            
-            return [
-                'cantidad_total' => $items->sum('cantidad'),
-                'es_personalizado' => $items->contains('es_personalizado', true),
-                'id_productos_api' => $items->first()->id_productos_api,
-                'id_u_medidas' => $items->first()->id_u_medidas,
-                'id_areas' => $items->first()->id_areas,
-                'receta' => $receta,
-                'pedidos' => $items,
-                'estado_general' => 'cancelado'
-            ];
-        })->filter(function ($item) {
-            return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
-        });
-
-
-
-
-            // // Agrupar por receta y estado
-            // $recetasAgrupadas = $pedidosDetalle->groupBy('id_recetas')->map(function ($items) {
-            //     $receta = $items->first()->receta;
-            //     $estadoGeneral = $this->determinarEstadoGeneral($items);
-
-            //     return [
-            //         'cantidad_total' => $items->sum('cantidad'),
-            //         'es_personalizado' => $items->contains('es_personalizado', true),
-            //         'id_productos_api' => $items->first()->id_productos_api,
-            //         'id_u_medidas' => $items->first()->id_u_medidas,
-            //         'id_areas' => $items->first()->id_areas,
-            //         'receta' => $receta,
-            //         'pedidos' => $items,
-            //         'estado_general' => $estadoGeneral
-            //     ];
-            // })->filter(function ($item) {
-            //     return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
-            // });
-
-            // // Después de agrupar por receta
-            // Log::debug('Recetas agrupadas', [
-            //     'total_recetas' => $recetasAgrupadas->count(),
-            //     'estados_distribucion' => $recetasAgrupadas->groupBy('estado_general')->map->count()
-            // ]);
-
-            // Filtrar por estado según parámetro de URL
-             // Filtrar por estado según parámetro de URL
-        $estadoFiltro = request()->query('estado', 'pendientes');
-        
-        $recetasFiltradas = collect();
-        
-        switch ($estadoFiltro) {
-            case 'terminados':
-                $recetasFiltradas = $recetasAgrupadasTerminadas;
-                break;
-            case 'cancelados':
-                $recetasFiltradas = $recetasAgrupadasCanceladas;
-                break;
-            case 'pendientes':
-            default:
-                $recetasFiltradas = $recetasAgrupadasPendientes;
-                break;
-        }
+        // Agrupar recetas por estado según el filtro
+        $recetasFiltradas = $this->agruparRecetasPorEstado(
+            $estadoActual, 
+            $pedidosPendientes, 
+            $pedidosTerminados, 
+            $pedidosCancelados
+        );
 
         $unidadesMedida = UMedida::activos()->get();
 
-        if (request()->is('produccion/personal')) {
-            return view('produccion.index-personal', [
-                'recetasAgrupadas' => $recetasFiltradas,
-                'unidadesMedida' => $unidadesMedida,
-                'usuario' => $usuario,
-                'equipoActivo' => $equipoActivo,
-                'estadoActual' => $estadoFiltro,
-                'totalPendientes' => $recetasAgrupadasPendientes->count(),
-                'totalTerminados' => $recetasAgrupadasTerminadas->count(),
-                'totalCancelados' => $recetasAgrupadasCanceladas->count()
-            ]);
-        }
-        }
-
-        // Para otros roles o vista normal
-        $producciones = ProduccionCabecera::with(['usuario', 'turno', 'produccionesDetalle'])
-            ->orderBy('fecha', 'desc')
-            ->orderBy('hora', 'desc')
-            ->get();
-
-        return view('produccion.index', compact('producciones'));
+        return view('produccion.index-personal', [
+            'recetasAgrupadas' => $recetasFiltradas,
+            'unidadesMedida' => $unidadesMedida,
+            'usuario' => $usuario,
+            'equipoActivo' => $equipoActivo,
+            'estadoActual' => $estadoActual,
+            'totalPendientes' => $pedidosPendientes->count(),
+            'totalTerminados' => $pedidosTerminados->count(),
+            'totalCancelados' => $pedidosCancelados->count()
+        ]);
     }
 
+    /**
+     * Agrupa las recetas por estado (pendientes, terminados, cancelados)
+     */
+    protected function agruparRecetasPorEstado($estadoActual, $pedidosPendientes, $pedidosTerminados, $pedidosCancelados)
+    {
+        switch ($estadoActual) {
+            case 'terminados':
+                return $this->agruparPedidosPorReceta($pedidosTerminados, 'terminado');
+            case 'cancelados':
+                return $this->agruparPedidosPorReceta($pedidosCancelados, 'cancelado');
+            default:
+                return $this->agruparPedidosPorReceta($pedidosPendientes, null);
+        }
+    }
 
-    // Métodos auxiliares para determinar estados
+    /**
+     * Agrupa los pedidos por receta y determina el estado general
+     */
+    protected function agruparPedidosPorReceta($pedidos, $estadoForzado = null)
+    {
+        return $pedidos->groupBy('id_recetas')->map(function ($items) use ($estadoForzado) {
+            $receta = $items->first()->receta;
+            
+            $estadoGeneral = $estadoForzado ?: $this->determinarEstadoGeneral($items);
+            
+            // Obtener componente de harina
+            $componenteHarina = $receta->detalles->first(function($item) {
+                return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
+            });
+            
+            return [
+                'cantidad_total' => $items->sum('cantidad'),
+                'es_personalizado' => $items->contains('es_personalizado', true),
+                'id_productos_api' => $items->first()->id_productos_api,
+                'id_u_medidas' => $items->first()->id_u_medidas,
+                'id_areas' => $items->first()->id_areas,
+                'receta' => $receta,
+                'pedidos' => $items,
+                'estado_general' => $estadoGeneral,
+                'estados_individuales' => $items->map(function($item) {
+                    return $this->determinarEstadoIndividual($item->id_estados);
+                }),
+                'cantidad_producida_real' => $items->first()->cantidad_producida_real ?? null,
+                'observaciones' => $items->first()->observaciones ?? null,
+                'costo_diseño' => $items->where('es_personalizado', true)->sum('costo_diseño') ?? 0,
+                'componente_harina' => $componenteHarina,
+                'estados_pedidos' => $items->pluck('id_estados')
+            ];
+        })->filter(function ($item) {
+            return !is_null($item['receta']) && $item['receta']->producto && $item['receta']->detalles;
+        });
+    }
+
+    protected function determinarEstadoIndividual($idEstado)
+    {
+        switch ($idEstado) {
+            case 5:
+                return 'cancelado';
+            case 4:
+                return 'terminado';
+            case 3:
+                return 'en_proceso';
+            default:
+                return 'pendiente';
+        }
+    }
+
+    /**
+     * Determina el estado general de un grupo de pedidos
+     */
     protected function determinarEstadoGeneral($pedidos)
     {
         if ($pedidos->where('id_estados', 5)->count() > 0) {
@@ -224,80 +174,91 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
         return 'pendiente';
     }
 
-    protected function cumpleFiltroEstado($recetaAgrupada, $filtro)
+    /**
+     * Guarda la producción realizada por el personal
+     */
+    public function guardarProduccionPersonal(Request $request)
     {
-        switch ($filtro) {
-            case 'terminados':
-                return $recetaAgrupada['estado_general'] === 'terminado';
-            case 'cancelados':
-                return $recetaAgrupada['estado_general'] === 'cancelado';
-            case 'pendientes':
-            default:
-                return in_array($recetaAgrupada['estado_general'], ['pendiente', 'en_proceso']);
+        DB::beginTransaction();
+        try {
+            Log::info("Inicio de guardarProduccionPersonal", ['user_id' => Auth::id()]);
+            
+            $equipo = EquipoCabecera::findOrFail($request->id_equipos);
+            $usuario = auth()->user();
+            $fechaActual = Carbon::now()->format('Y-m-d');
+
+            // Validación de estados con logs
+            $recetasTerminadas = array_filter($request->es_terminado ?? []);
+            $recetasCanceladas = array_filter($request->es_cancelado ?? []);
+            $personalizadosTerminados = array_filter($request->es_terminado_personalizado ?? []);
+            $personalizadosCancelados = array_filter($request->es_cancelado_personalizado ?? []);
+
+            Log::debug("Estados recibidos", [
+                'recetas_terminadas' => array_keys($recetasTerminadas),
+                'recetas_canceladas' => array_keys($recetasCanceladas),
+                'personalizados_terminados' => array_keys($personalizadosTerminados),
+                'personalizados_cancelados' => array_keys($personalizadosCancelados)
+            ]);
+
+            // Verificar si hay algo para procesar
+            $hayQueProcesar = !empty($recetasTerminadas) || !empty($recetasCanceladas) || 
+                             !empty($personalizadosTerminados) || !empty($personalizadosCancelados);
+
+            if (!$hayQueProcesar) {
+                $errorMsg = "Intento de guardar producción sin estados activos";
+                Log::warning($errorMsg);
+                throw new \Exception($errorMsg);
+            }
+
+            // Buscar o crear cabecera de producción
+            $produccionCab = $this->obtenerOCrearCabeceraProduccion($equipo, $usuario, $fechaActual);
+            Log::info("Cabecera de producción", ['produccion_cab_id' => $produccionCab->id_produccion_cab]);
+
+            // Procesar recetas normales (no personalizadas)
+            $recetasProcesadas = array_unique(array_merge(array_keys($recetasTerminadas), array_keys($recetasCanceladas)));
+            Log::info("Procesando recetas normales", ['recetas' => $recetasProcesadas]);
+            
+            foreach ($recetasProcesadas as $idReceta) {
+                Log::info("Procesando receta ID: {$idReceta}");
+                $this->procesarRecetaProduccion($idReceta, $request, $produccionCab, $usuario);
+            }
+
+            // Procesar pedidos personalizados individualmente
+            $personalizadosProcesados = array_unique(array_merge(array_keys($personalizadosTerminados), array_keys($personalizadosCancelados)));
+            Log::info("Procesando pedidos personalizados", ['pedidos' => $personalizadosProcesados]);
+            
+            foreach ($personalizadosProcesados as $idPedido) {
+                Log::info("Procesando pedido personalizado ID: {$idPedido}");
+                $pedido = PedidoDetalle::find($idPedido);
+                if ($pedido) {
+                    $this->procesarPedidoPersonalizado($request, $produccionCab, $pedido->receta, $pedido);
+                } else {
+                    Log::error("Pedido personalizado no encontrado", ['pedido_id' => $idPedido]);
+                }
+            }
+
+            DB::commit();
+            Log::info("Producción guardada exitosamente");
+            
+            return redirect()->route('produccion.index-personal', ['estado' => 'pendientes'])
+                ->with('success', "Producción registrada correctamente");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al guardar producción: " . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
+            
+            return back()->with('error', 'Error al registrar la producción: ' . $e->getMessage());
         }
     }
 
-/**
- * Guarda la producción realizada por el personal verificando primero si ya existe
- * una cabecera de producción para el mismo equipo, usuario, turno y fecha.
- * 
- * Este método evita la duplicación de cabeceras de producción cuando:
- * - El mismo usuario
- * - En el mismo equipo
- * - Durante el mismo turno
- * - En el mismo día
- * 
- * Si encuentra una cabecera existente, la reutiliza en lugar de crear una nueva.
- * Solo crea nuevos registros en produccion_det para las recetas marcadas.
- * 
- * @param  \Illuminate\Http\Request  $request
- * @return \Illuminate\Http\Response
- */
-    public function guardarProduccionPersonal(Request $request)
+    /**
+     * Obtiene o crea la cabecera de producción
+     */
+    protected function obtenerOCrearCabeceraProduccion($equipo, $usuario, $fechaActual)
     {
-        Log::info('Datos recibidos en guardarProduccionPersonal:', $request->all());
-        Log::info('Inicio de guardarProduccionPersonal');
-        Log::info('Datos recibidos:', $request->all());
-
-        // Validación ajustada
-        $validated = $request->validate([
-            'id_equipos' => 'required|exists:equipos_cab,id_equipos_cab',
-            'id_recetas_cab' => 'required|array',
-            'id_recetas_cab.*' => 'exists:recetas_cab,id_recetas',
-            'cantidad_producida_real' => 'required|array',
-            'cantidad_producida_real.*' => 'numeric|min:0',
-            'id_u_medidas_prodcc' => 'required|array',
-            'id_u_medidas_prodcc.*' => 'exists:u_medidas,id_u_medidas',
-            'es_iniciado' => 'sometimes|array',
-            'es_terminado' => 'sometimes|array',
-            'es_cancelado' => 'sometimes|array',
-
-            'costo_diseño' => 'sometimes|array',
-            'costo_diseño.*' => 'nullable|numeric|min:0',
-            'observaciones' => 'sometimes|array',
-            'observaciones.*' => 'nullable|string|max:500'
-        ]);
-
-        Log::info('Datos validados:', $validated);
-// [Mantén los logs y validaciones existentes...]
-        DB::beginTransaction();
-
-        try {
-             $equipo = EquipoCabecera::findOrFail($request->id_equipos);
-        $usuario = auth()->user();
-        $fechaActual = Carbon::now()->format('Y-m-d');
-
-        /**
-         * Buscar cabecera de producción existente para evitar duplicados.
-         * 
-         * Criterios de búsqueda:
-         * - Mismo equipo (id_equipos)
-         * - Mismo usuario (id_usuario)
-         * - Mismo turno (id_turnos)
-         * - Misma fecha (fecha)
-         * 
-         * Esto asegura que un usuario solo tenga una cabecera por día por equipo y turno.
-         */
         $produccionCab = ProduccionCabecera::where('id_equipos', $equipo->id_equipos_cab)
             ->where('id_usuario', $usuario->id_usuarios)
             ->where('id_turnos', $equipo->id_turnos)
@@ -305,16 +266,6 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
             ->first();
 
         if (!$produccionCab) {
-            /**
-             * Crear nueva cabecera solo si no existe una para los criterios anteriores.
-             * 
-             * La cabecera contiene:
-             * - Referencia al equipo
-             * - Turno actual
-             * - Usuario responsable
-             * - Fecha y hora actual
-             * - Número de documento interno único
-             */
             $produccionCab = ProduccionCabecera::create([
                 'id_equipos' => $equipo->id_equipos_cab,
                 'id_turnos' => $equipo->id_turnos,
@@ -323,90 +274,99 @@ $recetasAgrupadasTerminadas = $pedidosTerminados->groupBy('id_recetas')->map(fun
                 'hora' => Carbon::now()->format('H:i:s'),
                 'doc_interno' => 'PROD-' . Carbon::now()->format('YmdHis')
             ]);
-            Log::info('Nueva cabecera de producción creada:', ['id' => $produccionCab->id_produccion_cab]);
-        } else {
-            Log::info('Usando cabecera de producción existente:', ['id' => $produccionCab->id_produccion_cab]);
         }
-            // Eliminar posibles duplicados en las recetas
-            $idRecetas = array_unique($request->id_recetas_cab);
-            Log::info('Recetas a procesar (sin duplicados):', $idRecetas);
-            /**
-         * Procesar cada receta marcada como terminada o cancelada.
-         * 
-         * Para cada receta:
-         * 1. Verificar si está marcada para terminar o cancelar
-         * 2. Obtener datos de la receta y pedidos asociados
-         * 3. Calcular cantidades y costos
-         * 4. Crear registro en produccion_det
-         * 5. Actualizar estados de pedidos
-         */
-            foreach ($idRecetas as $idReceta) {
-if (!($request->es_terminado[$idReceta] ?? false) && !($request->es_cancelado[$idReceta] ?? false)) {
-    continue; // Saltar esta receta si no está terminada ni cancelada
-}                
-                $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
 
-                // Obtener pedidos del día para esta receta
-                $pedidos = PedidoDetalle::where('id_recetas', $idReceta)
-                    ->whereDate('created_at', Carbon::today())
-                    ->where('id_areas', $usuario->id_areas)
-                    ->get();
+        return $produccionCab;
+    }
 
-                $pedidosFiltrados = $pedidos->filter(function($pedido) {
-    return $pedido->id_estados == null || $pedido->id_estados < 4; // Solo pendientes y en proceso
-});
-$cantidadPedido = $pedidosFiltrados->sum('cantidad');
+    /**
+     * Procesa una receta completa (solo pedidos no personalizados)
+     */
+    protected function procesarRecetaProduccion($idReceta, $request, $produccionCab, $usuario)
+    {
+        $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
+        
+        // Obtener solo pedidos no personalizados
+        $pedidos = PedidoDetalle::where('id_recetas', $idReceta)
+            ->whereDate('created_at', Carbon::today())
+            ->where('id_areas', $usuario->id_areas)
+            ->where('es_personalizado', false) // Solo pedidos no personalizados
+            ->get();
+
+        if ($pedidos->count() > 0) {
+            $this->procesarPedidosNormales($request, $produccionCab, $receta, $pedidos, $idReceta);
+        }
+    }
+
+    /**
+     * Procesa un grupo de pedidos normales (no personalizados)
+     */
+    protected function procesarPedidosNormales($request, $produccionCab, $receta, $pedidos, $idReceta)
+    {
+        Log::info("Iniciando procesamiento de pedidos normales para receta ID: {$idReceta}");
+
+        // Determinar estados
+        $esIniciado = (bool)($request->es_iniciado[$idReceta] ?? false);
+        $esTerminado = (bool)($request->es_terminado[$idReceta] ?? false);
+        $esCancelado = (bool)($request->es_cancelado[$idReceta] ?? false);
+
+        Log::debug("Estados para receta {$idReceta}:", [
+            'iniciado' => $esIniciado,
+            'terminado' => $esTerminado,
+            'cancelado' => $esCancelado
+        ]);
+
+        // Validar estados
+        if ($esTerminado && !$esIniciado) {
+            $errorMsg = "No se puede terminar la receta {$idReceta} sin iniciarla primero";
+            Log::error($errorMsg);
+            throw new \Exception($errorMsg);
+        }
+
+        // Obtener ID del componente de harina
+        $idHarina = $request->id_recetas_det_harina[$idReceta] ?? null;
+        Log::debug("Componente harina para receta {$idReceta}:", ['id_harina' => $idHarina]);
+
+        // Solo crear registro si está iniciado, terminado o cancelado
+        if ($esIniciado || $esTerminado || $esCancelado) {
+            // Obtener solo los pedidos que están siendo actualizados
+            $pedidosAActualizar = $pedidos->filter(function($pedido) {
+                return !in_array($pedido->id_estados, [4, 5]); // Solo pedidos no terminados ni cancelados
+            });
+
+            if ($pedidosAActualizar->isEmpty()) {
+                Log::info("No hay pedidos nuevos para procesar en la receta {$idReceta}");
+                return null;
+            }
+
+            Log::info("Procesando pedidos nuevos", [
+                'total_pedidos' => $pedidosAActualizar->count(),
+                'pedidos_ids' => $pedidosAActualizar->pluck('id_pedidos_det')
+            ]);
+
+            // Procesar cada pedido individualmente
+            foreach ($pedidosAActualizar as $pedido) {
+                $cantidadPedido = $pedido->cantidad;
                 $cantidadEsperada = ($receta->id_areas == 1)
                     ? $cantidadPedido * $receta->constante_peso_lata
-                    : $cantidadPedido * 1;
-                $cantidadProducida = $request->cantidad_producida_real[$idReceta] ?? $cantidadEsperada;
+                    : $cantidadPedido;
+                
+                // Obtener cantidad producida real para este pedido específico
+                $cantidadProducida = (float)($request->cantidad_producida_real[$pedido->id_pedidos_det] ?? $cantidadPedido);
 
-                // Buscar componente de harina
-                $componenteHarina = $receta->detalles->first(function ($item) {
-                    return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
-                });
+                Log::debug("Procesando pedido individual", [
+                    'pedido_id' => $pedido->id_pedidos_det,
+                    'cantidad_pedido' => $cantidadPedido,
+                    'cantidad_producida' => $cantidadProducida
+                ]);
 
-                $cantHarina = $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
-
-                // Calcular subtotal
-                $subtotalReceta = 0;
-                foreach ($receta->detalles as $detalle) {
-                    $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
-                }
-
-                // Determinar estados con valores por defecto
-                $esIniciado = (bool)($request->es_iniciado[$idReceta] ?? false);
-                $esTerminado = (bool)($request->es_terminado[$idReceta] ?? false);
-                $esCancelado = (bool)($request->es_cancelado[$idReceta] ?? false);
-                $esEnviado = (bool)($request->es_enviado[$idReceta] ?? false);
-
-                // Validar que no se pueda terminar sin iniciar
-                if ($esTerminado && !$esIniciado) {
-                    throw new \Exception("No se puede terminar una producción sin iniciarla");
-                }
-
-                // Validar costo diseño para pedidos personalizados
-                $costoDiseno = 0;
-                $pedidosPersonalizados = $pedidos->where('es_personalizado', true);
-
-                if ($pedidosPersonalizados->count() > 0 && $esTerminado) {
-                    foreach ($pedidosPersonalizados as $pedido) {
-                        $costo = $request->costo_diseño[$pedido->id_pedidos_det] ?? 0;
-                        if ($costo <= 0) {
-                            throw new \Exception("Debe ingresar un costo de diseño válido para los pedidos personalizados");
-                        }
-                        $costoDiseno += floatval($costo);
-                    }
-                }
-
-                // Crear detalle de producción
-                $produccionDet = ProduccionDetalle::create([
+                $detalleData = [
                     'id_produccion_cab' => $produccionCab->id_produccion_cab,
                     'id_productos_api' => $receta->id_productos_api,
                     'id_u_medidas' => $receta->id_u_medidas,
                     'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
                     'id_recetas_cab' => $receta->id_recetas,
-                    'id_recetas_det' => $componenteHarina ? $componenteHarina->id_recetas_det : null,
+                    'id_pedidos_det' => $pedido->id_pedidos_det,
                     'id_areas' => $receta->id_areas,
                     'cantidad_pedido' => $cantidadPedido,
                     'cantidad_esperada' => $cantidadEsperada,
@@ -414,186 +374,183 @@ $cantidadPedido = $pedidosFiltrados->sum('cantidad');
                     'es_iniciado' => $esIniciado,
                     'es_terminado' => $esTerminado,
                     'es_cancelado' => $esCancelado,
-                    'costo_diseño' => $costoDiseno,
-                    'subtotal_receta' => $subtotalReceta,
-                    'total_receta' => $subtotalReceta + $costoDiseno,
-                    'cant_harina' => $cantHarina,
-                    'observaciones' => $request->observaciones[$idReceta] ?? null
+                    'costo_diseño' => 0,
+                    'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+                    'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+                    'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
+                    'id_recetas_det_harina' => $idHarina,
+                    'observaciones' => $request->observaciones[$pedido->id_pedidos_det] ?? null
+                ];
+
+                Log::debug("Creando detalle de producción para pedido", [
+                    'pedido_id' => $pedido->id_pedidos_det,
+                    'detalle_data' => $detalleData
                 ]);
+                
+                $detalle = ProduccionDetalle::create($detalleData);
 
-                Log::info('Detalle de producción creado:', [
-                    'id' => $produccionDet->id_produccion_det,
-                    'receta_id' => $idReceta,
-                    'cantidad_producida' => $cantidadProducida
-                ]);
-
-                // Actualizar estado de los pedidos
-                $this->actualizarEstadosPedidos($pedidos, $esIniciado, $esTerminado, $esCancelado);
+                // Actualizar estado de este pedido individual
+                $this->actualizarEstadosPedidos(collect([$pedido]), $esIniciado, $esTerminado, $esCancelado);
             }
-
-            DB::commit();
-            $total = $produccionCab->produccionesDetalle()->count();
-
-
-            if (auth()->user()->id_roles == 3) {
-                return redirect()->route('produccion.index-personal')
-                    ->with('success', "Producción registrada correctamente");
-            } else {
-                return redirect()->route('produccion.index')
-                    ->with('success', "Producción registrada correctamente");
-            }
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error al registrar la producción: ' . $e->getMessage(), [
-                'exception' => $e,
-                'trace' => $e->getTraceAsString()
-            ]);
-            return back()->with('error', 'Error al registrar la producción: ' . $e->getMessage())
-                ->withInput();
+            
+            return true;
         }
+        
+        Log::warning("Receta {$idReceta} no fue procesada - No tenía estados activos");
+        return null;
     }
 
-    // Métodos auxiliares
-    protected function calcularCostoDiseno($request, $idReceta)
+    protected function determinarEstadoAAplicar($esIniciado, $esTerminado, $esCancelado)
     {
-        if (empty($request->costo_diseño)) return 0;
-
-        $total = 0;
-        foreach ($request->costo_diseño as $pedidoId => $costo) {
-            $pedido = PedidoDetalle::find($pedidoId);
-            if ($pedido && $pedido->id_recetas == $idReceta) {
-                $total += (float)$costo;
-            }
-        }
-        return $total;
+        if ($esCancelado) return 'cancelado';
+        if ($esTerminado) return 'terminado';
+        if ($esIniciado) return 'en_proceso';
+        return 'pendiente';
     }
 
+    /**
+     * Actualiza el estado de los pedidos según la producción con logs detallados
+     */
+    protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado)
+    {
+        $estado = null;
+
+        if ($esCancelado) {
+            $estado = 5; // Cancelado
+        } elseif ($esTerminado) {
+            $estado = 4; // Terminado
+        } elseif ($esIniciado) {
+            $estado = 3; // En proceso
+        }
+
+        if ($estado !== null) {
+            $actualizados = 0;
+            $noActualizados = 0;
+            
+            foreach ($pedidosDetalle as $pedidoDet) {
+                // Solo actualizar pedidos que no tienen estado final
+                if (!in_array($pedidoDet->id_estados, [4, 5])) {
+                    $pedidoDet->update(['id_estados' => $estado]);
+                    $actualizados++;
+                    Log::debug("Actualizado estado del pedido", [
+                        'pedido_id' => $pedidoDet->id_pedidos_det,
+                        'nuevo_estado' => $estado,
+                        'estado_anterior' => $pedidoDet->id_estados
+                    ]);
+                } else {
+                    $noActualizados++;
+                    Log::debug("Pedido no actualizado - Ya tenía estado final", [
+                        'pedido_id' => $pedidoDet->id_pedidos_det,
+                        'estado_actual' => $pedidoDet->id_estados,
+                        'estado_intentado' => $estado
+                    ]);
+                }
+            }
+            
+            Log::info("Resumen actualización estados pedidos", [
+                'total_pedidos' => $pedidosDetalle->count(),
+                'actualizados' => $actualizados,
+                'no_actualizados' => $noActualizados,
+                'estado_aplicado' => $estado
+            ]);
+        } else {
+            Log::warning("No se actualizaron pedidos - Estado no determinado", [
+                'iniciado' => $esIniciado,
+                'terminado' => $esTerminado,
+                'cancelado' => $esCancelado
+            ]);
+        }
+    }
+
+    /**
+     * Procesa un pedido personalizado individual
+     */
+    protected function procesarPedidoPersonalizado($request, $produccionCab, $receta, $pedido)
+    {
+        $esIniciado = (bool)($request->es_iniciado_personalizado[$pedido->id_pedidos_det] ?? false);
+        $esTerminado = (bool)($request->es_terminado_personalizado[$pedido->id_pedidos_det] ?? false);
+        $esCancelado = (bool)($request->es_cancelado_personalizado[$pedido->id_pedidos_det] ?? false);
+
+        // Solo procesar si tiene algún estado activo
+        if (!$esIniciado && !$esTerminado && !$esCancelado) {
+            Log::info("Pedido personalizado {$pedido->id_pedidos_det} no procesado - Sin estados activos");
+            return null;
+        }
+
+        // Validar que solo un estado esté activo
+        if ($esTerminado && $esCancelado) {
+            throw new \Exception("No se puede terminar y cancelar el mismo pedido");
+        }
+
+        $cantidadPedido = $pedido->cantidad;
+        $cantidadEsperada = ($receta->id_areas == 1)
+            ? $cantidadPedido * $receta->constante_peso_lata
+            : $cantidadPedido;
+        
+        // Obtener cantidad producida real para este pedido
+        $cantidadProducida = (float)($request->cantidad_producida_real_personalizado[$pedido->id_pedidos_det] ?? $cantidadPedido);
+        
+        // Obtener costo diseño para este pedido específico
+        $costoDiseno = (float)($request->costo_diseño[$pedido->id_pedidos_det] ?? 0);
+
+        // Validar costo diseño si se está terminando
+        if ($esTerminado && $costoDiseno <= 0) {
+            throw new \Exception("Debe ingresar un costo de diseño válido para el pedido personalizado #{$pedido->id_pedidos_det}");
+        }
+
+        // Obtener ID del componente de harina
+        $idHarina = $request->id_recetas_det_harina_personalizado[$pedido->id_pedidos_det] ?? null;
+
+        // Crear detalle de producción individual para este pedido personalizado
+        $detalle = ProduccionDetalle::create([
+            'id_produccion_cab' => $produccionCab->id_produccion_cab,
+            'id_productos_api' => $receta->id_productos_api,
+            'id_u_medidas' => $pedido->id_u_medidas,
+            'id_u_medidas_prodcc' => $pedido->id_u_medidas,
+            'id_recetas_cab' => $receta->id_recetas,
+            'id_pedidos_det' => $pedido->id_pedidos_det,
+            'id_areas' => $receta->id_areas,
+            'cantidad_pedido' => $cantidadPedido,
+            'cantidad_esperada' => $cantidadEsperada,
+            'cantidad_producida_real' => $cantidadProducida,
+            'es_iniciado' => $esIniciado,
+            'es_terminado' => $esTerminado,
+            'es_cancelado' => $esCancelado,
+            'costo_diseño' => $costoDiseno,
+            'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+            'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido) + $costoDiseno,
+            'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
+            'id_recetas_det_harina' => $idHarina,
+            'observaciones' => $request->observaciones_personalizado[$pedido->id_pedidos_det] ?? null
+        ]);
+
+        // Actualizar estado de este pedido individual
+        $this->actualizarEstadosPedidos(collect([$pedido]), $esIniciado, $esTerminado, $esCancelado);
+
+        return $detalle;
+    }
+
+    /**
+     * Calcula el subtotal de una receta para una cantidad dada
+     */
     protected function calcularSubtotal($receta, $cantidadPedido)
     {
-        return $receta->detalles->sum(fn($detalle) => $detalle->subtotal_receta * $cantidadPedido);
+        $subtotal = 0;
+        foreach ($receta->detalles as $detalle) {
+            $subtotal += $detalle->subtotal_receta * $cantidadPedido;
+        }
+        return $subtotal;
     }
 
-    protected function calcularTotal($receta, $cantidadPedido, $request, $idReceta)
-    {
-        $subtotal = $this->calcularSubtotal($receta, $cantidadPedido);
-        $costoDiseno = $this->calcularCostoDiseno($request, $idReceta);
-        return $subtotal + $costoDiseno;
-    }
-
+    /**
+     * Calcula la cantidad de harina necesaria para una receta
+     */
     protected function calcularHarina($receta, $cantidadPedido)
     {
         $componenteHarina = $receta->detalles->first(function ($item) {
             return $item->producto && stripos($item->producto->nombre, 'harina') !== false;
         });
         return $componenteHarina ? $componenteHarina->cantidad * $cantidadPedido : 0;
-    }
-
-protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado)
-{
-    $estado = null;
-
-    if ($esCancelado) {
-        $estado = 5; // Cancelado
-    } elseif ($esTerminado) {
-        $estado = 4; // Terminado
-    } elseif ($esIniciado) {
-        $estado = 3; // En proceso
-    }
-
-    if ($estado !== null) {
-        foreach ($pedidosDetalle as $pedidoDet) {
-            // Solo actualizar pedidos que no tienen estado final
-            if (!in_array($pedidoDet->id_estados, [4, 5])) {
-                $pedidoDet->update(['id_estados' => $estado]);
-            }
-        }
-    }
-}
-
-    // Modificación en el método procesarRecetaProduccion()
-    protected function procesarRecetaProduccion($idReceta, $key, $request, $produccionCabecera, $usuario)
-    {
-        // Obtener la receta cabecera con sus relaciones
-        $recetaCabecera = RecetaCabecera::with(['producto', 'detalles.producto'])
-            ->findOrFail($idReceta);
-
-        // Obtener los detalles de pedidos para esta receta
-        $pedidosDetalle = PedidoDetalle::where('id_recetas', $idReceta)
-            ->whereDate('created_at', Carbon::now()->toDateString())
-            ->where('id_areas', $usuario->id_areas)
-            ->get();
-
-        // Calcular cantidad total pedida
-        $cantidadPedido = $pedidosDetalle->sum('cantidad');
-
-        // Calcular cantidad esperada (cantidad pedida * constante crecimiento)
-        $cantidadEsperada = ($recetaCabecera->id_areas == 1)
-            ? $cantidadPedido * $recetaCabecera->constante_peso_lata
-            : $cantidadPedido * 1;
-
-        // Obtener el componente de harina si existe
-        $recetaHarina = $recetaCabecera->detalles
-            ->first(function ($detalle) {
-                return $detalle->producto && stripos($detalle->producto->nombre, 'harina') !== false;
-            });
-
-        $cantHarina = $recetaHarina ? $recetaHarina->cantidad * $cantidadPedido : 0;
-
-        // Calcular subtotal receta (suma de subtotales de todos los detalles * cantidad pedida)
-        $subtotalReceta = 0;
-        foreach ($recetaCabecera->detalles as $detalle) {
-            $subtotalReceta += $detalle->subtotal_receta * $cantidadPedido;
-        }
-
-        // Determinar si hay algún pedido personalizado
-        $esPersonalizado = $pedidosDetalle->contains('es_personalizado', true);
-
-        // Determinar estados
-        $esIniciado = isset($request->es_iniciado[$key]) && $request->es_iniciado[$key] == 'on';
-        $esTerminado = isset($request->es_terminado[$key]) && $request->es_terminado[$key] == 'on';
-        $esCancelado = isset($request->es_cancelado[$key]) && $request->es_cancelado[$key] == 'on';
-
-        // Validar que no se pueda terminar sin iniciar
-        if ($esTerminado && !$esIniciado) {
-            throw new \Exception("No se puede terminar una producción sin iniciarla");
-        }
-
-        // Validar costo diseño para pedidos personalizados
-        $costoDiseno = 0;
-        if ($esPersonalizado && $esTerminado) {
-            $costoDiseno = $request->costo_diseño[$key] ?? 0;
-            if ($costoDiseno <= 0) {
-                throw new \Exception("Debe ingresar un costo de diseño válido para pedidos personalizados");
-            }
-        }
-
-        // Crear o actualizar el detalle de producción
-        $produccionDetalle = ProduccionDetalle::updateOrCreate(
-            [
-                'id_produccion_cab' => $produccionCabecera->id_produccion_cab,
-                'id_recetas_cab' => $idReceta
-            ],
-            [
-                'id_productos_api' => $recetaCabecera->id_productos_api,
-                'id_u_medidas' => $pedidosDetalle->first()->id_u_medidas,
-                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$key],
-                'id_recetas_det' => $recetaHarina ? $recetaHarina->id_recetas_det : null,
-                'id_areas' => $usuario->id_areas,
-                'cantidad_pedido' => $cantidadPedido,
-                'cantidad_esperada' => $cantidadEsperada,
-                'cantidad_producida_real' => $request->cantidad_producida_real[$key],
-                'es_iniciado' => $esIniciado,
-                'es_terminado' => $esTerminado,
-                'es_cancelado' => $esCancelado,
-                'costo_diseño' => $esPersonalizado ? $costoDiseno : 0,
-                'subtotal_receta' => $subtotalReceta,
-                'total_receta' => $subtotalReceta + ($esPersonalizado ? $costoDiseno : 0),
-                'cant_harina' => $cantHarina
-            ]
-        );
-
-        // Actualizar estados de los pedidos
-        $this->actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTerminado, $esCancelado);
     }
 
     /**
@@ -689,14 +646,6 @@ protected function actualizarEstadosPedidos($pedidosDetalle, $esIniciado, $esTer
         return redirect()->route('produccion.index')
             ->with('success', 'Producción eliminada exitosamente');
     }
-
-    /**
-     * Guarda la producción realizada por el personal
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-
 
     /**
      * Exportar producción a PDF
