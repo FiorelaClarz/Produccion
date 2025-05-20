@@ -230,14 +230,16 @@
                                             class="form-control form-control-sm production-input"
                                             step="0.01" min="0"
                                             value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}"
-                                            disabled>
+                                            {{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'disabled' }}>
+                                        <input type="hidden" name="cantidad_producida_real_hidden[{{ $idReceta }}]" 
+                                            value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}">
                                     @else
                                         {{ number_format($recetaData['cantidad_producida_real'] ?? $cantidadEsperada, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($estadoActual === 'pendientes')
-                                        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm" disabled>
+                                        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm" {{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'disabled' }}>
                                             @foreach($unidadesMedida as $unidad)
                                             <option value="{{ $unidad->id_u_medidas }}"
                                                 {{ $unidad->id_u_medidas == $recetaData['id_u_medidas'] ? 'selected' : '' }}>
@@ -1005,54 +1007,64 @@ function manejarEstado(checkbox, idReceta) {
         hiddenInput.value = isChecked ? '1' : '0';
     }
 
-    // Lógica específica para cada tipo de estado
     if (tipo === 'es_iniciado_ui') {
-        // Habilitar/deshabilitar cantidad producida
         const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
-        if (cantidadInput) {
-            cantidadInput.disabled = !isChecked;
-        }
-
-        // Habilitar/deshabilitar unidad de medida
         const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
-        if (unidadSelect) {
-            unidadSelect.disabled = !isChecked;
-            console.log(`Unidad de medida ${isChecked ? 'habilitada' : 'deshabilitada'} para receta ${idReceta}`);
+            
+        if (cantidadInput) cantidadInput.disabled = !isChecked;
+        if (unidadSelect) unidadSelect.disabled = !isChecked;
+            
+            const terminarBtn = document.getElementById(`terminar-btn-${idReceta}`);
+            if (terminarBtn) {
+            terminarBtn.style.pointerEvents = isChecked ? 'auto' : 'none';
+            terminarBtn.style.opacity = isChecked ? '1' : '0.65';
+            terminarBtn.classList.toggle('disabled', !isChecked);
+                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+            if (terminarCheckbox) terminarCheckbox.disabled = !isChecked;
         }
 
-        // Actualizar botón terminar
-        const terminarBtn = document.getElementById(`terminar-btn-${idReceta}`);
-        if (terminarBtn) {
-            if (isChecked) {
-                terminarBtn.style.pointerEvents = 'auto';
-                terminarBtn.style.opacity = '1';
-                terminarBtn.classList.remove('disabled');
-                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
-                if (terminarCheckbox) terminarCheckbox.disabled = false;
-            } else {
-                terminarBtn.style.pointerEvents = 'none';
-                terminarBtn.style.opacity = '0.65';
-                terminarBtn.classList.add('disabled');
-                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
-                if (terminarCheckbox) terminarCheckbox.disabled = true;
-            }
-        }
-
-        if (isChecked) {
-            desmarcarOtrosEstados(idReceta, tipo, true);
-        }
+        if (isChecked) desmarcarOtrosEstados(idReceta, tipo, true);
     } else if (tipo === 'es_terminado_ui' && isChecked) {
+        if (!confirm('¿Está seguro de marcar como terminado? Una vez terminado no podrá editar los datos.')) {
+            checkbox.checked = false;
+            if (hiddenInput) hiddenInput.value = '0';
+            return;
+        }
+
         if (!validarTerminado(idReceta)) {
             checkbox.checked = false;
+            if (hiddenInput) hiddenInput.value = '0';
             return;
         }
         
+        // Asegurar estado iniciado
         const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_ui[${idReceta}]"]`);
         const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
         
         if (iniciadoCheckbox && !iniciadoCheckbox.checked) {
             iniciadoCheckbox.checked = true;
             if (iniciadoHidden) iniciadoHidden.value = '1';
+        }
+
+        // Crear campos ocultos para valores actuales
+        const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
+        if (cantidadInput) {
+            const cantidadHidden = document.createElement('input');
+            cantidadHidden.type = 'hidden';
+            cantidadHidden.name = `cantidad_producida_real[${idReceta}]`;
+            cantidadHidden.value = cantidadInput.value;
+            cantidadInput.parentNode.appendChild(cantidadHidden);
+            cantidadInput.disabled = true;
+        }
+
+        const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
+        if (unidadSelect) {
+            const unidadHidden = document.createElement('input');
+            unidadHidden.type = 'hidden';
+            unidadHidden.name = `id_u_medidas_prodcc[${idReceta}]`;
+            unidadHidden.value = unidadSelect.value;
+            unidadSelect.parentNode.appendChild(unidadHidden);
+            unidadSelect.disabled = true;
         }
         
         desmarcarOtrosEstados(idReceta, tipo, true);
@@ -1196,7 +1208,7 @@ function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
     if (hiddenInput) {
         hiddenInput.value = isChecked ? '1' : '0';
         logAction(`Campo oculto actualizado - ${nombreCampoOculto}`, {
-            pedido_id: idPedido,
+        pedido_id: idPedido,
             valor: hiddenInput.value,
             checkbox_checked: isChecked
         });
@@ -1237,8 +1249,8 @@ function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
             } else {
                 terminarBtn.style.pointerEvents = 'none';
                 terminarBtn.style.opacity = '0.65';
-                terminarBtn.classList.add('disabled');
-                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+            terminarBtn.classList.add('disabled');
+            const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
                 if (terminarCheckbox) terminarCheckbox.disabled = true;
             }
         }
@@ -1247,12 +1259,19 @@ function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
             desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
         }
     } else if (tipo === 'es_terminado_personalizado' && isChecked) {
-        if (!validarTerminadoPersonalizado(checkbox, idPedido, idReceta)) {
-            checkbox.checked = false;
+        // Mostrar confirmación antes de terminar
+        if (!confirm('¿Está seguro de marcar como terminado? Una vez terminado no podrá editar los datos.')) {
+        checkbox.checked = false;
             if (hiddenInput) hiddenInput.value = '0';
-            return;
-        }
-        
+        return;
+    }
+    
+        if (!validarTerminadoPersonalizado(checkbox, idPedido, idReceta)) {
+        checkbox.checked = false;
+            if (hiddenInput) hiddenInput.value = '0';
+        return;
+    }
+    
         // Asegurarnos de que el estado iniciado esté marcado
         const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${idPedido}]"]`);
         if (iniciadoHidden) {
@@ -1261,6 +1280,40 @@ function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
                 pedido_id: idPedido,
                 valor: iniciadoHidden.value
             });
+        }
+
+        // Deshabilitar campos al terminar pero mantener los valores
+        const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
+        if (cantidadInput) {
+            // Crear un campo oculto con el valor actual
+            const cantidadHidden = document.createElement('input');
+            cantidadHidden.type = 'hidden';
+            cantidadHidden.name = `cantidad_producida_real_personalizado[${idPedido}]`;
+            cantidadHidden.value = cantidadInput.value;
+            cantidadInput.parentNode.appendChild(cantidadHidden);
+            cantidadInput.disabled = true;
+        }
+
+        const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc_personalizado[${idPedido}]"]`);
+        if (unidadSelect) {
+            // Crear un campo oculto con el valor actual
+            const unidadHidden = document.createElement('input');
+            unidadHidden.type = 'hidden';
+            unidadHidden.name = `id_u_medidas_prodcc_personalizado[${idPedido}]`;
+            unidadHidden.value = unidadSelect.value;
+            unidadSelect.parentNode.appendChild(unidadHidden);
+            unidadSelect.disabled = true;
+        }
+
+    const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
+        if (costoInput) {
+            // Crear un campo oculto con el valor actual
+            const costoHidden = document.createElement('input');
+            costoHidden.type = 'hidden';
+            costoHidden.name = `costo_diseño[${idPedido}]`;
+            costoHidden.value = costoInput.value;
+            costoInput.parentNode.appendChild(costoHidden);
+            costoInput.disabled = true;
         }
         
         desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
@@ -1473,13 +1526,35 @@ function cargarInstructivo(idReceta, estado, idPedido = null) {
     
     modal.modal('show');
 
+    // Obtener datos específicos del pedido o receta
+    let cantidadPedido = 0;
+    let cantidadEsperada = 0;
+
+    if (idPedido) {
+        // Si es un pedido personalizado
+        const row = document.querySelector(`tr.pedido-personalizado[data-pedido-id="${idPedido}"]`);
+        if (row) {
+            cantidadPedido = parseFloat(row.querySelector('td:nth-child(3)').textContent.trim()) || 0;
+            cantidadEsperada = parseFloat(row.querySelector('td:nth-child(5)').textContent.trim()) || 0;
+        }
+    } else {
+        // Si es una receta normal
+        const row = document.querySelector(`tr#row-${idReceta}`);
+        if (row) {
+            cantidadPedido = parseFloat(row.querySelector('td:nth-child(3)').textContent.trim()) || 0;
+            cantidadEsperada = parseFloat(row.querySelector('td:nth-child(5)').textContent.trim()) || 0;
+        }
+    }
+
     $.ajax({
         url: "{{ route('recetas.show-instructivo') }}",
         type: 'GET',
         data: { 
             id_receta: idReceta, 
             estado: estado || 'pendiente',
-            id_pedido: idPedido
+            id_pedido: idPedido,
+            cantidad_pedido: cantidadPedido,
+            cantidad_esperada: cantidadEsperada
         },
         success: function(data) {
             $('#instructivoContent').html(data);
@@ -1488,6 +1563,8 @@ function cargarInstructivo(idReceta, estado, idPedido = null) {
             logAction('Error al cargar instructivo', {
                 receta_id: idReceta,
                 pedido_id: idPedido,
+                cantidad_pedido: cantidadPedido,
+                cantidad_esperada: cantidadEsperada,
                 error: xhr.responseText
             });
             $('#instructivoContent').html(`
@@ -1727,7 +1804,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#imageModal').modal('show');
     });
     
-     // Mostrar estado inicial de todas las recetas
+                // Mostrar estado inicial de todas las recetas
     document.querySelectorAll('tr.production-item').forEach(row => {
         const idReceta = row.id.split('-')[1];
         if (idReceta) {
@@ -1821,6 +1898,38 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     console.log('=== FIN DE INICIALIZACIÓN DE MONITOREO ===');
 });
+
+// ... existing code ...
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sincronizar campos de cantidad producida
+    const cantidadInputs = document.querySelectorAll('input[name^="cantidad_producida_real["]');
+    cantidadInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const recetaId = this.name.match(/\[(\d+)\]/)[1];
+            const hiddenInput = document.querySelector(`input[name="cantidad_producida_real_hidden[${recetaId}]"]`);
+            if (hiddenInput) {
+                hiddenInput.value = this.value;
+            }
+        });
+    });
+
+    // Sincronizar campos de cantidad producida personalizada
+    const cantidadPersonalizadaInputs = document.querySelectorAll('input[name^="cantidad_producida_real_personalizado["]');
+    cantidadPersonalizadaInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const pedidoId = this.name.match(/\[(\d+)\]/)[1];
+            const hiddenInput = document.querySelector(`input[name="cantidad_producida_real_personalizado_hidden[${pedidoId}]"]`);
+            if (hiddenInput) {
+                hiddenInput.value = this.value;
+            }
+        });
+    });
+});
+</script>
+@endpush
+// ... existing code ...
 </script>
 
 @endsection

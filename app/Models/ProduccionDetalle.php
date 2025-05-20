@@ -33,6 +33,7 @@ class ProduccionDetalle extends Model
         'cant_harina',
         'observaciones',
         'es_personalizado',
+        'pedidos_ids',
     'id_pedido_detalle'
     ];
 
@@ -46,7 +47,9 @@ class ProduccionDetalle extends Model
         'costo_diseño' => 'decimal:2',
         'subtotal_receta' => 'decimal:2',
         'total_receta' => 'decimal:2',
-        'cant_harina' => 'decimal:2'
+        'cant_harina' => 'decimal:2',
+        'pedidos_ids' => 'array',
+        'es_personalizado' => 'boolean'
     ];
 
     // Relación con ProduccionCabecera
@@ -89,5 +92,23 @@ class ProduccionDetalle extends Model
     public function area()
     {
         return $this->belongsTo(Area::class, 'id_areas');
+    }
+
+    /**
+     * Obtiene los pedidos asociados a este detalle de producción
+     */
+    public function pedidos()
+    {
+        return $this->belongsToMany(PedidoDetalle::class, 'pedidos_det', 'id_pedidos_det', 'id_pedidos_det')
+                    ->withPivot('cantidad')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Obtiene el pedido personalizado asociado (si existe)
+     */
+    public function pedidoPersonalizado()
+    {
+        return $this->belongsTo(PedidoDetalle::class, 'id_pedidos_det');
     }
 }

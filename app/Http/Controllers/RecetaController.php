@@ -459,112 +459,117 @@ class RecetaController extends Controller
         }
     }
 
-    // Mostrar formulario para crear instructivo
-    public function showCreateInstructivo($idReceta)
-    {
-        $receta = RecetaCabecera::with(['producto', 'detalles.producto', 'detalles.uMedida'])
-            ->findOrFail($idReceta);
-        
-        return view('recetas.create-instructivo', compact('receta'));
-    }
+// Mostrar formulario para crear instructivo
+public function showCreateInstructivo($idReceta)
+{
+    $receta = RecetaCabecera::with(['producto', 'detalles.producto', 'detalles.uMedida'])
+        ->findOrFail($idReceta);
+    
+    return view('recetas.create-instructivo', compact('receta'));
+}
 
-    // Guardar instructivo
-    // En el método storeInstructivo, actualiza la validación:
-    public function storeInstructivo(Request $request, $idReceta)
-    {
-        Log::info('Datos recibidos en storeInstructivo:', $request->all());
+// Guardar instructivo
+// En el método storeInstructivo, actualiza la validación:
+public function storeInstructivo(Request $request, $idReceta)
+{
+    Log::info('Datos recibidos en storeInstructivo:', $request->all());
+    
+    $validated = $request->validate([
+        'titulo' => 'required|string|max:200',
+        'pasos' => 'required|array|min:1',
+        'pasos.*.contenido' => 'required|string',
+        'pasos.*.ingredientes' => 'present|array', // Cambiado de 'sometimes' a 'present'
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $receta = RecetaCabecera::findOrFail($idReceta);
         
-        $validated = $request->validate([
-            'titulo' => 'required|string|max:200',
-            'pasos' => 'required|array|min:1',
-            'pasos.*.contenido' => 'required|string',
-            'pasos.*.ingredientes' => 'present|array', // Cambiado de 'sometimes' a 'present'
+        // Desactivar instructivos previos
+        RecetaInstructivo::where('id_recetas', $idReceta)
+            ->update(['is_active' => false]);
+
+        // Obtener la próxima versión
+        $version = RecetaInstructivo::where('id_recetas', $idReceta)->max('version') ?? 0;
+        $version++;
+
+        // Asegurar que todos los ingredientes sean arrays válidos
+        $pasos = collect($validated['pasos'])->map(function($paso) {
+            return [
+                'contenido' => $paso['contenido'],
+                'ingredientes' => is_array($paso['ingredientes']) ? $paso['ingredientes'] : []
+            ];
+        })->toArray();
+
+        // Crear nuevo instructivo
+        $instructivo = RecetaInstructivo::create([
+            'id_recetas' => $idReceta,
+            'titulo' => $validated['titulo'],
+            'instrucciones' => $pasos,
+            'version' => $version,
+            'is_active' => true
         ]);
 
-        try {
-            DB::beginTransaction();
+        DB::commit();
 
-            $receta = RecetaCabecera::findOrFail($idReceta);
-            
-            // Desactivar instructivos previos
-            RecetaInstructivo::where('id_recetas', $idReceta)
-                ->update(['is_active' => false]);
+        return response()->json([
+            'success' => true,
+            'redirect' => route('recetas.show', $idReceta)
+        ]);
 
-            // Obtener la próxima versión
-            $version = RecetaInstructivo::where('id_recetas', $idReceta)->max('version') ?? 0;
-            $version++;
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error al crear instructivo:', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al crear el instructivo: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
-            // Asegurar que todos los ingredientes sean arrays válidos
-            $pasos = collect($validated['pasos'])->map(function($paso) {
-                return [
-                    'contenido' => $paso['contenido'],
-                    'ingredientes' => is_array($paso['ingredientes']) ? $paso['ingredientes'] : []
-                ];
-            })->toArray();
-
-            // Crear nuevo instructivo
-            $instructivo = RecetaInstructivo::create([
-                'id_recetas' => $idReceta,
-                'titulo' => $validated['titulo'],
-                'instrucciones' => $pasos,
-                'version' => $version,
-                'is_active' => true
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'redirect' => route('recetas.show', $idReceta)
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error al crear instructivo:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request' => $request->all()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al crear el instructivo: ' . $e->getMessage()
-            ], 500);
-        }
+/**
+ * Muestra el instructivo de una receta adaptado a la cantidad producida
+ *
+ * @param  \Illuminate\Http\Request  $request
+ * @param  int|null  $id
+ * @return \Illuminate\Http\Response
+ */
+public function showInstructivo(Request $request, $id = null)
+{
+    // Obtener el ID de la receta
+    $idReceta = $id ?? $request->query('id_receta');
+    
+    if (!$idReceta && $request->route('id')) {
+        $idReceta = $request->route('id');
     }
 
-    /**
-     * Muestra el instructivo de una receta adaptado a la cantidad producida
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int|null  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function showInstructivo(Request $request, $id = null)
-    {
-        // Obtener el ID de la receta
-        $idReceta = $id ?? $request->query('id_receta');
-        
-        if (!$idReceta && $request->route('id')) {
-            $idReceta = $request->route('id');
-        }
+    if (!$idReceta) {
+        abort(400, 'Parámetro id_receta es requerido');
+    }
 
-        if (!$idReceta) {
-            abort(400, 'Parámetro id_receta es requerido');
-        }
-
-        // Obtener la receta con relaciones
-        $receta = RecetaCabecera::with(['instructivo', 'area', 'uMedida', 'detalles.producto', 'detalles.uMedida'])
-            ->findOrFail($idReceta);
-        
-        if (!$receta->instructivo) {
-            return redirect()->route('recetas.show', $receta->id_recetas)
-                ->with('warning', 'Esta receta no tiene instructivo registrado');
-        }
-        
-        // Obtener el ID del pedido si se proporciona
-        $idPedido = $request->query('id_pedido');
-        
-        // Calcular la cantidad según el tipo de pedido
+    // Obtener la receta con relaciones
+    $receta = RecetaCabecera::with(['instructivo', 'area', 'uMedida', 'detalles.producto', 'detalles.uMedida'])
+        ->findOrFail($idReceta);
+    
+    if (!$receta->instructivo) {
+        return redirect()->route('recetas.show', $receta->id_recetas)
+            ->with('warning', 'Esta receta no tiene instructivo registrado');
+    }
+    
+    // Obtener el ID del pedido si se proporciona
+    $idPedido = $request->query('id_pedido');
+    
+    // Obtener cantidades del request
+    $cantidadPedido = $request->query('cantidad_pedido');
+    $cantidadEsperada = $request->query('cantidad_esperada');
+    
+    // Si no se proporcionaron las cantidades, calcularlas
+    if (!$cantidadPedido || !$cantidadEsperada) {
         if ($idPedido) {
             // Si es un pedido específico, obtener su cantidad
             $pedido = PedidoDetalle::where('id_pedidos_det', $idPedido)
@@ -576,127 +581,133 @@ class RecetaController extends Controller
             }
             
             $cantidadPedido = $pedido->cantidad;
+            $cantidadEsperada = ($receta->id_areas == 1)
+                ? $cantidadPedido * $receta->constante_peso_lata
+                : $cantidadPedido;
         } else {
             // Si no es un pedido específico, sumar todos los pedidos del día
             $cantidadPedido = PedidoDetalle::where('id_recetas', $idReceta)
                 ->whereDate('created_at', Carbon::today())
                 ->where('is_deleted', false)
                 ->sum('cantidad');
+                
+            $cantidadEsperada = ($receta->id_areas == 1)
+                ? $cantidadPedido * $receta->constante_peso_lata
+                : $cantidadPedido;
         }
-        
-        // Calcular el factor según el área
-        if ($receta->id_areas == 1) {
-            $factor = $cantidadPedido * $receta->constante_peso_lata;
-        } else {
-            $factor = $cantidadPedido;
-        }
-        
-        // Adaptar cantidades de ingredientes
-        $ingredientesAdaptados = $receta->detalles->map(function($detalle) use ($factor) {
-            return [
-                'id' => $detalle->id_recetas_det,
-                'nombre' => $detalle->producto->nombre,
-                'cantidad' => $detalle->cantidad * $factor,
-                'u_medida' => $detalle->uMedida->nombre,
-                'costo_unitario' => $detalle->costo_unitario,
-                'cantidad_base' => $detalle->cantidad,
-                'factor' => $factor
-            ];
-        });
-        
-        if ($request->ajax()) {
-            return view('recetas.partials.instructivo-modal', [
-                'instructivo' => $receta->instructivo,
-                'receta' => $receta,
-                'ingredientesAdaptados' => $ingredientesAdaptados,
-                'cantidadProduccion' => $cantidadPedido,
-                'factor' => $factor
-            ]);
-        }
-        
-        return view('recetas.show-instructivo', [
+    }
+    
+    // Calcular el factor según el área
+    $factor = $cantidadEsperada / $receta->cant_rendimiento;
+    
+    // Adaptar cantidades de ingredientes
+    $ingredientesAdaptados = $receta->detalles->map(function($detalle) use ($factor) {
+        return [
+            'id' => $detalle->id_recetas_det,
+            'nombre' => $detalle->producto->nombre,
+            'cantidad' => $detalle->cantidad * $factor,
+            'u_medida' => $detalle->uMedida->nombre,
+            'costo_unitario' => $detalle->costo_unitario,
+            'cantidad_base' => $detalle->cantidad,
+            'factor' => $factor
+        ];
+    });
+    
+    if ($request->ajax()) {
+        return view('recetas.partials.instructivo-modal', [
             'instructivo' => $receta->instructivo,
             'receta' => $receta,
             'ingredientesAdaptados' => $ingredientesAdaptados,
             'cantidadProduccion' => $cantidadPedido,
+            'cantidadEsperada' => $cantidadEsperada,
             'factor' => $factor
         ]);
     }
+    
+    return view('recetas.show-instructivo', [
+        'instructivo' => $receta->instructivo,
+        'receta' => $receta,
+        'ingredientesAdaptados' => $ingredientesAdaptados,
+        'cantidadProduccion' => $cantidadPedido,
+        'cantidadEsperada' => $cantidadEsperada,
+        'factor' => $factor
+    ]);
+}
 
-    /**
-     * Muestra el formulario para editar un instructivo existente
-     * 
-     * @param int $idReceta ID de la receta
-     * @param int $idInstructivo ID del instructivo
-     * @return \Illuminate\View\View Vista de edición del instructivo
-     */
-    public function editInstructivo($idReceta, $idInstructivo)
-    {
-        $receta = RecetaCabecera::with(['producto', 'detalles.producto', 'detalles.uMedida'])
-            ->findOrFail($idReceta);
-        
-        $instructivo = RecetaInstructivo::findOrFail($idInstructivo);
-        
-        return view('recetas.edit-instructivo', compact('receta', 'instructivo'));
-    }
+/**
+ * Muestra el formulario para editar un instructivo existente
+ * 
+ * @param int $idReceta ID de la receta
+ * @param int $idInstructivo ID del instructivo
+ * @return \Illuminate\View\View Vista de edición del instructivo
+ */
+public function editInstructivo($idReceta, $idInstructivo)
+{
+    $receta = RecetaCabecera::with(['producto', 'detalles.producto', 'detalles.uMedida'])
+        ->findOrFail($idReceta);
+    
+    $instructivo = RecetaInstructivo::findOrFail($idInstructivo);
+    
+    return view('recetas.edit-instructivo', compact('receta', 'instructivo'));
+}
 
-    /**
-     * Actualiza un instructivo existente
-     * 
-     * @param \Illuminate\Http\Request $request Datos del formulario
-     * @param int $idReceta ID de la receta
-     * @param int $idInstructivo ID del instructivo
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con resultado
-     */
-    public function updateInstructivo(Request $request, $idReceta, $idInstructivo)
-    {
-        Log::info('Datos recibidos en updateInstructivo:', $request->all());
+/**
+ * Actualiza un instructivo existente
+ * 
+ * @param \Illuminate\Http\Request $request Datos del formulario
+ * @param int $idReceta ID de la receta
+ * @param int $idInstructivo ID del instructivo
+ * @return \Illuminate\Http\JsonResponse Respuesta JSON con resultado
+ */
+public function updateInstructivo(Request $request, $idReceta, $idInstructivo)
+{
+    Log::info('Datos recibidos en updateInstructivo:', $request->all());
+    
+    $validated = $request->validate([
+        'titulo' => 'required|string|max:200',
+        'pasos' => 'required|array|min:1',
+        'pasos.*.contenido' => 'required|string',
+        'pasos.*.ingredientes' => 'present|array',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $instructivo = RecetaInstructivo::where('id_recetas', $idReceta)
+            ->findOrFail($idInstructivo);
         
-        $validated = $request->validate([
-            'titulo' => 'required|string|max:200',
-            'pasos' => 'required|array|min:1',
-            'pasos.*.contenido' => 'required|string',
-            'pasos.*.ingredientes' => 'present|array',
+        // Asegurar que todos los ingredientes sean arrays válidos
+        $pasos = collect($validated['pasos'])->map(function($paso) {
+            return [
+                'contenido' => $paso['contenido'],
+                'ingredientes' => is_array($paso['ingredientes']) ? $paso['ingredientes'] : []
+            ];
+        })->toArray();
+
+        // Actualizar instructivo
+        $instructivo->update([
+            'titulo' => $validated['titulo'],
+            'instrucciones' => $pasos
         ]);
 
-        try {
-            DB::beginTransaction();
+        DB::commit();
 
-            $instructivo = RecetaInstructivo::where('id_recetas', $idReceta)
-                ->findOrFail($idInstructivo);
-            
-            // Asegurar que todos los ingredientes sean arrays válidos
-            $pasos = collect($validated['pasos'])->map(function($paso) {
-                return [
-                    'contenido' => $paso['contenido'],
-                    'ingredientes' => is_array($paso['ingredientes']) ? $paso['ingredientes'] : []
-                ];
-            })->toArray();
+        return response()->json([
+            'success' => true,
+            'redirect' => route('recetas.show', $idReceta)
+        ]);
 
-            // Actualizar instructivo
-            $instructivo->update([
-                'titulo' => $validated['titulo'],
-                'instrucciones' => $pasos
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'redirect' => route('recetas.show', $idReceta)
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error al actualizar instructivo:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request' => $request->all()
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar el instructivo: ' . $e->getMessage()
-            ], 500);
-        }
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error al actualizar instructivo:', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al actualizar el instructivo: ' . $e->getMessage()
+        ], 500);
     }
+}
 }

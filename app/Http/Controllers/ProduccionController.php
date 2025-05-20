@@ -344,15 +344,37 @@ class ProduccionController extends Controller
                 'pedidos_ids' => $pedidosAActualizar->pluck('id_pedidos_det')
             ]);
 
+            // Obtener la cantidad producida real del campo oculto o del input
+            $cantidadProducida = null;
+            if ($request->has("cantidad_producida_real_hidden.{$idReceta}")) {
+                $cantidadProducida = (float)$request->input("cantidad_producida_real_hidden.{$idReceta}");
+                Log::debug("Cantidad producida obtenida del campo oculto", [
+                    'receta_id' => $idReceta,
+                    'cantidad' => $cantidadProducida
+                ]);
+            } else if ($request->has("cantidad_producida_real.{$idReceta}")) {
+                $cantidadProducida = (float)$request->input("cantidad_producida_real.{$idReceta}");
+                Log::debug("Cantidad producida obtenida del input", [
+                    'receta_id' => $idReceta,
+                    'cantidad' => $cantidadProducida
+                ]);
+            }
+
+            // Si no se encontró la cantidad producida, usar la cantidad del pedido
+            if (!$cantidadProducida) {
+                $cantidadProducida = $pedidosAActualizar->sum('cantidad');
+                Log::debug("Usando cantidad del pedido como fallback", [
+                    'receta_id' => $idReceta,
+                    'cantidad' => $cantidadProducida
+                ]);
+            }
+
             // Procesar cada pedido individualmente
             foreach ($pedidosAActualizar as $pedido) {
                 $cantidadPedido = $pedido->cantidad;
                 $cantidadEsperada = ($receta->id_areas == 1)
                     ? $cantidadPedido * $receta->constante_peso_lata
                     : $cantidadPedido;
-                
-                // Obtener cantidad producida real para este pedido específico
-                $cantidadProducida = (float)($request->cantidad_producida_real[$pedido->id_pedidos_det] ?? $cantidadPedido);
 
                 Log::debug("Procesando pedido individual", [
                     'pedido_id' => $pedido->id_pedidos_det,

@@ -23,41 +23,40 @@
             <div class="card bg-light">
                 <div class="card-body p-2">
                     <small class="text-muted">Factor de ajuste:</small>
-                    <p class="mb-0">{{ number_format($factor) }}</p>
-                    <!-- <small class="text-muted">({{ $cantidadProduccion }})</small> -->
+                    <p class="mb-0">{{ number_format($factor, 2) }}</p>
+                    <small class="text-muted">({{ $cantidadEsperada }} {{ $receta->uMedida->nombre }})</small>
                 </div>
             </div>
         </div>
     </div>
     
     <h5 class="text-primary mt-4 mb-3">Ingredientes Ajustados</h5>
-    <div class="table-responsive mb-4">
+    <div class="table-responsive">
         <table class="table table-sm table-bordered">
-            <thead>
+            <thead class="bg-light">
                 <tr>
                     <th>Ingrediente</th>
-                    <th class="text-end">Cantidad Base</th>
-                    <th class="text-end">Cantidad Requerida</th>
-                    <th class="text-end">Unidad</th>
+                    <th class="text-center">Cantidad Base</th>
+                    <th class="text-center">Factor</th>
+                    <th class="text-center">Cantidad Requerida</th>
+                    <th class="text-center">Unidad</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($ingredientesAdaptados as $ingrediente)
                 <tr>
                     <td>{{ $ingrediente['nombre'] }}</td>
-                    <td class="text-end">{{ number_format($ingrediente['cantidad_base'], 2) }}</td>
-                    <td class="text-end">
-                        <strong>{{ number_format($ingrediente['cantidad']) }}</strong>
-                        <small class="text-muted d-block">({{ $ingrediente['cantidad_base'] }} × {{ number_format($factor) }})</small>
-                    </td>
-                    <td class="text-end">{{ $ingrediente['u_medida'] }}</td>
+                    <td class="text-center">{{ number_format($ingrediente['cantidad_base'], 2) }}</td>
+                    <td class="text-center">{{ number_format($factor, 2) }}</td>
+                    <td class="text-center">{{ number_format($ingrediente['cantidad'], 2) }}</td>
+                    <td class="text-center">{{ $ingrediente['u_medida'] }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
     </div>
     
-    <h5 class="text-primary mb-3">Procedimiento</h5>
+    <h5 class="text-primary mt-4 mb-3">Procedimiento</h5>
     <div class="pasos-container">
         @foreach($instructivo->instrucciones as $index => $paso)
         <div class="paso-instruction mb-4">
