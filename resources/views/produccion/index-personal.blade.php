@@ -309,8 +309,21 @@
                                 <td class="text-center" id="costo-diseno-{{ $idReceta }}">S/ 0.00</td>
                                 <td class="text-center total-receta" id="total-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
                                 <td class="text-center">
-                                    {{ number_format($cantHarina, 2) }} gramos
-                                    <input type="hidden" name="id_recetas_det_harina[{{ $idReceta }}]" value="{{ $idHarina }}">
+                                    @if($estadoActual === 'pendientes' || $estadoActual === 'terminados' || $estadoActual === 'cancelados')
+                                        @php
+                                            // Mostrar la suma de harina para todos los pedidos no personalizados de esta receta
+                                            $cantHarinaTotal = 0;
+                                            foreach ($pedidosNoPersonalizados as $pedidoNoPersonalizado) {
+                                                $cantidadEsperadaPedido = ($receta->id_areas == 1)
+                                                    ? $pedidoNoPersonalizado->cantidad * $receta->constante_peso_lata
+                                                    : $pedidoNoPersonalizado->cantidad;
+                                                $cantHarinaPedido = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperadaPedido : 0;
+                                                $cantHarinaTotal += $cantHarinaPedido;
+                                            }
+                                        @endphp
+                                        {{ number_format($cantHarinaTotal, 2) }} gramos
+                                        <input type="hidden" name="id_recetas_det_harina[{{ $idReceta }}]" value="{{ $idHarina }}">
+                                    @endif
                                 </td>
                                 <td class="text-center">
                                     @if($receta->instructivo)
@@ -360,11 +373,12 @@
                                 $subtotalPersonalizado += $detalle->subtotal_receta * $cantidadEsperadaPersonalizada;
                             }
                             
-                            $harinaPersonalizada = $componenteHarina ? $componenteHarina->cantidad * $cantidadPersonalizada : 0;
+                            $harinaPersonalizada = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperadaPersonalizada : 0;
                             
                             $imagenUrl = $pedido->foto_referencial ? asset('storage/' . str_replace('pedidos/', 'pedidos/', $pedido->foto_referencial)) : null;
                             @endphp
 
+                            @if(($estadoActual === 'cancelados' && $estadoGeneral === 'cancelado') || ($estadoActual !== 'cancelados' && $estadoGeneral !== 'cancelado'))
                             <tr class="pedido-personalizado" data-recid="{{ $idReceta }}">
                                 <td colspan="2">
                                     <div class="d-flex align-items-center">
@@ -496,6 +510,7 @@
                                     </button>
                                 </td>
                             </tr>
+                            @endif
                             @php
                             $pedidoCounter++;
                             @endphp
@@ -647,6 +662,9 @@
                 <div class="form-group">
                     <label for="observacionTexto">Observación:</label>
                     <textarea class="form-control" id="observacionTexto" rows="4"></textarea>
+                    <div id="estadoObservacionGuardada" class="mt-2 text-success" style="display:none;">
+    <i class="fas fa-check-circle"></i> Observación guardada correctamente.
+</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1010,19 +1028,16 @@ function manejarEstado(checkbox, idReceta) {
     if (tipo === 'es_iniciado_ui') {
         const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
         const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
-            
         if (cantidadInput) cantidadInput.disabled = !isChecked;
         if (unidadSelect) unidadSelect.disabled = !isChecked;
-            
-            const terminarBtn = document.getElementById(`terminar-btn-${idReceta}`);
-            if (terminarBtn) {
+        const terminarBtn = document.getElementById(`terminar-btn-${idReceta}`);
+        if (terminarBtn) {
             terminarBtn.style.pointerEvents = isChecked ? 'auto' : 'none';
             terminarBtn.style.opacity = isChecked ? '1' : '0.65';
             terminarBtn.classList.toggle('disabled', !isChecked);
-                const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
+            const terminarCheckbox = terminarBtn.querySelector('input[type="checkbox"]');
             if (terminarCheckbox) terminarCheckbox.disabled = !isChecked;
         }
-
         if (isChecked) desmarcarOtrosEstados(idReceta, tipo, true);
     } else if (tipo === 'es_terminado_ui' && isChecked) {
         if (!confirm('¿Está seguro de marcar como terminado? Una vez terminado no podrá editar los datos.')) {
@@ -1030,23 +1045,17 @@ function manejarEstado(checkbox, idReceta) {
             if (hiddenInput) hiddenInput.value = '0';
             return;
         }
-
         if (!validarTerminado(idReceta)) {
             checkbox.checked = false;
             if (hiddenInput) hiddenInput.value = '0';
             return;
         }
-        
-        // Asegurar estado iniciado
         const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_ui[${idReceta}]"]`);
         const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
-        
         if (iniciadoCheckbox && !iniciadoCheckbox.checked) {
             iniciadoCheckbox.checked = true;
             if (iniciadoHidden) iniciadoHidden.value = '1';
         }
-
-        // Crear campos ocultos para valores actuales
         const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
         if (cantidadInput) {
             const cantidadHidden = document.createElement('input');
@@ -1056,7 +1065,6 @@ function manejarEstado(checkbox, idReceta) {
             cantidadInput.parentNode.appendChild(cantidadHidden);
             cantidadInput.disabled = true;
         }
-
         const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
         if (unidadSelect) {
             const unidadHidden = document.createElement('input');
@@ -1066,11 +1074,28 @@ function manejarEstado(checkbox, idReceta) {
             unidadSelect.parentNode.appendChild(unidadHidden);
             unidadSelect.disabled = true;
         }
-        
         desmarcarOtrosEstados(idReceta, tipo, true);
     } else if (tipo === 'es_cancelado_ui' && isChecked) {
-        desmarcarOtrosEstados(idReceta, tipo, true);
-        mostrarModalCancelacion(checkbox, idReceta);
+        // Al cancelar, desmarcar otros estados
+        desmarcarOtrosEstados(idReceta, tipo, false);
+        // Si no está iniciado, crear campos ocultos con valores por defecto
+        const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
+        if (!iniciadoHidden || iniciadoHidden.value !== '1') {
+            // Crear campo oculto para cantidad producida con valor 0
+            const cantidadHidden = document.createElement('input');
+            cantidadHidden.type = 'hidden';
+            cantidadHidden.name = `cantidad_producida_real[${idReceta}]`;
+            cantidadHidden.value = '0';
+            document.getElementById('produccionForm').appendChild(cantidadHidden);
+            // Crear campo oculto para unidad de medida con valor por defecto
+            const unidadHidden = document.createElement('input');
+            unidadHidden.type = 'hidden';
+            unidadHidden.name = `id_u_medidas_prodcc[${idReceta}]`;
+            unidadHidden.value = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`)?.value || '';
+            document.getElementById('produccionForm').appendChild(unidadHidden);
+        }
+        // Mostrar modal de observación
+        mostrarModalObservacion(null, idReceta, true);
     }
 }
 
@@ -1318,8 +1343,36 @@ function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
         
         desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
     } else if (tipo === 'es_cancelado_personalizado' && isChecked) {
-        desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
-        mostrarModalCancelacion(checkbox, idPedido);
+        // Al cancelar, desmarcar otros estados
+        desmarcarOtrosEstadosPersonalizado(idPedido, tipo, false);
+
+        // Si no está iniciado, crear campos ocultos con valores por defecto
+        const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${idPedido}]"]`);
+        if (!iniciadoHidden || iniciadoHidden.value !== '1') {
+            // Crear campo oculto para cantidad producida con valor 0
+            const cantidadHidden = document.createElement('input');
+            cantidadHidden.type = 'hidden';
+            cantidadHidden.name = `cantidad_producida_real_personalizado[${idPedido}]`;
+            cantidadHidden.value = '0';
+            document.getElementById('produccionForm').appendChild(cantidadHidden);
+
+            // Crear campo oculto para unidad de medida con valor por defecto
+            const unidadHidden = document.createElement('input');
+            unidadHidden.type = 'hidden';
+            unidadHidden.name = `id_u_medidas_prodcc_personalizado[${idPedido}]`;
+            unidadHidden.value = document.querySelector(`select[name="id_u_medidas_prodcc_personalizado[${idPedido}]"]`)?.value || '';
+            document.getElementById('produccionForm').appendChild(unidadHidden);
+
+            // Crear campo oculto para costo diseño con valor 0
+            const costoHidden = document.createElement('input');
+            costoHidden.type = 'hidden';
+            costoHidden.name = `costo_diseño[${idPedido}]`;
+            costoHidden.value = '0';
+            document.getElementById('produccionForm').appendChild(costoHidden);
+        }
+
+        // Mostrar modal de observación
+        mostrarModalObservacion(idPedido, idReceta, true);
     }
 }
 
@@ -1361,6 +1414,23 @@ function mostrarEstadoActualPersonalizado(idPedido) {
         console.log('=== FIN DE MOSTRAR ESTADO ACTUAL PERSONALIZADO ===');
     } catch (error) {
         console.error('Error al mostrar estado actual:', error);
+    }
+
+
+
+    try {
+        const iniciado = document.querySelector(`input[name="es_iniciado_personalizado[${idPedido}]"]`)?.checked || false;
+        const terminado = document.querySelector(`input[name="es_terminado_personalizado[${idPedido}]"]`)?.checked || false;
+        const cancelado = document.querySelector(`input[name="es_cancelado_personalizado[${idPedido}]"]`)?.checked || false;
+        const canceladoHidden = document.querySelector(`input[type="hidden"][name="es_cancelado_personalizado[${idPedido}]"]`)?.value === '1';
+        logAction(`___________________Estado actual - Pedido personalizado ${idPedido}`, {
+            iniciado,
+            terminado,
+            cancelado,
+            canceladoHidden
+        });
+    } catch (error) {
+        logAction('___________________Error al mostrar estado actual personalizado', { error: error.message });
     }
 }
 
@@ -1725,8 +1795,24 @@ document.getElementById('produccionForm').addEventListener('submit', function(e)
         return false;
     }
     
+     // Debug: mostrar todos los inputs ocultos de observación personalizados
+     document.querySelectorAll('input[name^="observaciones_personalizado["]').forEach(input => {
+        console.log('Input oculto:', input.name, 'Valor:', input.value);
+    });
+
     // Verificar cancelados sin observación
     let canceladosSinObservacion = [];
+
+    // Para pedidos personalizados
+    canceladosPersonalizados.forEach(checkbox => {
+        const name = checkbox.name;
+        const idPedido = name.match(/\[(.*?)\]/)[1];
+        // Busca el input oculto DENTRO del form
+        const observacion = document.querySelector(`#produccionForm input[name="observaciones_personalizado[${idPedido}]"]`)?.value;
+        if (!observacion) {
+            canceladosSinObservacion.push(`Pedido personalizado ${idPedido}`);
+        }
+    });
     
     // Para recetas normales
     cancelados.forEach(checkbox => {
@@ -1740,15 +1826,18 @@ document.getElementById('produccionForm').addEventListener('submit', function(e)
     });
     
     // Para pedidos personalizados
-    canceladosPersonalizados.forEach(checkbox => {
-        const name = checkbox.name;
-        const idPedido = name.match(/\[(.*?)\]/)[1];
-        const observacion = document.querySelector(`input[name="observaciones_personalizado[${idPedido}]"]`)?.value;
-        
-        if (!observacion) {
-            canceladosSinObservacion.push(`Pedido personalizado ${idPedido}`);
-        }
-    });
+canceladosPersonalizados.forEach(checkbox => {
+    const name = checkbox.name;
+    const idPedido = name.match(/\[(.*?)\]/)[1];
+    // Busca el input oculto DENTRO del form
+    const observacion = document.querySelector(`#produccionForm input[name="observaciones_personalizado[${idPedido}]"]`)?.value;
+    // Busca el input oculto de cancelado
+    const canceladoHidden = document.querySelector(`#produccionForm input[type="hidden"][name="es_cancelado_personalizado[${idPedido}]"]`);
+    // Si el checkbox o el input oculto está marcado, debe tener observación
+    if ((checkbox.checked || (canceladoHidden && canceladoHidden.value === '1')) && !observacion) {
+        canceladosSinObservacion.push(`Pedido personalizado ${idPedido}`);
+    }
+});
     
     // Verificar también los campos ocultos de pedidos personalizados cancelados
     canceladosPersonalizadosHidden.forEach(hidden => {
@@ -1760,13 +1849,21 @@ document.getElementById('produccionForm').addEventListener('submit', function(e)
             canceladosSinObservacion.push(`Pedido personalizado ${idPedido}`);
         }
     });
+
+     // Debug: mostrar todas las observaciones de pedidos personalizados cancelados
+     canceladosPersonalizados.forEach(checkbox => {
+        const name = checkbox.name;
+        const idPedido = name.match(/\[(.*?)\]/)[1];
+        const observacion = document.querySelector(`input[name="observaciones_personalizado[${idPedido}]"]`)?.value;
+        console.log('Pedido personalizado cancelado:', idPedido, 'Observación:', observacion);
+    });
     
-    if (canceladosSinObservacion.length > 0) {
-        e.preventDefault();
-        alert('Los siguientes ítems cancelados necesitan una observación:\n' + 
-              canceladosSinObservacion.join('\n'));
-        return false;
-    }
+    // if (canceladosSinObservacion.length > 0) {
+    //     e.preventDefault();
+    //     alert('Los siguientes ítems cancelados necesitan una observación:\n' + 
+    //           canceladosSinObservacion.join('\n'));
+    //     return false;
+    // }
     
     return true;
 });
@@ -1828,12 +1925,15 @@ document.addEventListener('DOMContentLoaded', function() {
  * Muestra el modal para agregar observación a una receta
  * @param {number|null} idPedido - ID del pedido (null para receta normal)
  * @param {number} idReceta - ID de la receta
+ * @param {boolean} esCancelacion - Si es una cancelación
  */
-function mostrarModalObservacion(idPedido, idReceta) {
+function mostrarModalObservacion(idPedido, idReceta, esCancelacion = false) {
     $('#observacionModalLabel').text(idPedido ? 'Observación para Pedido Personalizado' : 'Observación para Receta');
-    $('#observacionTexto').attr('placeholder', idPedido ? 'Ingrese observación para este pedido...' : 'Ingrese observación para esta receta...');
+    $('#observacionTexto').attr('placeholder', esCancelacion ? 
+        'Ingrese el motivo de la cancelación...' : 
+        'Ingrese observación para esta receta...');
     $('#observacionRecetaId').val(idReceta);
-    $('#esCancelacion').val('0');
+    $('#esCancelacion').val(esCancelacion ? '1' : '0');
     
     // Guardar referencia al pedido si existe
     if (idPedido) {
@@ -1854,12 +1954,63 @@ function mostrarModalObservacion(idPedido, idReceta) {
 }
 
 /**
- * Muestra el modal para agregar observación a un pedido personalizado
- * @param {number} idPedido - ID del pedido
- * @param {number} idReceta - ID de la receta padre
+ * Guarda la observación ingresada
  */
-function mostrarModalObservacionPersonalizado(idPedido, idReceta) {
-    mostrarModalObservacion(idPedido, idReceta);
+function guardarObservacion() {
+    const idReceta = $('#observacionRecetaId').val();
+    const esCancelacion = $('#esCancelacion').val() === '1';
+    const observacion = $('#observacionTexto').val().trim();
+    const pedidoId = $('#observacionModal').data('pedido-id');
+    
+    if (!observacion) {
+        alert('Debe ingresar una observación');
+        return;
+    }
+    
+    // Crear o actualizar el campo oculto para la observación
+    const inputName = pedidoId 
+        ? `observaciones_personalizado[${pedidoId}]` 
+        : `observaciones[${idReceta}]`;
+    
+    let inputObservacion = document.querySelector(`input[name="${inputName}"]`);
+    
+    if (!inputObservacion) {
+        inputObservacion = document.createElement('input');
+        inputObservacion.type = 'hidden';
+        inputObservacion.name = inputName;
+        document.getElementById('produccionForm').appendChild(inputObservacion);
+    }
+    
+    inputObservacion.value = observacion;
+
+    // Mostrar mensaje visual y log en consola
+    $('#estadoObservacionGuardada').show().delay(1500).fadeOut();
+    console.log('Observación guardada:', inputName, '=>', observacion);
+
+    // Si es cancelación, asegurarse que el checkbox de cancelado esté marcado y el campo oculto también
+    if (esCancelacion) {
+        const checkboxName = pedidoId 
+            ? `es_cancelado_personalizado[${pedidoId}]` 
+            : `es_cancelado[${idReceta}]`;
+        
+        // Marcar el checkbox de cancelado
+        const checkbox = document.querySelector(`input[name="${checkboxName}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+
+        // Forzar el campo oculto de cancelado a 1
+        let hiddenInput = document.querySelector(`input[type="hidden"][name="${checkboxName}"]`);
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = checkboxName;
+            document.getElementById('produccionForm').appendChild(hiddenInput);
+        }
+        hiddenInput.value = '1';
+    }
+    
+    $('#observacionModal').modal('hide');
 }
 
 // Cierra la notificación de equipo
@@ -1896,7 +2047,13 @@ document.addEventListener('DOMContentLoaded', function() {
             manejarEstadoPersonalizado(this, idPedido, idReceta);
         });
     });
+
+    document.querySelectorAll('tr.pedido-personalizado').forEach(row => {
+    const idPedido = row.querySelector('input[name^="es_cancelado_personalizado"]')?.name.match(/\[(.*?)\]/)[1];
+    if (idPedido) mostrarEstadoActualPersonalizado(idPedido);
+});
     console.log('=== FIN DE INICIALIZACIÓN DE MONITOREO ===');
+
 });
 
 // ... existing code ...

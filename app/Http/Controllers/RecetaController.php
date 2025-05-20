@@ -586,11 +586,11 @@ public function showInstructivo(Request $request, $id = null)
                 : $cantidadPedido;
         } else {
             // Si no es un pedido específico, sumar todos los pedidos del día
-            $cantidadPedido = PedidoDetalle::where('id_recetas', $idReceta)
-                ->whereDate('created_at', Carbon::today())
-                ->where('is_deleted', false)
-                ->sum('cantidad');
-                
+    $cantidadPedido = PedidoDetalle::where('id_recetas', $idReceta)
+        ->whereDate('created_at', Carbon::today())
+        ->where('is_deleted', false)
+        ->sum('cantidad');
+
             $cantidadEsperada = ($receta->id_areas == 1)
                 ? $cantidadPedido * $receta->constante_peso_lata
                 : $cantidadPedido;

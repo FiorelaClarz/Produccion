@@ -177,7 +177,7 @@ class ProduccionController extends Controller
     /**
      * Guarda la producción realizada por el personal
      */
-    public function guardarProduccionPersonal(Request $request)
+ public function guardarProduccionPersonal(Request $request)
     {
         DB::beginTransaction();
         try {
@@ -192,6 +192,9 @@ class ProduccionController extends Controller
             $recetasCanceladas = array_filter($request->es_cancelado ?? []);
             $personalizadosTerminados = array_filter($request->es_terminado_personalizado ?? []);
             $personalizadosCancelados = array_filter($request->es_cancelado_personalizado ?? []);
+
+            // Validar observaciones para pedidos cancelados
+            $this->validarObservacionesCancelacion($request, $recetasCanceladas, $personalizadosCancelados);
 
             Log::debug("Estados recibidos", [
                 'recetas_terminadas' => array_keys($recetasTerminadas),
@@ -255,6 +258,34 @@ class ProduccionController extends Controller
     }
 
     /**
+     * Valida que existan observaciones para los pedidos cancelados
+     */
+    protected function validarObservacionesCancelacion($request, $recetasCanceladas, $personalizadosCancelados)
+    {
+        $errores = [];
+
+        // Validar observaciones para recetas normales canceladas
+        foreach ($recetasCanceladas as $idReceta => $valor) {
+            $observacion = $request->observaciones[$idReceta] ?? null;
+            if (empty($observacion)) {
+                $errores[] = "Debe ingresar una observación para la receta #{$idReceta} que está siendo cancelada";
+            }
+        }
+
+        // Validar observaciones para pedidos personalizados cancelados
+        foreach ($personalizadosCancelados as $idPedido => $valor) {
+            $observacion = $request->observaciones_personalizado[$idPedido] ?? null;
+            if (empty($observacion)) {
+                $errores[] = "Debe ingresar una observación para el pedido personalizado #{$idPedido} que está siendo cancelado";
+            }
+        }
+
+        if (!empty($errores)) {
+            throw new \Exception(implode("\n", $errores));
+        }
+    }
+
+    /**
      * Obtiene o crea la cabecera de producción
      */
     protected function obtenerOCrearCabeceraProduccion($equipo, $usuario, $fechaActual)
@@ -304,7 +335,7 @@ class ProduccionController extends Controller
     protected function procesarPedidosNormales($request, $produccionCab, $receta, $pedidos, $idReceta)
     {
         Log::info("Iniciando procesamiento de pedidos normales para receta ID: {$idReceta}");
-
+        
         // Determinar estados
         $esIniciado = (bool)($request->es_iniciado[$idReceta] ?? false);
         $esTerminado = (bool)($request->es_terminado[$idReceta] ?? false);
@@ -382,34 +413,34 @@ class ProduccionController extends Controller
                     'cantidad_producida' => $cantidadProducida
                 ]);
 
-                $detalleData = [
-                    'id_produccion_cab' => $produccionCab->id_produccion_cab,
-                    'id_productos_api' => $receta->id_productos_api,
-                    'id_u_medidas' => $receta->id_u_medidas,
-                    'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
-                    'id_recetas_cab' => $receta->id_recetas,
+            $detalleData = [
+                'id_produccion_cab' => $produccionCab->id_produccion_cab,
+                'id_productos_api' => $receta->id_productos_api,
+                'id_u_medidas' => $receta->id_u_medidas,
+                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
+                'id_recetas_cab' => $receta->id_recetas,
                     'id_pedidos_det' => $pedido->id_pedidos_det,
-                    'id_areas' => $receta->id_areas,
-                    'cantidad_pedido' => $cantidadPedido,
-                    'cantidad_esperada' => $cantidadEsperada,
-                    'cantidad_producida_real' => $cantidadProducida,
-                    'es_iniciado' => $esIniciado,
-                    'es_terminado' => $esTerminado,
-                    'es_cancelado' => $esCancelado,
-                    'costo_diseño' => 0,
-                    'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-                    'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-                    'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
-                    'id_recetas_det_harina' => $idHarina,
+                'id_areas' => $receta->id_areas,
+                'cantidad_pedido' => $cantidadPedido,
+                'cantidad_esperada' => $cantidadEsperada,
+                'cantidad_producida_real' => $cantidadProducida,
+                'es_iniciado' => $esIniciado,
+                'es_terminado' => $esTerminado,
+                'es_cancelado' => $esCancelado,
+                'costo_diseño' => 0,
+                'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+                'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+                'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
+                'id_recetas_det_harina' => $idHarina,
                     'observaciones' => $request->observaciones[$pedido->id_pedidos_det] ?? null
-                ];
+            ];
 
                 Log::debug("Creando detalle de producción para pedido", [
                     'pedido_id' => $pedido->id_pedidos_det,
                     'detalle_data' => $detalleData
                 ]);
-                
-                $detalle = ProduccionDetalle::create($detalleData);
+            
+            $detalle = ProduccionDetalle::create($detalleData);
 
                 // Actualizar estado de este pedido individual
                 $this->actualizarEstadosPedidos(collect([$pedido]), $esIniciado, $esTerminado, $esCancelado);
@@ -422,7 +453,7 @@ class ProduccionController extends Controller
         return null;
     }
 
-    protected function determinarEstadoAAplicar($esIniciado, $esTerminado, $esCancelado)
+     protected function determinarEstadoAAplicar($esIniciado, $esTerminado, $esCancelado)
     {
         if ($esCancelado) return 'cancelado';
         if ($esTerminado) return 'terminado';
