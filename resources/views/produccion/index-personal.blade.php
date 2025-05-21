@@ -227,10 +227,11 @@
                                 <td class="text-center cantidadProducidaAcu">
                                     @if($estadoActual === 'pendientes')
                                         <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
-                                            class="form-control form-control-sm production-input"
+                                            class="form-control form-control-sm production-input cantidad-no-personalizada" data-recid="{{ $idReceta }}"
                                             step="0.01" min="0"
-                                            value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}"
-                                            {{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'disabled' }}>
+                                            value="{{ old('cantidad_producida_real.'.$idReceta, $cantidadEsperada) }}"
+                                            @if($recetaData['estado_general'] !== 'en_proceso') disabled @endif
+                                            oninput="actualizarTotales({{ $idReceta }})">
                                         <input type="hidden" name="cantidad_producida_real_hidden[{{ $idReceta }}]" 
                                             value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}">
                                     @else
@@ -405,10 +406,11 @@
                                 <td class="text-center">
                                     @if($estadoActual === 'pendientes')
                                         <input type="number" name="cantidad_producida_real_personalizado[{{ $pedido->id_pedidos_det }}]"
-                                            class="form-control form-control-sm production-input"
+                                            class="form-control form-control-sm production-input cantidad-personalizada" data-recid="{{ $idReceta }}" data-pedidoid="{{ $pedido->id_pedidos_det }}"
                                             step="0.01" min="0"
-                                            value="{{ old("cantidad_producida_real_personalizado.$pedido->id_pedidos_det", $cantidadPersonalizada) }}"
-                                            {{ $esIniciado ? '' : 'disabled' }}>
+                                            value="{{ old('cantidad_producida_real_personalizado.'.$pedido->id_pedidos_det, $cantidadPersonalizada) }}"
+                                            @if(!$esIniciado) disabled @endif
+                                            oninput="actualizarTotales({{ $idReceta }})">
                                     @else
                                         @php
                                             $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
@@ -497,7 +499,7 @@
                                         </div>
                                         <input type="number"
                                             name="costo_diseño[{{ $pedido->id_pedidos_det }}]"
-                                            class="form-control form-control-sm costo-diseno input-costo-diseno"
+                                            class="form-control form-control-sm costo-diseno input-costo-diseno costo-diseno-personalizado" data-recid="{{ $idReceta }}" data-pedidoid="{{ $pedido->id_pedidos_det }}"
                                             step="1.00" min="0"
                                             value="{{ old("costo_diseño.".$pedido->id_pedidos_det, $pedido->costo_diseño ?? 0) }}"
                                             {{ $esIniciado ? '' : 'disabled' }}
@@ -1865,85 +1867,60 @@ function actualizarTotales(idReceta) {
     let subtotalPersonalizados = 0;
     let totalHarinaPersonalizados = 0;
     let totalCantidadProducida = 0;
-    
-    // Obtener datos de la receta no personalizada
+    let subtotalNoPersonalizado = 0;
+    let totalHarinaNoPersonalizado = 0;
+
+    // Sumar todas las cantidades producidas (no personalizadas y personalizadas)
+    document.querySelectorAll(`.cantidad-no-personalizada[data-recid="${idReceta}"]`).forEach(input => {
+        totalCantidadProducida += parseFloat(input.value) || 0;
+    });
+    document.querySelectorAll(`.cantidad-personalizada[data-recid="${idReceta}"]`).forEach(input => {
+        totalCantidadProducida += parseFloat(input.value) || 0;
+    });
+    // Obtener subtotal no personalizado
     const row = document.querySelector(`tr#row-${idReceta}`);
     if (row) {
-        // Obtener cantidad producida no personalizada
-        const cantidadInput = row.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
-        if (cantidadInput) {
-            totalCantidadProducida += parseFloat(cantidadInput.value) || 0;
-        }
-
-        // Obtener subtotal no personalizado
         const subtotalText = row.querySelector('.subtotal-receta').textContent;
         const subtotalBase = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
-        subtotalPersonalizados += subtotalBase;
-
-        // Obtener harina no personalizada
+        subtotalNoPersonalizado += subtotalBase;
         const harinaText = row.querySelector('td:nth-child(12)').textContent;
         const harinaBase = parseFloat(harinaText.replace('g', '').replace(',', '').trim()) || 0;
-        totalHarinaPersonalizados += harinaBase;
+        totalHarinaNoPersonalizado += harinaBase;
     }
-    
-    // Sumar costos de diseño, subtotales y harina de personalizados
-    const pedidosPersonalizados = document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"]`);
-    pedidosPersonalizados.forEach(row => {
-        const costoInput = row.querySelector('input.costo-diseno');
-        if (costoInput) {
-            const costo = parseFloat(costoInput.value) || 0;
-            totalCostoDiseno += costo;
-            
-            // Obtener cantidad producida personalizada
-            const cantidadInput = row.querySelector(`input[name^="cantidad_producida_real_personalizado"]`);
-            if (cantidadInput) {
-                totalCantidadProducida += parseFloat(cantidadInput.value) || 0;
-            }
-            
-            // Obtener subtotal del pedido personalizado
-            const subtotalText = row.cells[7].textContent;
-            const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
-            subtotalPersonalizados += subtotal;
-
-            // Obtener harina del pedido personalizado
-            const harinaText = row.cells[10].textContent;
-            const harina = parseFloat(harinaText.replace('g', '').replace(',', '').trim()) || 0;
-            totalHarinaPersonalizados += harina;
-            
-            // Actualizar total para esta fila
-            const totalFila = subtotal + costo;
-            row.cells[9].textContent = 'S/ ' + totalFila.toFixed(2);
-        }
+    // Sumar personalizados
+    document.querySelectorAll(`.costo-diseno-personalizado[data-recid="${idReceta}"]`).forEach(input => {
+        totalCostoDiseno += parseFloat(input.value) || 0;
+        // Buscar la fila del pedido personalizado
+        const row = input.closest('tr');
+        // Subtotal personalizado
+        const subtotalText = row.cells[7].textContent;
+        const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
+        subtotalPersonalizados += subtotal;
+        // Harina personalizada
+        const harinaText = row.cells[10].textContent;
+        const harina = parseFloat(harinaText.replace('g', '').replace(',', '').trim()) || 0;
+        totalHarinaPersonalizados += harina;
+        // Actualizar total para esta fila
+        const totalFila = subtotal + (parseFloat(input.value) || 0);
+        row.cells[9].textContent = 'S/ ' + totalFila.toFixed(2);
     });
-    
-    // Calcular total general (suma de subtotal base + subtotal personalizados + costos diseño)
-    const totalGeneral = subtotalPersonalizados + totalCostoDiseno;
-    
+    // Calcular total general
+    const totalGeneral = subtotalNoPersonalizado + subtotalPersonalizados + totalCostoDiseno;
+    const harinaTotal = totalHarinaNoPersonalizado + totalHarinaPersonalizados;
     // Actualizar displays en la fila de totales
     const totalesRow = document.querySelector(`tr.total-receta-agrupada[data-recid="${idReceta}"]`);
     if (totalesRow) {
-        // Actualizar cantidad producida total
         totalesRow.cells[4].textContent = number_format(totalCantidadProducida, 2);
-        
-        // Actualizar subtotal total
-        totalesRow.cells[7].textContent = 'S/ ' + number_format(subtotalPersonalizados, 2);
-        
-        // Actualizar costo diseño total
+        totalesRow.cells[7].textContent = 'S/ ' + number_format(subtotalNoPersonalizado + subtotalPersonalizados, 2);
         const celdaCostoDiseno = totalesRow.querySelector(`#total-costo-diseno-${idReceta}`);
         if (celdaCostoDiseno) {
             celdaCostoDiseno.textContent = 'S/ ' + number_format(totalCostoDiseno, 2);
         } else if (totalesRow.cells[8]) {
             totalesRow.cells[8].textContent = 'S/ ' + number_format(totalCostoDiseno, 2);
         }
-        
-        // Actualizar total general
         totalesRow.cells[9].textContent = 'S/ ' + number_format(totalGeneral, 2);
-        
-        // Actualizar harina total
-        totalesRow.cells[10].textContent = number_format(totalHarinaPersonalizados, 2) + ' g';
+        totalesRow.cells[10].textContent = number_format(harinaTotal, 2) + ' g';
     }
-    
-    // Animación para destacar el cambio
     if (totalesRow) {
         const cells = totalesRow.querySelectorAll('td');
         cells.forEach(cell => {
