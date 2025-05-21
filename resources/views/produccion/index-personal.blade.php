@@ -497,7 +497,7 @@
                                         </div>
                                         <input type="number"
                                             name="costo_diseño[{{ $pedido->id_pedidos_det }}]"
-                                            class="form-control form-control-sm costo-diseno"
+                                            class="form-control form-control-sm costo-diseno input-costo-diseno"
                                             step="1.00" min="0"
                                             value="{{ old("costo_diseño.".$pedido->id_pedidos_det, $pedido->costo_diseño ?? 0) }}"
                                             {{ $esIniciado ? '' : 'disabled' }}
@@ -567,7 +567,7 @@
                             @endforeach
 
                             <!-- Fila de totales cuando hay pedidos personalizados -->
-                            <tr class="total-receta-agrupada bg-light">
+                            <tr class="total-receta-agrupada bg-light" data-recid="{{ $idReceta }}">
                                 <td colspan="2" class="text-right"><strong>Totales:</strong></td>
                                 <td class="text-center">{{ number_format($cantidadNoPersonalizada + $pedidosPersonalizados->sum('cantidad'), 2) }}</td>
                                 <td class="text-center"></td>
@@ -601,20 +601,20 @@
                                     foreach ($receta->detalles as $detalle) {
                                         $subtotal += $detalle->subtotal_receta * $esperada;
                                     }
-                                    return $subtotal;
+                                    return $subtotal + ($p->costo_diseño ?? 0);
                                             });
                                         @endphp
                                         S/ {{ number_format($subtotalReceta + $subtotalPersonalizados, 2) }}
                                     @else
                                         @php
-                                            $totalSubtotal = $pedidosPersonalizados->sum(function($pedido) {
+                                            $totalGeneral = $pedidosPersonalizados->sum(function($pedido) {
                                                 $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
                                                     ->where('es_terminado', true)
                                                     ->first();
-                                                return $produccionDet ? $produccionDet->subtotal_receta : 0;
+                                                return $produccionDet ? $produccionDet->total_receta : 0;
                                             });
                                         @endphp
-                                        S/ {{ number_format($totalSubtotal, 2) }}
+                                        S/ {{ number_format($totalGeneral, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center" id="total-costo-diseno-{{ $idReceta }}">
@@ -1122,6 +1122,11 @@
     @keyframes highlight {
         0% { background-color: #fffde7; }
         100% { background-color: transparent; }
+    }
+
+    .input-costo-diseno {
+        min-width: 80px;
+        max-width: 120px;
     }
 </style>
 
@@ -1882,7 +1887,8 @@ function actualizarTotales(idReceta) {
     }
     
     // Sumar costos de diseño, subtotales y harina de personalizados
-    document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"]`).forEach(row => {
+    const pedidosPersonalizados = document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"]`);
+    pedidosPersonalizados.forEach(row => {
         const costoInput = row.querySelector('input.costo-diseno');
         if (costoInput) {
             const costo = parseFloat(costoInput.value) || 0;
@@ -1923,7 +1929,12 @@ function actualizarTotales(idReceta) {
         totalesRow.cells[7].textContent = 'S/ ' + number_format(subtotalPersonalizados, 2);
         
         // Actualizar costo diseño total
-        totalesRow.cells[8].textContent = 'S/ ' + number_format(totalCostoDiseno, 2);
+        const celdaCostoDiseno = totalesRow.querySelector(`#total-costo-diseno-${idReceta}`);
+        if (celdaCostoDiseno) {
+            celdaCostoDiseno.textContent = 'S/ ' + number_format(totalCostoDiseno, 2);
+        } else if (totalesRow.cells[8]) {
+            totalesRow.cells[8].textContent = 'S/ ' + number_format(totalCostoDiseno, 2);
+        }
         
         // Actualizar total general
         totalesRow.cells[9].textContent = 'S/ ' + number_format(totalGeneral, 2);
@@ -1933,11 +1944,13 @@ function actualizarTotales(idReceta) {
     }
     
     // Animación para destacar el cambio
-    const cells = totalesRow.querySelectorAll('td');
-    cells.forEach(cell => {
-        cell.classList.add('highlight');
-        setTimeout(() => cell.classList.remove('highlight'), 1000);
-    });
+    if (totalesRow) {
+        const cells = totalesRow.querySelectorAll('td');
+        cells.forEach(cell => {
+            cell.classList.add('highlight');
+            setTimeout(() => cell.classList.remove('highlight'), 1000);
+        });
+    }
 }
 
 // Función auxiliar para formatear números
