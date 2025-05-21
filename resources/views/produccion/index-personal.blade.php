@@ -224,7 +224,7 @@
                                 </td>
                                 <td class="text-center">{{ $nombreUnidadPedido }}</td>
                                 <td class="text-center">{{ number_format($cantidadEsperada, 2) }}</td>
-                                <td class="text-center">
+                                <td class="text-center cantidadProducidaAcu">
                                     @if($estadoActual === 'pendientes')
                                         <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
                                             class="form-control form-control-sm production-input"
@@ -234,7 +234,15 @@
                                         <input type="hidden" name="cantidad_producida_real_hidden[{{ $idReceta }}]" 
                                             value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}">
                                     @else
-                                        {{ number_format($recetaData['cantidad_producida_real'] ?? $cantidadEsperada, 2) }}
+                                        @php
+                                            // Obtener el acumulado de cantidad producida real para pedidos no personalizados terminados
+                                            $cantidadProducidaAcumulada = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('cantidad_producida_real');
+                                        @endphp
+                                        {{ number_format($cantidadProducidaAcumulada, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center">
@@ -402,7 +410,15 @@
                                             value="{{ old("cantidad_producida_real_personalizado.$pedido->id_pedidos_det", $cantidadPersonalizada) }}"
                                             {{ $esIniciado ? '' : 'disabled' }}>
                                     @else
-                                        {{ number_format($cantidadPersonalizada, 2) }}
+                                        @php
+                                            $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                ->where(function($q) use ($estadoActual) {
+                                                    if ($estadoActual === 'terminados') $q->where('es_terminado', true);
+                                                    if ($estadoActual === 'cancelados') $q->where('es_cancelado', true);
+                                                })
+                                                ->first();
+                                        @endphp
+                                        {{ number_format($produccionDet ? $produccionDet->cantidad_producida_real : $cantidadPersonalizada, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center">
@@ -461,7 +477,18 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="text-center">S/ {{ number_format($subtotalPersonalizado, 2) }}</td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        S/ {{ number_format($subtotalPersonalizado, 2) }}
+                                    @else
+                                        @php
+                                            $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                ->where('es_terminado', true)
+                                                ->first();
+                                        @endphp
+                                        S/ {{ number_format($produccionDet ? $produccionDet->subtotal_receta : 0, 2) }}
+                                    @endif
+                                </td>
                                 <td class="text-center">
                                     @if($estadoActual === 'pendientes')
                                     <div class="input-group input-group-sm">
@@ -471,20 +498,43 @@
                                         <input type="number"
                                             name="costo_diseño[{{ $pedido->id_pedidos_det }}]"
                                             class="form-control form-control-sm costo-diseno"
-                                            step="0.01" min="0"
+                                            step="1.00" min="0"
                                             value="{{ old("costo_diseño.".$pedido->id_pedidos_det, $pedido->costo_diseño ?? 0) }}"
                                             {{ $esIniciado ? '' : 'disabled' }}
                                             onchange="actualizarTotales({{ $idReceta }})">
                                     </div>
                                     @else
-                                        S/ {{ number_format($pedido->costo_diseño ?? 0, 2) }}
+                                        @php
+                                            $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                ->where('es_terminado', true)
+                                                ->first();
+                                        @endphp
+                                        S/ {{ number_format($produccionDet ? $produccionDet->costo_diseño : 0, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
                                     S/ {{ number_format($subtotalPersonalizado + ($pedido->costo_diseño ?? 0), 2) }}
+                                    @else
+                                        @php
+                                            $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                ->where('es_terminado', true)
+                                                ->first();
+                                        @endphp
+                                        S/ {{ number_format($produccionDet ? $produccionDet->total_receta : 0, 2) }}
+                                    @endif
                                 </td>
                                 <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
                                     {{ number_format($harinaPersonalizada, 2) }} g
+                                    @else
+                                        @php
+                                            $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                ->where('es_terminado', true)
+                                                ->first();
+                                        @endphp
+                                        {{ number_format($produccionDet ? $produccionDet->cant_harina : 0, 2) }} g
+                                    @endif
                                     <input type="hidden" name="id_recetas_det_harina_personalizado[{{ $pedido->id_pedidos_det }}]" value="{{ $idHarina }}">
                                 </td>
                                 <td class="text-center">
@@ -521,11 +571,30 @@
                                 <td colspan="2" class="text-right"><strong>Totales:</strong></td>
                                 <td class="text-center">{{ number_format($cantidadNoPersonalizada + $pedidosPersonalizados->sum('cantidad'), 2) }}</td>
                                 <td class="text-center"></td>
-                                <td class="text-center">{{ number_format($cantidadEsperada + $pedidosPersonalizados->sum('cantidad') * ($receta->id_areas == 1 ? $receta->constante_peso_lata : 1), 2) }}</td>
-                                <td class="text-center">{{ number_format(($recetaData['cantidad_producida_real'] ?? $cantidadEsperada) + $pedidosPersonalizados->sum('cantidad'), 2) }}</td>
+                                <td class="text-center">{{ number_format($cantidadEsperada + $pedidosPersonalizados->sum(function($p) use ($receta) {
+                                    return $receta->id_areas == 1 ? $p->cantidad * $receta->constante_peso_lata : $p->cantidad;
+                                }), 2) }}</td>
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        {{ number_format(($recetaData['cantidad_producida_real'] ?? $cantidadEsperada) + $pedidosPersonalizados->sum('cantidad'), 2) }}
+                                    @else
+                                        @php
+                                            $totalCantidadProducida = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_terminado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->cantidad_producida_real : 0;
+                                            });
+                                        @endphp
+                                        {{ number_format($totalCantidadProducida, 2) }}
+                                    @endif
+                                </td>
                                 <td class="text-center"></td>
                                 <td class="text-center"></td>
-                                <td class="text-center">S/ {{ number_format($subtotalReceta + $pedidosPersonalizados->sum(function($p) use ($receta) {
+                                <td class="text-center">
+                                    @if($estadoActual === 'pendientes')
+                                        @php
+                                            $subtotalPersonalizados = $pedidosPersonalizados->sum(function($p) use ($receta) {
                                     $cant = $p->cantidad;
                                     $esperada = $receta->id_areas == 1 ? $cant * $receta->constante_peso_lata : $cant;
                                     $subtotal = 0;
@@ -533,9 +602,45 @@
                                         $subtotal += $detalle->subtotal_receta * $esperada;
                                     }
                                     return $subtotal;
-                                }), 2) }}</td>
-                                <td class="text-center" id="total-costo-diseno-{{ $idReceta }}">S/ {{ number_format($pedidosPersonalizados->sum('costo_diseño'), 2) }}</td>
-                                <td class="text-center" id="total-general-{{ $idReceta }}">S/ {{ number_format($subtotalReceta + $pedidosPersonalizados->sum(function($p) use ($receta) {
+                                            });
+                                        @endphp
+                                        S/ {{ number_format($subtotalReceta + $subtotalPersonalizados, 2) }}
+                                    @else
+                                        @php
+                                            $totalSubtotal = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_terminado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->subtotal_receta : 0;
+                                            });
+                                        @endphp
+                                        S/ {{ number_format($totalSubtotal, 2) }}
+                                    @endif
+                                </td>
+                                <td class="text-center" id="total-costo-diseno-{{ $idReceta }}">
+                                    @if($estadoActual === 'pendientes')
+                                        @php
+                                            $totalCostoDiseno = $pedidosPersonalizados->sum(function($p) {
+                                                return $p->costo_diseño ?? 0;
+                                            });
+                                        @endphp
+                                        S/ {{ number_format($totalCostoDiseno, 2) }}
+                                    @else
+                                        @php
+                                            $totalCostoDiseno = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_terminado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->costo_diseño : 0;
+                                            });
+                                        @endphp
+                                        S/ {{ number_format($totalCostoDiseno, 2) }}
+                                    @endif
+                                </td>
+                                <td class="text-center" id="total-general-{{ $idReceta }}">
+                                    @if($estadoActual === 'pendientes')
+                                        @php
+                                            $subtotalPersonalizados = $pedidosPersonalizados->sum(function($p) use ($receta) {
                                     $cant = $p->cantidad;
                                     $esperada = $receta->id_areas == 1 ? $cant * $receta->constante_peso_lata : $cant;
                                     $subtotal = 0;
@@ -543,13 +648,42 @@
                                         $subtotal += $detalle->subtotal_receta * $esperada;
                                     }
                                     return $subtotal + ($p->costo_diseño ?? 0);
-                                }), 2) }}</td>
+                                            });
+                                        @endphp
+                                        S/ {{ number_format($subtotalReceta + $subtotalPersonalizados, 2) }}
+                                    @else
+                                        @php
+                                            $totalGeneral = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_terminado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->total_receta : 0;
+                                            });
+                                        @endphp
+                                        S/ {{ number_format($totalGeneral, 2) }}
+                                    @endif
+                                </td>
                                 <td class="text-center">
-                                    {{ number_format($cantHarina + $pedidosPersonalizados->sum(function($p) use ($componenteHarina, $receta) {
+                                    @if($estadoActual === 'pendientes')
+                                        @php
+                                            $totalHarina = $cantHarina + $pedidosPersonalizados->sum(function($p) use ($componenteHarina, $receta) {
                                         $cant = $p->cantidad;
                                         $esperada = $receta->id_areas == 1 ? $cant * $receta->constante_peso_lata : $cant;
                                         return $componenteHarina ? $componenteHarina->cantidad * $esperada : 0;
-                                    }), 2) }} g
+                                            });
+                                        @endphp
+                                        {{ number_format($totalHarina, 2) }} g
+                                    @else
+                                        @php
+                                            $totalHarina = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_terminado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->cant_harina : 0;
+                                            });
+                                        @endphp
+                                        {{ number_format($totalHarina, 2) }} g
+                                    @endif
                                 </td>
                                 <td class="text-center"></td>
                             </tr>
@@ -1724,44 +1858,91 @@ function mostrarImagenModal(imageUrl) {
 function actualizarTotales(idReceta) {
     let totalCostoDiseno = 0;
     let subtotalPersonalizados = 0;
+    let totalHarinaPersonalizados = 0;
+    let totalCantidadProducida = 0;
     
-    // Sumar costos de diseño y subtotales de personalizados
+    // Obtener datos de la receta no personalizada
+    const row = document.querySelector(`tr#row-${idReceta}`);
+    if (row) {
+        // Obtener cantidad producida no personalizada
+        const cantidadInput = row.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
+        if (cantidadInput) {
+            totalCantidadProducida += parseFloat(cantidadInput.value) || 0;
+        }
+
+        // Obtener subtotal no personalizado
+        const subtotalText = row.querySelector('.subtotal-receta').textContent;
+        const subtotalBase = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
+        subtotalPersonalizados += subtotalBase;
+
+        // Obtener harina no personalizada
+        const harinaText = row.querySelector('td:nth-child(12)').textContent;
+        const harinaBase = parseFloat(harinaText.replace('g', '').replace(',', '').trim()) || 0;
+        totalHarinaPersonalizados += harinaBase;
+    }
+    
+    // Sumar costos de diseño, subtotales y harina de personalizados
     document.querySelectorAll(`tr.pedido-personalizado[data-recid="${idReceta}"]`).forEach(row => {
         const costoInput = row.querySelector('input.costo-diseno');
         if (costoInput) {
             const costo = parseFloat(costoInput.value) || 0;
             totalCostoDiseno += costo;
             
+            // Obtener cantidad producida personalizada
+            const cantidadInput = row.querySelector(`input[name^="cantidad_producida_real_personalizado"]`);
+            if (cantidadInput) {
+                totalCantidadProducida += parseFloat(cantidadInput.value) || 0;
+            }
+            
             // Obtener subtotal del pedido personalizado
-            const subtotalText = row.cells[8].textContent;
+            const subtotalText = row.cells[7].textContent;
             const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
             subtotalPersonalizados += subtotal;
+
+            // Obtener harina del pedido personalizado
+            const harinaText = row.cells[10].textContent;
+            const harina = parseFloat(harinaText.replace('g', '').replace(',', '').trim()) || 0;
+            totalHarinaPersonalizados += harina;
             
             // Actualizar total para esta fila
             const totalFila = subtotal + costo;
-            row.cells[10].textContent = 'S/ ' + totalFila.toFixed(2);
+            row.cells[9].textContent = 'S/ ' + totalFila.toFixed(2);
         }
     });
     
-    // Obtener subtotal de la receta base
-    const subtotalText = document.getElementById(`subtotal-${idReceta}`).textContent;
-    const subtotalBase = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
-    
     // Calcular total general (suma de subtotal base + subtotal personalizados + costos diseño)
-    const totalGeneral = subtotalBase + subtotalPersonalizados + totalCostoDiseno;
+    const totalGeneral = subtotalPersonalizados + totalCostoDiseno;
     
-    // Actualizar displays
-    document.getElementById(`total-costo-diseno-${idReceta}`).textContent = 'S/ ' + totalCostoDiseno.toFixed(2);
-    document.getElementById(`total-general-${idReceta}`).textContent = 'S/ ' + totalGeneral.toFixed(2);
-    
-    // Actualizar total por fila de receta principal
-    document.getElementById(`total-${idReceta}`).textContent = 'S/ ' + (subtotalBase + totalCostoDiseno).toFixed(2);
+    // Actualizar displays en la fila de totales
+    const totalesRow = document.querySelector(`tr.total-receta-agrupada[data-recid="${idReceta}"]`);
+    if (totalesRow) {
+        // Actualizar cantidad producida total
+        totalesRow.cells[4].textContent = number_format(totalCantidadProducida, 2);
+        
+        // Actualizar subtotal total
+        totalesRow.cells[7].textContent = 'S/ ' + number_format(subtotalPersonalizados, 2);
+        
+        // Actualizar costo diseño total
+        totalesRow.cells[8].textContent = 'S/ ' + number_format(totalCostoDiseno, 2);
+        
+        // Actualizar total general
+        totalesRow.cells[9].textContent = 'S/ ' + number_format(totalGeneral, 2);
+        
+        // Actualizar harina total
+        totalesRow.cells[10].textContent = number_format(totalHarinaPersonalizados, 2) + ' g';
+    }
     
     // Animación para destacar el cambio
-    document.getElementById(`total-costo-diseno-${idReceta}`).classList.add('highlight');
-    setTimeout(() => {
-        document.getElementById(`total-costo-diseno-${idReceta}`).classList.remove('highlight');
-    }, 1000);
+    const cells = totalesRow.querySelectorAll('td');
+    cells.forEach(cell => {
+        cell.classList.add('highlight');
+        setTimeout(() => cell.classList.remove('highlight'), 1000);
+    });
+}
+
+// Función auxiliar para formatear números
+function number_format(number, decimals) {
+    return parseFloat(number).toFixed(decimals);
 }
 
 // Validación del formulario al enviar

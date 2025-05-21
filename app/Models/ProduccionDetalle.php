@@ -34,7 +34,7 @@ class ProduccionDetalle extends Model
         'observaciones',
         'es_personalizado',
         'pedidos_ids',
-    'id_pedido_detalle'
+        'id_pedido_detalle'
     ];
 
     protected $casts = [

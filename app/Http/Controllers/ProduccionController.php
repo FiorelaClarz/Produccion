@@ -78,6 +78,8 @@ class ProduccionController extends Controller
 
         $unidadesMedida = UMedida::activos()->get();
 
+        
+
         return view('produccion.index-personal', [
             'recetasAgrupadas' => $recetasFiltradas,
             'unidadesMedida' => $unidadesMedida,
@@ -177,7 +179,7 @@ class ProduccionController extends Controller
     /**
      * Guarda la producción realizada por el personal
      */
- public function guardarProduccionPersonal(Request $request)
+    public function guardarProduccionPersonal(Request $request)
     {
         DB::beginTransaction();
         try {
@@ -400,6 +402,9 @@ class ProduccionController extends Controller
                 ]);
             }
 
+            // Obtener todos los IDs de pedidos para este grupo
+            $pedidosIds = $pedidosAActualizar->pluck('id_pedidos_det')->toArray();
+
             // Procesar cada pedido individualmente
             foreach ($pedidosAActualizar as $pedido) {
                 $cantidadPedido = $pedido->cantidad;
@@ -413,34 +418,35 @@ class ProduccionController extends Controller
                     'cantidad_producida' => $cantidadProducida
                 ]);
 
-            $detalleData = [
-                'id_produccion_cab' => $produccionCab->id_produccion_cab,
-                'id_productos_api' => $receta->id_productos_api,
-                'id_u_medidas' => $receta->id_u_medidas,
-                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
-                'id_recetas_cab' => $receta->id_recetas,
+                $detalleData = [
+                    'id_produccion_cab' => $produccionCab->id_produccion_cab,
+                    'id_productos_api' => $receta->id_productos_api,
+                    'id_u_medidas' => $receta->id_u_medidas,
+                    'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
+                    'id_recetas_cab' => $receta->id_recetas,
                     'id_pedidos_det' => $pedido->id_pedidos_det,
-                'id_areas' => $receta->id_areas,
-                'cantidad_pedido' => $cantidadPedido,
-                'cantidad_esperada' => $cantidadEsperada,
-                'cantidad_producida_real' => $cantidadProducida,
-                'es_iniciado' => $esIniciado,
-                'es_terminado' => $esTerminado,
-                'es_cancelado' => $esCancelado,
-                'costo_diseño' => 0,
-                'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-                'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-                'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
-                'id_recetas_det_harina' => $idHarina,
-                    'observaciones' => $request->observaciones[$pedido->id_pedidos_det] ?? null
-            ];
+                    'id_areas' => $receta->id_areas,
+                    'cantidad_pedido' => $cantidadPedido,
+                    'cantidad_esperada' => $cantidadEsperada,
+                    'cantidad_producida_real' => $cantidadProducida,
+                    'es_iniciado' => $esIniciado,
+                    'es_terminado' => $esTerminado,
+                    'es_cancelado' => $esCancelado,
+                    'costo_diseño' => 0,
+                    'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+                    'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
+                    'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
+                    'id_recetas_det_harina' => $idHarina,
+                    'observaciones' => $request->observaciones[$pedido->id_pedidos_det] ?? null,
+                    'pedidos_ids' => $pedidosIds
+                ];
 
                 Log::debug("Creando detalle de producción para pedido", [
                     'pedido_id' => $pedido->id_pedidos_det,
                     'detalle_data' => $detalleData
                 ]);
             
-            $detalle = ProduccionDetalle::create($detalleData);
+                $detalle = ProduccionDetalle::create($detalleData);
 
                 // Actualizar estado de este pedido individual
                 $this->actualizarEstadosPedidos(collect([$pedido]), $esIniciado, $esTerminado, $esCancelado);
@@ -453,7 +459,7 @@ class ProduccionController extends Controller
         return null;
     }
 
-     protected function determinarEstadoAAplicar($esIniciado, $esTerminado, $esCancelado)
+    protected function determinarEstadoAAplicar($esIniciado, $esTerminado, $esCancelado)
     {
         if ($esCancelado) return 'cancelado';
         if ($esTerminado) return 'terminado';
@@ -574,7 +580,8 @@ class ProduccionController extends Controller
             'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido) + $costoDiseno,
             'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
             'id_recetas_det_harina' => $idHarina,
-            'observaciones' => $request->observaciones_personalizado[$pedido->id_pedidos_det] ?? null
+            'observaciones' => $request->observaciones_personalizado[$pedido->id_pedidos_det] ?? null,
+            'pedidos_ids' => [$pedido->id_pedidos_det]
         ]);
 
         // Actualizar estado de este pedido individual
@@ -761,5 +768,113 @@ class ProduccionController extends Controller
             ->get();
 
         return view('produccion.reportes', compact('fechaInicio', 'fechaFin', 'datosGraficos'));
+    }
+
+    /**
+     * Muestra la vista de producción por períodos
+     */
+    public function indexPorPeriodos()
+    {
+        $usuario = Auth::user();
+        $estadoActual = request()->query('estado', 'pendientes');
+        $periodoActual = request()->query('periodo', 'hoy');
+        $idAreaUsuario = $usuario->id_areas;
+
+        // Definir fechas según el período
+        $fechas = $this->obtenerFechasPorPeriodo($periodoActual);
+        $fechaInicio = $fechas['inicio'];
+        $fechaFin = $fechas['fin'];
+
+        // Verificar equipo activo del usuario
+        $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
+            ->where('status', true)
+            ->where('is_deleted', false)
+            ->whereDate('created_at', $fechaInicio)
+            ->with(['usuario', 'area', 'turno'])
+            ->first();
+
+        // Obtener pedidos del período para el área del usuario
+        $pedidosDetalle = PedidoDetalle::with([
+                'receta', 
+                'receta.producto', 
+                'receta.detalles', 
+                'receta.detalles.producto', 
+                'receta.instructivo', 
+                'uMedida'
+            ])
+            ->whereBetween('created_at', [$fechaInicio, $fechaFin])
+            ->where('id_areas', $idAreaUsuario)
+            ->where('is_deleted', false)
+            ->whereHas('receta', function($query) {
+                $query->whereNotNull('id_recetas')
+                    ->whereHas('producto')
+                    ->whereHas('detalles');
+            })
+            ->get();
+
+        // Separar pedidos por estado
+        $pedidosPendientes = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == null || $pedido->id_estados < 4;
+        });
+
+        $pedidosTerminados = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == 4;
+        });
+
+        $pedidosCancelados = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == 5;
+        });
+
+        // Agrupar recetas por estado según el filtro
+        $recetasFiltradas = $this->agruparRecetasPorEstado(
+            $estadoActual, 
+            $pedidosPendientes, 
+            $pedidosTerminados, 
+            $pedidosCancelados
+        );
+
+        $unidadesMedida = UMedida::activos()->get();
+
+        return view('produccion.index-periodos', [
+            'recetasAgrupadas' => $recetasFiltradas,
+            'unidadesMedida' => $unidadesMedida,
+            'usuario' => $usuario,
+            'equipoActivo' => $equipoActivo,
+            'estadoActual' => $estadoActual,
+            'periodoActual' => $periodoActual,
+            'totalPendientes' => $pedidosPendientes->count(),
+            'totalTerminados' => $pedidosTerminados->count(),
+            'totalCancelados' => $pedidosCancelados->count(),
+            'fechaInicio' => $fechaInicio,
+            'fechaFin' => $fechaFin
+        ]);
+    }
+
+    /**
+     * Obtiene las fechas según el período seleccionado
+     */
+    protected function obtenerFechasPorPeriodo($periodo)
+    {
+        $hoy = Carbon::now();
+        
+        switch ($periodo) {
+            case 'ayer':
+                $inicio = $hoy->copy()->subDay()->startOfDay();
+                $fin = $hoy->copy()->subDay()->endOfDay();
+                break;
+            case 'semana':
+                $inicio = $hoy->copy()->subWeek()->startOfDay();
+                $fin = $hoy->copy()->endOfDay();
+                break;
+            default: // hoy
+                $inicio = $hoy->copy()->startOfDay();
+                $fin = $hoy->copy()->endOfDay();
+                break;
+        }
+
+        return [
+            'inicio' => $inicio,
+            'fin' => $fin
+        ];
     }
 }

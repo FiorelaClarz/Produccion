@@ -1,0 +1,449 @@
+[33mcommit f31bbc5cbf1c4633404a6a2790954d454ec02a2c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 20 11:45:34 2025 -0500
+
+    se ajusto la cantidad producida, la unidad de produccion, ver el instructivo, tanto en pedidos personalizados comono personalizados
+
+[33mcommit f5664b9e103d2d70bb921e8b8d9abb29042f60df[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 20 09:17:52 2025 -0500
+
+    se puede enviar registros y se puede tener mas control sobre los estados
+
+[33mcommit 01c939af49d4205c5c1805222cfe7758932ff691[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Mon May 19 15:51:04 2025 -0500
+
+    envio de registros de pedidos personalizados como no personalizados a la base ded atos falta ajustar el instructivo y vista de los detalles de produccion
+
+[33mcommit b356e343e83c13b55a89aff81b63acce2c119f08[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu May 15 15:02:34 2025 -0500
+
+    cambios en envio de registros a produccion_det
+
+[33mcommit 95c567a26ba0236eb63af2e286d3d6575c84c523[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed May 14 13:56:56 2025 -0500
+
+    vista index-personal de acuerdo a estados,falta separar la cantidad de pedido de los registros de produccion
+
+[33mcommit 8fb1823f38b77f6299cb85b96edf724dd3689a21[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 13 16:01:30 2025 -0500
+
+    aplicando format a codigo
+
+[33mcommit 4fbf3cb1252d98c660ecc98b37258b35f45ccb0e[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 13 15:59:48 2025 -0500
+
+    se puede ver la confirmacion de envio de datos y las rutas fueron modificadad para mostrar index-personal
+
+[33mcommit fca95196407189ccb40a791230618c78fdceab0a[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 13 15:06:56 2025 -0500
+
+    vista de produccion mejorada
+
+[33mcommit a354eb22e3b8f23f804ad017f31d7efc6fd18f51[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Mon May 12 16:07:58 2025 -0500
+
+    falta mejorar, quitar requerimiento de es enviado, falta verificar el envio d datos a base produccion
+
+[33mcommit fbf81d4b822dd68455dac7719ee7352fe166b424[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri May 9 16:00:22 2025 -0500
+
+    agregando cambios para vista de index-personal de produccion, falta mejorar el envio de datos a las tablas, solucionar no se esta reconociendo el marcado de las casillas enviar
+
+[33mcommit 17ecaa25d9f52f090a87976629c8b960f439a8f8[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu May 8 15:58:03 2025 -0500
+
+    agregando cambios a produccion vista de instructivo y de pedidos personalizados
+
+[33mcommit add01eb8125f5f843cce3e9ae88c509294a34298[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed May 7 14:42:33 2025 -0500
+
+    agregando rutas para instructivos de recetas
+
+[33mcommit f5a8928f882701bf7c02355f233bbecc5c673cc8[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed May 7 14:42:04 2025 -0500
+
+    ahregando cambios a recetas para visualizacion de las instrucciones de las recetas
+
+[33mcommit f37f8381ebb819a60f811b7ee2f1b3df6f7faada[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed May 7 10:49:29 2025 -0500
+
+    vista personal de produccion
+
+[33mcommit 3dd813364f476b6c8383ce3f11fa734a4e84bf95[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 6 16:19:08 2025 -0500
+
+    agregando cambios
+
+[33mcommit 21cc7cd86118863722a2425f692be5f11d6816b5[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue May 6 10:53:32 2025 -0500
+
+    agregando cambios en pedidos cabecera y detalle para elminacion, creacion y edicicon de pedidos dentro de las horas limites
+
+[33mcommit 10e0621d853dcae17c0f6f969229f2c7dffabea4[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Mon May 5 16:02:06 2025 -0500
+
+    modificaicones 05-05-2025
+
+[33mcommit 24e1f8de6a01d844f767d329c82337b8213e4483[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Mon May 5 15:59:41 2025 -0500
+
+    modificaicone
+
+[33mcommit 6ae4e0415a4a26681148020478202dea3faacaec[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri May 2 13:06:22 2025 -0500
+
+    modificaiones en edit para editar pedido detalle
+
+[33mcommit 3cb01fd65982f467d030769588dae62689fea87d[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri May 2 12:55:46 2025 -0500
+
+    modificaiones en vistas de pedidos
+
+[33mcommit 4832bef6e57cc717a1334bbb61e5c03cd00c8e34[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 16:01:45 2025 -0500
+
+    se agrego vista de mostrar de acuerdo a modificaciones en el controlador
+
+[33mcommit 3ba67a45894703934eeff03ed29b237fc241c787[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 16:01:04 2025 -0500
+
+    aqui ya se bloquearon acciones pasado el tiempo limite de ingreso de pedidos
+
+[33mcommit e0207ae78f5635d6efd00d5d66ec18ba45290b83[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 16:00:22 2025 -0500
+
+    aqui falta bloquear campos ya que por url pueden entrar a editar, tambien en la aprte de editar pedido detalle el boton al lado de actualizar q dice limpiar debe decir cancelar y no limpiar
+
+[33mcommit b792f1a8e4c7e4ac3e55eb19285b662473ccbc83[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 15:58:56 2025 -0500
+
+    creacion de pedidos modificado para vista de reloj con cuenta regresiva
+
+[33mcommit ba52b8732e835998af2cd3bcd4755b02df2d81b8[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 15:57:18 2025 -0500
+
+    unidad de medida conflicto solucionados
+
+[33mcommit 0438913b30cb4d7ad10f92e3faa8fbbad9d62076[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 15:56:32 2025 -0500
+
+    modificaion de modelo hoara limite cambio de tipo de dato a string
+
+[33mcommit 1e611aec09c0780cca7688ec284fdfaf8d2696af[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 15:55:46 2025 -0500
+
+    modificando pedido controler para ajustar vista de reloj
+
+[33mcommit a43b880f1d99bbe3363eb75c53f56a705706a096[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 10:47:16 2025 -0500
+
+    agregando nuevas rutas apra pedidos, verificar busqueda de producto para pedido de receta
+
+[33mcommit f94ac9d31b2e4d5dc1dbdc4e30dc45c2593ac2f1[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 10:46:16 2025 -0500
+
+    nuevoindex austado a controller
+
+[33mcommit 4ef5cb1f70e09052eaa7f031f70ff56085f371db[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 10:45:11 2025 -0500
+
+    a prueba, vacio
+
+[33mcommit 2edb454f2b45dc68c91b98bb3a48d72f97947898[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 10:44:31 2025 -0500
+
+    ## Explicación de las Mejoras Implementadas
+    
+    1. **Reloj de Cuenta Regresiva Mejorado**:
+       - Ahora muestra minutos y segundos (MM:SS)
+       - Cambia de color según el tiempo restante:
+         - Verde (>15 minutos)
+         - Amarillo (<15 minutos)
+         - Rojo (<5 minutos)
+       - Muestra alertas cuando quedan 15 y 5 minutos
+       - Redirecciona automáticamente cuando el tiempo se agota
+    
+    2. **Validaciones Mejoradas**:
+       - Validación del lado del cliente y servidor
+       - Mensajes de error claros
+       - Requiere al menos un pedido antes de enviar
+    
+    3. **Experiencia de Usuario**:
+       - Confirmaciones antes de acciones importantes (eliminar, enviar, cancelar)
+       - Feedback visual con colores e iconos
+       - Mensajes de éxito/error con SweetAlert
+    
+    4. **Funcionalidad Completa**:
+       - Búsqueda de recetas con mínimo 3 caracteres
+       - Campos dinámicos para pedidos personalizados
+       - Edición y eliminación de pedidos en la lista
+       - Envío de datos estructurado al servidor
+    
+    5. **Seguridad**:
+       - Uso de CSRF token
+       - Validación de datos en frontend y backend
+       - Transacciones de base de datos
+    
+    ## Pruebas Realizadas
+    
+    1. **Reloj de Cuenta Regresiva**:
+       - Verificado que cambia de color correctamente
+       - Confirmado que muestra alertas en los tiempos correctos
+       - Redirección automática al terminar el tiempo
+    
+    2. **Búsqueda de Recetas**:
+       - Funciona solo después de 3 caracteres
+       - Filtra por área seleccionada
+       - Muestra sugerencias y permite selección
+    
+    3. **Pedidos Personalizados**:
+       - Campos aparecen/ocultan correctamente
+       - Validación de campos requeridos
+       - Visualización correcta en la lista
+    
+    4. **Envío de Pedido**:
+       - Valida que haya al menos un pedido
+       - Confirmación antes de enviar
+       - Manejo de respuestas del servidor
+    
+    5. **Edición/Eliminación**:
+       - Edición de pedidos en lista funciona
+       - Confirmación antes de eliminar
+       - Actualización correcta de la lista
+    
+    Este código integra lo mejor de ambos controladores y vistas que proporcionaste, creando una solución robusta y funcional para el sistema de pedidos.
+
+[33mcommit 03321ecf2142d31d0161ea7e5282d14712f7f3d7[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 10:43:25 2025 -0500
+
+    agregando modificaicones de scripts
+
+[33mcommit 0ef27e92359df98cddf5796dc9a18ae2ca916f6b[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 30 10:42:20 2025 -0500
+
+    agregando nuevas modificaicones en pedido controller, metodos apra hora limite y verificacion de time
+
+[33mcommit b4e91d2551db6739949a3119a8fba0b4f775dcaf[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:31:01 2025 -0500
+
+    agregando vistas a pedidos
+
+[33mcommit e7e27e0eb7fd48f65ba3dbe668a9b1d195ca1417[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:30:31 2025 -0500
+
+    agregando vistas a equipos
+
+[33mcommit cca8b8d4f6a9adb42c6d816e731506c87b824e37[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:29:55 2025 -0500
+
+    agregando cambios en pedidos_cab
+
+[33mcommit 033ab052395255e77d98719063bf63efbef51b5d[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:28:51 2025 -0500
+
+    agregando modificaiones a tablas de equipos y pedidos
+
+[33mcommit fa5d0c9a85c7c7052afc5c7092621cf535891740[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:26:48 2025 -0500
+
+    se agregan controladores para equipo y pedido
+
+[33mcommit a84830c3a36bf84af2294a85d31c10f33525c1f5[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:25:49 2025 -0500
+
+    se agregan las rutas de equipos y pedidos
+
+[33mcommit 2a0734cf7717a0ef7031eba542b47803663ff322[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:25:15 2025 -0500
+
+    agregando codigo para mejorar las vistas de create de pedidos, falta mejorar vista de reloj con cuneta regresiva
+
+[33mcommit bd47820015f995ac92c45f3e9327a97a29483274[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:24:14 2025 -0500
+
+    agregando modificacione en composer y publicindex
+
+[33mcommit 110addb5d47ed67c2e124159d07d9ad800ce4275[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:23:03 2025 -0500
+
+    agregando a menu las nuevas vistas equipos y pedidos
+
+[33mcommit f05d4abc1e60624bd04ad0e410700b0b4d2b7cc0[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:22:00 2025 -0500
+
+    se agregaron cambios en los mdoelos apra la creacion de equipos y pedidos, user, usuario, horalimite se creo para establecer hora limite
+
+[33mcommit 73a193119c5af2646d64d76ba11cdeb0ed8a6d2a[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:20:50 2025 -0500
+
+    cambios en modelo equipocabecera se agregaron campos nuevos
+
+[33mcommit 54a87f1f8458698bf79152a128b4d4a018bddde3[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Tue Apr 29 15:19:58 2025 -0500
+
+    cambios en logincontroller
+
+[33mcommit 18bbf6287dc4664fa4e3569d8aef442726795bec[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 16:04:31 2025 -0500
+
+    agregando comentarios a la vista edit para la documentacion
+
+[33mcommit a6278e75a8b639ad8d9d2b61db5e2cc8b95f9d5b[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:55:47 2025 -0500
+
+    agregando comentarios para la documentacion de la creacion de recetas
+
+[33mcommit 18f1f4905ff39a5b8c0e32f13064fe35d15ec36e[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:49:19 2025 -0500
+
+    se agregaron comentarios para la documentacion
+
+[33mcommit 33a23d5c4143103f43a501ec4d57029e82bdf749[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:37:48 2025 -0500
+
+    agregando cambios en el largo del campo nombre para capturar todos los caracteres que viene en el nombre del producto, esto de la tabla recetas_det
+
+[33mcommit de155a1cb539eb44ed33580e53ecd5079f8832cf[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:37:11 2025 -0500
+
+    agregando cambios en el largo del campo nombre para capturar todos los caracteres que viene en el nombre del producto, esto de la tabla recetas_cab
+
+[33mcommit f841b77c3dcea6e94b37248f4af435929b07e5c9[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:35:36 2025 -0500
+
+    se agregaron las rutas de recetas a Route::middleware(['auth'])->group(function () para asegurar el ingreso a esta ruta
+
+[33mcommit cd9b3d841a9c43cea4e8982a1599405900e30228[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:34:08 2025 -0500
+
+    se agregaron cambios en la vista show para ver a detalle los datos ingresados de la receta creada
+
+[33mcommit df7b378f546ebb44e3db18873ba0c2ec797d75b6[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:33:15 2025 -0500
+
+    se agrego una columna para ver los estados, asimismo se enlistan primero los de estado activo y al final los de estado inactivos, tambien para las acciones se manejan iconos
+
+[33mcommit a1c9b9af91cdf50d5da33020b423ad6f932270d5[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:32:01 2025 -0500
+
+    se copiaron funciones de create.blade.php para la busqueda de productos, la vista es tal cual create solo q se cargan automaticamente los datos de la receta creada
+
+[33mcommit c8eeacaa3df58d00c661cd677c9c220abe6b4cfe[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:30:03 2025 -0500
+
+    modificaciones para crear recetas y que se capturen los datos, asimismo queda pendiente ver si la 'constante crecimiento' debe aparecer para el area de carnes? constante peso lata solo aparece para el area de panaderia
+
+[33mcommit fd0d5c9bd3cb240d5ab670f7d86e7e39746082aa[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Fri Apr 25 15:26:46 2025 -0500
+
+    modificando los metodos para creacion y edicion de recetas, pendiente el valor de agua en ingrediente de receta
+
+[33mcommit 11abb4c6a95ff0581a7ec8997d61942070f9f852[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:25:37 2025 -0500
+
+    quitando clase busqueda ajax, inncesario
+
+[33mcommit b50320fb24680dc36c7bbf6f51afc6f5a14d4a5b[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:15:22 2025 -0500
+
+    modificando ruta para verificar producto
+
+[33mcommit ca106ea8616bb7d8bdf0f1127681526b7bf87de8[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:14:07 2025 -0500
+
+    se adapto la busqueda en base a la clase buscadorajax en app.blade.php
+
+[33mcommit 33783fdc47b3e2a131b78885089c6f81168aaf20[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:13:12 2025 -0500
+
+    se hicieron cambios adaptando las busquedas en base a la clase BuscadorAjax en app.blade.php
+
+[33mcommit 13383a9e983be45253118be0f5e79b8b3e43d60a[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:12:16 2025 -0500
+
+    agregando modificaciones, se puso una calse buscadorajax para facilitar las busquedas y     @yield('scripts')
+    @stack('scripts')
+
+[33mcommit 7a3748ee062e6bd9d8c99db6438d375200f796ff[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:10:46 2025 -0500
+
+    agregando cambios en controlador de usuarios
+
+[33mcommit 821969be306416744b3073efcea4c5449ffef864[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Thu Apr 24 15:08:06 2025 -0500
+
+    agregando mejoras en las funcones del controlador recetas
+
+[33mcommit d148090f4d99ff57ded2362a0bfb768eb660925c[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 23 16:03:47 2025 -0500
+
+    añadiendo cambios al modelo recetacabecera y recetadetalle, se creo un controlador y se definieron los metodos apra el maenjo de las funcones en las vistas, falta mejorar la obtencion de busquedas en el front, revisar create.blade.php
+
+[33mcommit 6133e0841b0df8457d83466c3320a99b07d4e6f6[m
+Author: Fiooo <fquispequ@unsa.edu.pe>
+Date:   Wed Apr 23 10:33:24 2025 -0500
+
+    creando las vistas para umedidas: index, edit, create y show

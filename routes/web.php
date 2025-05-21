@@ -252,19 +252,20 @@ Route::middleware(['auth'])->group(function () {
 
     // Rutas de producción
     Route::prefix('produccion')->group(function () {
-    // Rutas específicas primero
-    Route::get('/personal', [ProduccionController::class, 'index'])->name('produccion.index-personal');
-    Route::post('/guardar-personal', [ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
-    
-    // Rutas de recursos estándar después
-    Route::get('/', [ProduccionController::class, 'index'])->name('produccion.index');
-    Route::get('/create', [ProduccionController::class, 'create'])->name('produccion.create');
-    Route::post('/', [ProduccionController::class, 'store'])->name('produccion.store');
-    Route::get('/{produccion}', [ProduccionController::class, 'show'])->name('produccion.show');
-    Route::get('/{produccion}/edit', [ProduccionController::class, 'edit'])->name('produccion.edit');
-    Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
-    Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
-
-    
-});
+        // Rutas específicas primero
+        Route::get('/personal', [ProduccionController::class, 'index'])->name('produccion.index-personal');
+        Route::post('/guardar-personal', [ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
+        
+        // Nueva ruta para ver periodos
+        Route::get('/periodos', [ProduccionController::class, 'indexPorPeriodos'])->name('produccion.periodos');
+        
+        // Rutas de recursos estándar después
+        Route::get('/', [ProduccionController::class, 'index'])->name('produccion.index');
+        Route::get('/create', [ProduccionController::class, 'create'])->name('produccion.create');
+        Route::post('/', [ProduccionController::class, 'store'])->name('produccion.store');
+        Route::get('/{produccion}', [ProduccionController::class, 'show'])->name('produccion.show');
+        Route::get('/{produccion}/edit', [ProduccionController::class, 'edit'])->name('produccion.edit');
+        Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
+        Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
+    });
 });
