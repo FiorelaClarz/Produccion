@@ -203,6 +203,9 @@
                                     @if($pedidosPersonalizados->count() > 0)
                                     <span class="badge badge-warning ml-2" style="color: #BFA100;">Contiene<br>personalizado</span>
                                     @endif
+                                    <button type="button" class="btn btn-sm btn-link" onclick="toggleDetalles({{ $idReceta }})">
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
                                 </td>
                                 <td>
                                     {{ $receta->nombre ?? 'N/A' }}
@@ -360,6 +363,63 @@
                                 </td>
                             </tr>
 
+                            <!-- Fila de detalles desplegable -->
+                            <tr class="detalles-row" id="detalles-{{ $idReceta }}" style="display: none;">
+                                <td colspan="13">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Detalles de Pedidos</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>ID Pedido</th>
+                                                            <th>Cliente</th>
+                                                            <th>Tienda</th>
+                                                            <th>Fecha/Hora</th>
+                                                            <th>Cantidad</th>
+                                                            <th>Estado</th>
+                                                            <th>Observaciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($recetaData['pedidos'] as $pedido)
+                                                            <tr>
+                                                                <td>{{ $pedido->id_pedidos_det }}</td>
+                                                                <td>{{ $pedido->pedidoCabecera->usuario->nombre_personal }}</td>
+                                                                <td>{{ $pedido->pedidoCabecera->tienda->nombre }}</td>
+                                                                <td>{{ $pedido->pedidoCabecera->hora_created }}</td>
+                                                                <td>{{ number_format($pedido->cantidad, 2) }}</td>
+                                                                <td>
+                                                                    @if($pedido->id_estados == 4)
+                                                                        <span class="badge badge-success">Terminado</span>
+                                                                    @elseif($pedido->id_estados == 5)
+                                                                        <span class="badge badge-danger">Cancelado</span>
+                                                                    @elseif($pedido->id_estados == 3)
+                                                                        <span class="badge badge-primary">En Proceso</span>
+                                                                    @else
+                                                                        <span class="badge badge-secondary">Pendiente</span>
+                                                                    @endif
+                                                                </td>
+                                                                <td>
+                                                                    @if($pedido->es_personalizado)
+                                                                        <button type="button" class="btn btn-xs btn-info" 
+                                                                            data-toggle="tooltip" 
+                                                                            title="{{ $pedido->descripcion ?? 'Sin descripción' }}">
+                                                                            <i class="fas fa-info-circle"></i>
+                                                                        </button>
+                                                                    @endif
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
                             <!-- Filas de pedidos personalizados -->
                             @if($pedidosPersonalizados->count() > 0)
                             @php
@@ -393,10 +453,10 @@
                                     <div class="d-flex align-items-center">
                                         <strong class="mr-2">{{ $recetaCounter }}.{{ $pedidoCounter }}. {{ $receta->producto->nombre ?? 'N/A' }}</strong>
                                         <span class="badge badge-warning">Personalizado</span>
-                                        <button type="button" class="btn btn-xs btn-info ml-2" 
+                                        <!-- <button type="button" class="btn btn-xs btn-info ml-2" 
                                             data-toggle="tooltip" title="{{ $pedido->descripcion ?? 'Sin descripción' }}">
                                             <i class="fas fa-info-circle"></i>
-                                        </button>
+                                        </button> -->
                                     </div>
                                     <small class="text-muted">Pedido #{{ $pedido->id_pedidos_det }}</small>
                                 </td>
@@ -2258,6 +2318,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 // ... existing code ...
+</script>
+
+<script>
+function toggleDetalles(idReceta) {
+    var detallesRow = document.getElementById('detalles-' + idReceta);
+    var btn = document.querySelector('#row-' + idReceta + ' button[onclick^="toggleDetalles"] i');
+    if (detallesRow.style.display === 'none' || detallesRow.style.display === '') {
+        detallesRow.style.display = 'table-row';
+        if(btn) { btn.classList.remove('fa-chevron-down'); btn.classList.add('fa-chevron-up'); }
+    } else {
+        detallesRow.style.display = 'none';
+        if(btn) { btn.classList.remove('fa-chevron-up'); btn.classList.add('fa-chevron-down'); }
+    }
+}
 </script>
 
 @endsection
