@@ -1869,7 +1869,7 @@ function actualizarTotales(idReceta) {
     let totalCantidadProducida = 0;
     let subtotalNoPersonalizado = 0;
     let totalHarinaNoPersonalizado = 0;
-
+    
     // Sumar todas las cantidades producidas (no personalizadas y personalizadas)
     document.querySelectorAll(`.cantidad-no-personalizada[data-recid="${idReceta}"]`).forEach(input => {
         totalCantidadProducida += parseFloat(input.value) || 0;
@@ -1894,13 +1894,13 @@ function actualizarTotales(idReceta) {
         const row = input.closest('tr');
         // Subtotal personalizado
         const subtotalText = row.cells[7].textContent;
-        const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
-        subtotalPersonalizados += subtotal;
+            const subtotal = parseFloat(subtotalText.replace('S/ ', '').replace(',', '')) || 0;
+            subtotalPersonalizados += subtotal;
         // Harina personalizada
         const harinaText = row.cells[10].textContent;
         const harina = parseFloat(harinaText.replace('g', '').replace(',', '').trim()) || 0;
         totalHarinaPersonalizados += harina;
-        // Actualizar total para esta fila
+            // Actualizar total para esta fila
         const totalFila = subtotal + (parseFloat(input.value) || 0);
         row.cells[9].textContent = 'S/ ' + totalFila.toFixed(2);
     });
