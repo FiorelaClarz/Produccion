@@ -183,7 +183,7 @@
 
                             $subtotalReceta = 0;
                             foreach ($receta->detalles as $detalle) {
-                                $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
+                                $subtotalReceta += $detalle->subtotal_receta * $cantidadNoPersonalizada;
                             }
 
                             $componenteHarina = $receta->detalles->first(function($item) {
@@ -237,11 +237,22 @@
                                             oninput="actualizarTotales({{ $idReceta }})">
                                         <input type="hidden" name="cantidad_producida_real_hidden[{{ $idReceta }}]" 
                                             value="{{ old("cantidad_producida_real.$idReceta", $cantidadEsperada) }}">
-                                    @else
+                                    @elseif($estadoActual === 'terminados')
                                         @php
                                             // Obtener el acumulado de cantidad producida real para pedidos no personalizados terminados
                                             $cantidadProducidaAcumulada = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
                                                 ->where('es_terminado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->where('es_cancelado', false)
+                                                ->whereDate('created_at', now())
+                                                ->sum('cantidad_producida_real');
+                                        @endphp
+                                        {{ number_format($cantidadProducidaAcumulada, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Obtener el acumulado de cantidad producida real para pedidos no personalizados cancelados
+                                            $cantidadProducidaAcumulada = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
                                                 ->where('costo_diseño', 0)
                                                 ->whereDate('created_at', now())
                                                 ->sum('cantidad_producida_real');
@@ -317,7 +328,32 @@
                                         </div>
                                     @endif
                                 </td>
-                                <td class="text-center subtotal-receta" id="subtotal-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
+                                <td class="text-center subtotal-receta" id="subtotal-{{ $idReceta }}">
+                                    @if($estadoActual === 'pendientes')
+                                        S/ {{ number_format($subtotalReceta, 2) }}
+                                    @elseif($estadoActual === 'terminados')
+                                        @php
+                                            // Subtotal de no personalizados terminados y no cancelados
+                                            $subtotalRecetaTerminados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('subtotal_receta');
+                                        @endphp
+                                        S/ {{ number_format($subtotalRecetaTerminados, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Subtotal de no personalizados cancelados
+                                            $subtotalRecetaCancelados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('subtotal_receta');
+                                        @endphp
+                                        S/ {{ number_format($subtotalRecetaCancelados, 2) }}
+                                    @endif
+                                </td>
                                 <td class="text-center" id="costo-diseno-{{ $idReceta }}">S/ 0.00</td>
                                 <td class="text-center total-receta" id="total-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
                                 <td class="text-center">
@@ -355,8 +391,8 @@
                                     </button>
                                     @endif
                                     
-                                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                                        data-toggle="tooltip" title="Agregar observación"
+                                    <button type="button" class="btn btn-sm btn-outline-secondary btn-observacion @if(!empty($recetaData['observaciones'])) btn-observacion-guardada @endif"
+                                        data-toggle="tooltip" title="Agregar/Ver observación"
                                         onclick="mostrarModalObservacion(null, {{ $idReceta }})">
                                         <i class="fas fa-comment"></i>
                                     </button>
@@ -439,7 +475,7 @@
                             
                             $subtotalPersonalizado = 0;
                             foreach ($receta->detalles as $detalle) {
-                                $subtotalPersonalizado += $detalle->subtotal_receta * $cantidadEsperadaPersonalizada;
+                                $subtotalPersonalizado += $detalle->subtotal_receta * $cantidadPersonalizada;
                             }
                             
                             $harinaPersonalizada = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperadaPersonalizada : 0;
@@ -615,8 +651,8 @@
                                     </button>
                                     @endif
                                     
-                                    <button type="button" class="btn btn-xs btn-outline-secondary"
-                                        data-toggle="tooltip" title="Agregar observación"
+                                    <button type="button" class="btn btn-xs btn-outline-secondary btn-observacion @if(!empty($pedido->observaciones)) btn-observacion-guardada @endif"
+                                        data-toggle="tooltip" title="Agregar/Ver observación"
                                         onclick="mostrarModalObservacionPersonalizado({{ $pedido->id_pedidos_det }}, {{ $idReceta }})">
                                         <i class="fas fa-comment"></i>
                                     </button>
@@ -639,14 +675,47 @@
                                 <td class="text-center">
                                     @if($estadoActual === 'pendientes')
                                         {{ number_format(($recetaData['cantidad_producida_real'] ?? $cantidadEsperada) + $pedidosPersonalizados->sum('cantidad'), 2) }}
-                                    @else
+                                    @elseif($estadoActual === 'terminados')
                                         @php
-                                            $totalCantidadProducida = $pedidosPersonalizados->sum(function($pedido) {
+                                            // Sumar cantidad producida de no personalizados (solo terminados y no cancelados)
+                                            $cantidadProducidaAcumulada = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('cantidad_producida_real');
+
+                                            // Sumar cantidad producida de personalizados (solo terminados y no cancelados)
+                                            $totalCantidadProducidaPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
                                                 $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
                                                     ->where('es_terminado', true)
+                                                    ->where('es_cancelado', false)
                                                     ->first();
                                                 return $produccionDet ? $produccionDet->cantidad_producida_real : 0;
                                             });
+
+                                            $totalCantidadProducida = $cantidadProducidaAcumulada + $totalCantidadProducidaPersonalizados;
+                                        @endphp
+                                        {{ number_format($totalCantidadProducida, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Sumar cantidad producida de no personalizados (solo cancelados)
+                                            $cantidadProducidaAcumulada = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('cantidad_producida_real');
+
+                                            // Sumar cantidad producida de personalizados (solo cancelados)
+                                            $totalCantidadProducidaPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_cancelado', true)
+                                                    ->first();
+                                                // Si fue cancelado sin iniciar, el backend guarda 0
+                                                return $produccionDet ? $produccionDet->cantidad_producida_real : 0;
+                                            });
+
+                                            $totalCantidadProducida = $cantidadProducidaAcumulada + $totalCantidadProducidaPersonalizados;
                                         @endphp
                                         {{ number_format($totalCantidadProducida, 2) }}
                                     @endif
@@ -663,20 +732,53 @@
                                     foreach ($receta->detalles as $detalle) {
                                         $subtotal += $detalle->subtotal_receta * $esperada;
                                     }
-                                    return $subtotal + ($p->costo_diseño ?? 0);
+                                                return $subtotal + ($p->costo_diseño ?? 0);
                                             });
                                         @endphp
                                         S/ {{ number_format($subtotalReceta + $subtotalPersonalizados, 2) }}
-                                    @else
+                                    @elseif($estadoActual === 'terminados')
                                         @php
-                                            $totalGeneral = $pedidosPersonalizados->sum(function($pedido) {
+                                            // Sumar subtotal de no personalizados (solo terminados y no cancelados)
+                                            $subtotalNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('subtotal_receta');
+
+                                            // Sumar subtotal de personalizados (solo terminados y no cancelados)
+                                            $subtotalPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
                                                 $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
                                                     ->where('es_terminado', true)
+                                                    ->where('es_cancelado', false)
                                                     ->first();
-                                                return $produccionDet ? $produccionDet->total_receta : 0;
+                                                return $produccionDet ? $produccionDet->subtotal_receta : 0;
                                             });
+
+                                            $subtotalTotal = $subtotalNoPersonalizados + $subtotalPersonalizados;
                                         @endphp
-                                        S/ {{ number_format($totalGeneral, 2) }}
+                                        S/ {{ number_format($subtotalTotal, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Sumar subtotal de no personalizados (solo cancelados)
+                                            $subtotalNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('subtotal_receta');
+
+                                            // Sumar subtotal de personalizados (solo cancelados)
+                                            $subtotalPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_cancelado', true)
+                                                    ->first();
+                                                // Si fue cancelado sin iniciar, el backend guarda 0
+                                                return $produccionDet ? $produccionDet->subtotal_receta : 0;
+                                            });
+
+                                            $subtotalTotal = $subtotalNoPersonalizados + $subtotalPersonalizados;
+                                        @endphp
+                                        S/ {{ number_format($subtotalTotal, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center" id="total-costo-diseno-{{ $idReceta }}">
@@ -687,11 +789,33 @@
                                             });
                                         @endphp
                                         S/ {{ number_format($totalCostoDiseno, 2) }}
-                                    @else
+                                    @elseif($estadoActual === 'terminados')
+                                        @php
+                                            // Sumar costo diseño de no personalizados (solo terminados y no cancelados)
+                                            $totalCostoDisenoNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('costo_diseño');
+
+                                            // Sumar costo diseño de personalizados (solo terminados y no cancelados)
+                                            $totalCostoDisenoPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_terminado', true)
+                                                    ->where('es_cancelado', false)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->costo_diseño : 0;
+                                            });
+
+                                            $totalCostoDiseno = $totalCostoDisenoNoPersonalizados + $totalCostoDisenoPersonalizados;
+                                        @endphp
+                                        S/ {{ number_format($totalCostoDiseno, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
                                         @php
                                             $totalCostoDiseno = $pedidosPersonalizados->sum(function($pedido) {
                                                 $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
-                                                    ->where('es_terminado', true)
+                                                    ->where('es_cancelado', true)
                                                     ->first();
                                                 return $produccionDet ? $produccionDet->costo_diseño : 0;
                                             });
@@ -713,14 +837,46 @@
                                             });
                                         @endphp
                                         S/ {{ number_format($subtotalReceta + $subtotalPersonalizados, 2) }}
-                                    @else
+                                    @elseif($estadoActual === 'terminados')
                                         @php
-                                            $totalGeneral = $pedidosPersonalizados->sum(function($pedido) {
+                                            // Sumar total de no personalizados (solo terminados y no cancelados)
+                                            $totalNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('total_receta');
+
+                                            // Sumar total de personalizados (solo terminados y no cancelados)
+                                            $totalPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
                                                 $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
                                                     ->where('es_terminado', true)
+                                                    ->where('es_cancelado', false)
                                                     ->first();
                                                 return $produccionDet ? $produccionDet->total_receta : 0;
                                             });
+
+                                            $totalGeneral = $totalNoPersonalizados + $totalPersonalizados;
+                                        @endphp
+                                        S/ {{ number_format($totalGeneral, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Sumar total de no personalizados (solo cancelados)
+                                            $totalNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('total_receta');
+
+                                            // Sumar total de personalizados (solo cancelados)
+                                            $totalPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_cancelado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->total_receta : 0;
+                                            });
+
+                                            $totalGeneral = $totalNoPersonalizados + $totalPersonalizados;
                                         @endphp
                                         S/ {{ number_format($totalGeneral, 2) }}
                                     @endif
@@ -735,14 +891,46 @@
                                             });
                                         @endphp
                                         {{ number_format($totalHarina, 2) }} g
-                                    @else
+                                    @elseif($estadoActual === 'terminados')
                                         @php
-                                            $totalHarina = $pedidosPersonalizados->sum(function($pedido) {
+                                            // Sumar harina de no personalizados (solo terminados y no cancelados)
+                                            $totalHarinaNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('cant_harina');
+
+                                            // Sumar harina de personalizados (solo terminados y no cancelados)
+                                            $totalHarinaPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
                                                 $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
                                                     ->where('es_terminado', true)
+                                                    ->where('es_cancelado', false)
                                                     ->first();
                                                 return $produccionDet ? $produccionDet->cant_harina : 0;
                                             });
+
+                                            $totalHarina = $totalHarinaNoPersonalizados + $totalHarinaPersonalizados;
+                                        @endphp
+                                        {{ number_format($totalHarina, 2) }} g
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Sumar harina de no personalizados (solo cancelados)
+                                            $totalHarinaNoPersonalizados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('cant_harina');
+
+                                            // Sumar harina de personalizados (solo cancelados)
+                                            $totalHarinaPersonalizados = $pedidosPersonalizados->sum(function($pedido) {
+                                                $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                    ->where('es_cancelado', true)
+                                                    ->first();
+                                                return $produccionDet ? $produccionDet->cant_harina : 0;
+                                            });
+
+                                            $totalHarina = $totalHarinaNoPersonalizados + $totalHarinaPersonalizados;
                                         @endphp
                                         {{ number_format($totalHarina, 2) }} g
                                     @endif
@@ -1190,6 +1378,12 @@
         min-width: 80px;
         max-width: 120px;
     }
+
+    .btn-observacion-guardada {
+        color: #2196f3 !important;
+        border-color: #2196f3 !important;
+        background: #e3f2fd !important;
+    }
 </style>
 
 <script>
@@ -1277,8 +1471,7 @@ function manejarEstado(checkbox, idReceta) {
         }
         desmarcarOtrosEstados(idReceta, tipo, true);
     } else if (tipo === 'es_cancelado_ui' && isChecked) {
-        // Al cancelar, desmarcar otros estados
-        desmarcarOtrosEstados(idReceta, tipo, false);
+        // Al cancelar, NO desmarcar otros estados
         // Si no está iniciado, crear campos ocultos con valores por defecto
         const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
         if (!iniciadoHidden || iniciadoHidden.value !== '1') {
@@ -1544,9 +1737,7 @@ function manejarEstadoPersonalizado(checkbox, idPedido, idReceta) {
         
         desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
     } else if (tipo === 'es_cancelado_personalizado' && isChecked) {
-        // Al cancelar, desmarcar otros estados
-        desmarcarOtrosEstadosPersonalizado(idPedido, tipo, false);
-
+        // Al cancelar, NO desmarcar otros estados
         // Si no está iniciado, crear campos ocultos con valores por defecto
         const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${idPedido}]"]`);
         if (!iniciadoHidden || iniciadoHidden.value !== '1') {
@@ -2239,9 +2430,63 @@ function guardarObservacion() {
             document.getElementById('produccionForm').appendChild(hiddenInput);
         }
         hiddenInput.value = '1';
+
+        // --- NUEVO: Si es cancelado sin iniciar, poner la fila a ceros y refrescar totales ---
+        let esIniciado = false;
+        if (pedidoId) {
+            // Pedido personalizado
+            const iniciadoInput = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${pedidoId}]"]`);
+            esIniciado = iniciadoInput && iniciadoInput.value === '1';
+            if (!esIniciado) {
+                // Buscar la fila del pedido personalizado
+                const row = document.querySelector(`tr.pedido-personalizado[data-pedidoid='${pedidoId}']`) || document.querySelector(`tr.pedido-personalizado[data-recid]`);
+                if (row) {
+                    // Cantidad producida
+                    if (row.cells[5]) row.cells[5].textContent = '0.00';
+                    // Subtotal
+                    if (row.cells[8]) row.cells[8].textContent = 'S/ 0.00';
+                    // Costo diseño
+                    if (row.cells[9]) row.cells[9].textContent = 'S/ 0.00';
+                    // Total
+                    if (row.cells[10]) row.cells[10].textContent = 'S/ 0.00';
+                    // Harina
+                    if (row.cells[11]) row.cells[11].textContent = '0.00 g';
+                }
+            }
+        } else {
+            // Receta normal
+            const iniciadoInput = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
+            esIniciado = iniciadoInput && iniciadoInput.value === '1';
+            if (!esIniciado) {
+                // Buscar la fila principal
+                const row = document.getElementById(`row-${idReceta}`);
+                if (row) {
+                    // Cantidad producida
+                    if (row.cells[5]) row.cells[5].textContent = '0.00';
+                    // Subtotal
+                    if (row.cells[8]) row.cells[8].textContent = 'S/ 0.00';
+                    // Costo diseño
+                    if (row.cells[9]) row.cells[9].textContent = 'S/ 0.00';
+                    // Total
+                    if (row.cells[10]) row.cells[10].textContent = 'S/ 0.00';
+                    // Harina
+                    if (row.cells[11]) row.cells[11].textContent = '0.00 g';
+                }
+            }
+        }
+        // Refrescar totales
+        if (idReceta) actualizarTotales(idReceta);
     }
     
     $('#observacionModal').modal('hide');
+
+    // Actualizar el color del icono de observación
+    setTimeout(function() {
+        const btn = pedidoId
+            ? document.querySelector(`button.btn-observacion[data-pedidoid='${pedidoId}']`)
+            : document.querySelector(`button.btn-observacion[data-recid='${idReceta}']`);
+        if (btn) btn.classList.add('btn-observacion-guardada');
+    }, 500);
 }
 
 // Cierra la notificación de equipo

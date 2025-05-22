@@ -268,4 +268,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
         Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
     });
+
+
+
+
+    
 });

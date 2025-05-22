@@ -411,6 +411,18 @@ class ProduccionController extends Controller
             $totalReceta = $subtotalReceta; // No hay costo diseño en no personalizados
             $cantHarina = $this->calcularHarina($receta, $cantidadEsperadaTotal);
 
+            // --- LÓGICA PARA CANCELADOS ---
+            if ($esCancelado && !$esIniciado) {
+                $cantidadEsperadaTotal = 0;
+                $cantidadProducida = 0;
+                $subtotalReceta = 0;
+                $totalReceta = 0;
+                $cantHarina = 0;
+            }
+            // Si esCancelado y esIniciado pero no esTerminado, se guardan los valores reales (ya calculados)
+            // Si esCancelado, esIniciado y esTerminado, se guardan los valores tal como están (ya calculados)
+            // --------------------------------
+
             // Obtener todos los IDs de pedidos para este grupo
             $pedidosIds = $pedidosAActualizar->pluck('id_pedidos_det')->toArray();
 
@@ -553,6 +565,16 @@ class ProduccionController extends Controller
         // Obtener costo diseño para este pedido específico
         $costoDiseno = (float)($request->costo_diseño[$pedido->id_pedidos_det] ?? 0);
 
+        // --- LÓGICA PARA CANCELADOS ---
+        if ($esCancelado && !$esIniciado) {
+            $cantidadEsperada = 0;
+            $cantidadProducida = 0;
+            $costoDiseno = 0;
+        }
+        // Si esCancelado y esIniciado pero no esTerminado, se guardan los valores reales (ya calculados)
+        // Si esCancelado, esIniciado y esTerminado, se guardan los valores tal como están (ya calculados)
+        // --------------------------------
+
         // Validar costo diseño si se está terminando
         if ($esTerminado && $costoDiseno <= 0) {
             throw new \Exception("Debe ingresar un costo de diseño válido para el pedido personalizado #{$pedido->id_pedidos_det}");
@@ -560,6 +582,11 @@ class ProduccionController extends Controller
 
         // Obtener ID del componente de harina
         $idHarina = $request->id_recetas_det_harina_personalizado[$pedido->id_pedidos_det] ?? null;
+
+        // Calcular subtotal y total
+        $subtotalReceta = ($esCancelado && !$esIniciado) ? 0 : $this->calcularSubtotal($receta, $cantidadPedido);
+        $totalReceta = ($esCancelado && !$esIniciado) ? 0 : ($this->calcularSubtotal($receta, $cantidadPedido) + $costoDiseno);
+        $cantHarina = ($esCancelado && !$esIniciado) ? 0 : $this->calcularHarina($receta, $cantidadPedido);
 
         // Crear detalle de producción individual para este pedido personalizado
         $detalle = ProduccionDetalle::create([
@@ -577,9 +604,9 @@ class ProduccionController extends Controller
             'es_terminado' => $esTerminado,
             'es_cancelado' => $esCancelado,
             'costo_diseño' => $costoDiseno,
-            'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-            'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido) + $costoDiseno,
-            'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
+            'subtotal_receta' => $subtotalReceta,
+            'total_receta' => $totalReceta,
+            'cant_harina' => $cantHarina,
             'id_recetas_det_harina' => $idHarina,
             'observaciones' => $request->observaciones_personalizado[$pedido->id_pedidos_det] ?? null,
             'pedidos_ids' => [$pedido->id_pedidos_det]
