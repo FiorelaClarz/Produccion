@@ -377,6 +377,12 @@ class ProduccionController extends Controller
                 'pedidos_ids' => $pedidosAActualizar->pluck('id_pedidos_det')
             ]);
 
+            // Sumar cantidades de todos los pedidos
+            $cantidadPedidoTotal = $pedidosAActualizar->sum('cantidad');
+            $cantidadEsperadaTotal = ($receta->id_areas == 1)
+                ? $cantidadPedidoTotal * $receta->constante_peso_lata
+                : $cantidadPedidoTotal;
+
             // Obtener la cantidad producida real del campo oculto o del input
             $cantidadProducida = null;
             if ($request->has("cantidad_producida_real_hidden.{$idReceta}")) {
@@ -392,66 +398,61 @@ class ProduccionController extends Controller
                     'cantidad' => $cantidadProducida
                 ]);
             }
-
-            // Si no se encontró la cantidad producida, usar la cantidad del pedido
             if (!$cantidadProducida) {
-                $cantidadProducida = $pedidosAActualizar->sum('cantidad');
-                Log::debug("Usando cantidad del pedido como fallback", [
+                $cantidadProducida = $cantidadEsperadaTotal;
+                Log::debug("Usando cantidad esperada total como fallback", [
                     'receta_id' => $idReceta,
                     'cantidad' => $cantidadProducida
                 ]);
             }
 
+            // Calcular subtotal y total
+            $subtotalReceta = $this->calcularSubtotal($receta, $cantidadEsperadaTotal);
+            $totalReceta = $subtotalReceta; // No hay costo diseño en no personalizados
+            $cantHarina = $this->calcularHarina($receta, $cantidadEsperadaTotal);
+
             // Obtener todos los IDs de pedidos para este grupo
             $pedidosIds = $pedidosAActualizar->pluck('id_pedidos_det')->toArray();
 
-            // Procesar cada pedido individualmente
+            // Observaciones: puedes concatenar todas o tomar la primera, aquí tomo la primera
+            $observacion = null;
             foreach ($pedidosAActualizar as $pedido) {
-                $cantidadPedido = $pedido->cantidad;
-                $cantidadEsperada = ($receta->id_areas == 1)
-                    ? $cantidadPedido * $receta->constante_peso_lata
-                    : $cantidadPedido;
-
-                Log::debug("Procesando pedido individual", [
-                    'pedido_id' => $pedido->id_pedidos_det,
-                    'cantidad_pedido' => $cantidadPedido,
-                    'cantidad_producida' => $cantidadProducida
-                ]);
-
-                $detalleData = [
-                    'id_produccion_cab' => $produccionCab->id_produccion_cab,
-                    'id_productos_api' => $receta->id_productos_api,
-                    'id_u_medidas' => $receta->id_u_medidas,
-                    'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
-                    'id_recetas_cab' => $receta->id_recetas,
-                    'id_pedidos_det' => $pedido->id_pedidos_det,
-                    'id_areas' => $receta->id_areas,
-                    'cantidad_pedido' => $cantidadPedido,
-                    'cantidad_esperada' => $cantidadEsperada,
-                    'cantidad_producida_real' => $cantidadProducida,
-                    'es_iniciado' => $esIniciado,
-                    'es_terminado' => $esTerminado,
-                    'es_cancelado' => $esCancelado,
-                    'costo_diseño' => 0,
-                    'subtotal_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-                    'total_receta' => $this->calcularSubtotal($receta, $cantidadPedido),
-                    'cant_harina' => $this->calcularHarina($receta, $cantidadPedido),
-                    'id_recetas_det_harina' => $idHarina,
-                    'observaciones' => $request->observaciones[$pedido->id_pedidos_det] ?? null,
-                    'pedidos_ids' => $pedidosIds
-                ];
-
-                Log::debug("Creando detalle de producción para pedido", [
-                    'pedido_id' => $pedido->id_pedidos_det,
-                    'detalle_data' => $detalleData
-                ]);
-            
-                $detalle = ProduccionDetalle::create($detalleData);
-
-                // Actualizar estado de este pedido individual
-                $this->actualizarEstadosPedidos(collect([$pedido]), $esIniciado, $esTerminado, $esCancelado);
+                if (!empty($request->observaciones[$pedido->id_pedidos_det])) {
+                    $observacion = $request->observaciones[$pedido->id_pedidos_det];
+                    break;
+                }
             }
-            
+
+            $detalleData = [
+                'id_produccion_cab' => $produccionCab->id_produccion_cab,
+                'id_productos_api' => $receta->id_productos_api,
+                'id_u_medidas' => $receta->id_u_medidas,
+                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
+                'id_recetas_cab' => $receta->id_recetas,
+                'id_areas' => $receta->id_areas,
+                'cantidad_pedido' => $cantidadPedidoTotal,
+                'cantidad_esperada' => $cantidadEsperadaTotal,
+                'cantidad_producida_real' => $cantidadProducida,
+                'es_iniciado' => $esIniciado,
+                'es_terminado' => $esTerminado,
+                'es_cancelado' => $esCancelado,
+                'costo_diseño' => 0,
+                'subtotal_receta' => $subtotalReceta,
+                'total_receta' => $totalReceta,
+                'cant_harina' => $cantHarina,
+                'id_recetas_det_harina' => $idHarina,
+                'observaciones' => $observacion,
+                'pedidos_ids' => $pedidosIds
+            ];
+
+            Log::debug("Creando detalle de producción agrupado", [
+                'detalle_data' => $detalleData
+            ]);
+            $detalle = ProduccionDetalle::create($detalleData);
+
+            // Actualizar estado de todos los pedidos agrupados
+            $this->actualizarEstadosPedidos($pedidosAActualizar, $esIniciado, $esTerminado, $esCancelado);
+
             return true;
         }
         
