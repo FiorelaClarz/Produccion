@@ -183,7 +183,7 @@
 
                             $subtotalReceta = 0;
                             foreach ($receta->detalles as $detalle) {
-                                $subtotalReceta += $detalle->subtotal_receta * $cantidadNoPersonalizada;
+                                $subtotalReceta += $detalle->subtotal_receta * $cantidadEsperada;
                             }
 
                             $componenteHarina = $receta->detalles->first(function($item) {
@@ -242,8 +242,8 @@
                                             // Obtener el acumulado de cantidad producida real para pedidos no personalizados terminados
                                             $cantidadProducidaAcumulada = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
                                                 ->where('es_terminado', true)
-                                                ->where('costo_diseño', 0)
                                                 ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
                                                 ->whereDate('created_at', now())
                                                 ->sum('cantidad_producida_real');
                                         @endphp
@@ -255,6 +255,9 @@
                                                 ->where('es_cancelado', true)
                                                 ->where('costo_diseño', 0)
                                                 ->whereDate('created_at', now())
+                                                ->where(function($q) {
+                                                    $q->where('es_iniciado', true); // Solo sumar si fue iniciado
+                                                })
                                                 ->sum('cantidad_producida_real');
                                         @endphp
                                         {{ number_format($cantidadProducidaAcumulada, 2) }}
@@ -349,24 +352,67 @@
                                                 ->where('es_cancelado', true)
                                                 ->where('costo_diseño', 0)
                                                 ->whereDate('created_at', now())
+                                                ->where(function($q) {
+                                                    $q->where('es_iniciado', true); // Solo sumar si fue iniciado
+                                                })
                                                 ->sum('subtotal_receta');
                                         @endphp
                                         S/ {{ number_format($subtotalRecetaCancelados, 2) }}
                                     @endif
                                 </td>
                                 <td class="text-center" id="costo-diseno-{{ $idReceta }}">S/ 0.00</td>
-                                <td class="text-center total-receta" id="total-{{ $idReceta }}">S/ {{ number_format($subtotalReceta, 2) }}</td>
+                                <td class="text-center total-receta" id="total-{{ $idReceta }}">
+                                    @if($estadoActual === 'pendientes')
+                                        S/ {{ number_format($subtotalReceta, 2) }}
+                                    @elseif($estadoActual === 'terminados')
+                                        @php
+                                            // Total de no personalizados terminados y no cancelados
+                                            $totalRecetaTerminados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_terminado', true)
+                                                ->where('es_cancelado', false)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->sum('total_receta');
+                                        @endphp
+                                        S/ {{ number_format($totalRecetaTerminados, 2) }}
+                                    @elseif($estadoActual === 'cancelados')
+                                        @php
+                                            // Total de no personalizados cancelados
+                                            $totalRecetaCancelados = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                ->where('es_cancelado', true)
+                                                ->where('costo_diseño', 0)
+                                                ->whereDate('created_at', now())
+                                                ->where(function($q) {
+                                                    $q->where('es_iniciado', true); // Solo sumar si fue iniciado
+                                                })
+                                                ->sum('total_receta');
+                                        @endphp
+                                        S/ {{ number_format($totalRecetaCancelados, 2) }}
+                                    @endif
+                                </td>
                                 <td class="text-center">
                                     @if($estadoActual === 'pendientes' || $estadoActual === 'terminados' || $estadoActual === 'cancelados')
                                         @php
                                             // Mostrar la suma de harina para todos los pedidos no personalizados de esta receta
                                             $cantHarinaTotal = 0;
-                                            foreach ($pedidosNoPersonalizados as $pedidoNoPersonalizado) {
-                                                $cantidadEsperadaPedido = ($receta->id_areas == 1)
-                                                    ? $pedidoNoPersonalizado->cantidad * $receta->constante_peso_lata
-                                                    : $pedidoNoPersonalizado->cantidad;
-                                                $cantHarinaPedido = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperadaPedido : 0;
-                                                $cantHarinaTotal += $cantHarinaPedido;
+                                            if ($estadoActual === 'pendientes' || $estadoActual === 'terminados') {
+                                                foreach ($pedidosNoPersonalizados as $pedidoNoPersonalizado) {
+                                                    $cantidadEsperadaPedido = ($receta->id_areas == 1)
+                                                        ? $pedidoNoPersonalizado->cantidad * $receta->constante_peso_lata
+                                                        : $pedidoNoPersonalizado->cantidad;
+                                                    $cantHarinaPedido = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperadaPedido : 0;
+                                                    $cantHarinaTotal += $cantHarinaPedido;
+                                                }
+                                            } else if ($estadoActual === 'cancelados') {
+                                                // Para cancelados, solo sumar si fue iniciado
+                                                $cantHarinaTotal = \App\Models\ProduccionDetalle::where('id_recetas_cab', $receta->id_recetas)
+                                                    ->where('es_cancelado', true)
+                                                    ->where('costo_diseño', 0)
+                                                    ->whereDate('created_at', now())
+                                                    ->where(function($q) {
+                                                        $q->where('es_iniciado', true); // Solo sumar si fue iniciado
+                                                    })
+                                                    ->sum('cant_harina');
                                             }
                                         @endphp
                                         {{ number_format($cantHarinaTotal, 2) }} gramos
@@ -391,11 +437,13 @@
                                     </button>
                                     @endif
                                     
+                                    @if($estadoActual !== 'terminados' && $estadoActual !== 'cancelados')
                                     <button type="button" class="btn btn-sm btn-outline-secondary btn-observacion @if(!empty($recetaData['observaciones'])) btn-observacion-guardada @endif"
                                         data-toggle="tooltip" title="Agregar/Ver observación"
                                         onclick="mostrarModalObservacion(null, {{ $idReceta }})">
                                         <i class="fas fa-comment"></i>
                                     </button>
+                                    @endif
                                 </td>
                             </tr>
 
@@ -445,6 +493,21 @@
                                                                             <i class="fas fa-info-circle"></i>
                                                                         </button>
                                                                     @endif
+                                                                    @if($estadoActual === 'cancelados')
+                                                                        @php
+                                                                            $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
+                                                                                ->where('es_cancelado', true)
+                                                                                ->first();
+                                                                        @endphp
+                                                                        @if($produccionDet && $produccionDet->observaciones)
+                                                                            <button type="button" class="btn btn-xs btn-outline-info ver-observacion-btn"
+                                                                                data-toggle="tooltip"
+                                                                                title="Ver observación"
+                                                                                onclick="verObservacion({{ $pedido->id_pedidos_det }})">
+                                                                                <i class="fas fa-comment-dots"></i>
+                                                                            </button>
+                                                                        @endif
+                                                                    @endif
                                                                 </td>
                                                             </tr>
                                                         @endforeach
@@ -475,7 +538,7 @@
                             
                             $subtotalPersonalizado = 0;
                             foreach ($receta->detalles as $detalle) {
-                                $subtotalPersonalizado += $detalle->subtotal_receta * $cantidadPersonalizada;
+                                $subtotalPersonalizado += $detalle->subtotal_receta * $cantidadEsperadaPersonalizada ;
                             }
                             
                             $harinaPersonalizada = $componenteHarina ? $componenteHarina->cantidad * $cantidadEsperadaPersonalizada : 0;
@@ -581,7 +644,10 @@
                                     @else
                                         @php
                                             $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
-                                                ->where('es_terminado', true)
+                                                ->where(function($q) use ($estadoActual) {
+                                                    if ($estadoActual === 'terminados') $q->where('es_terminado', true);
+                                                    if ($estadoActual === 'cancelados') $q->where('es_cancelado', true);
+                                                })
                                                 ->first();
                                         @endphp
                                         S/ {{ number_format($produccionDet ? $produccionDet->subtotal_receta : 0, 2) }}
@@ -604,7 +670,10 @@
                                     @else
                                         @php
                                             $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
-                                                ->where('es_terminado', true)
+                                                ->where(function($q) use ($estadoActual) {
+                                                    if ($estadoActual === 'terminados') $q->where('es_terminado', true);
+                                                    if ($estadoActual === 'cancelados') $q->where('es_cancelado', true);
+                                                })
                                                 ->first();
                                         @endphp
                                         S/ {{ number_format($produccionDet ? $produccionDet->costo_diseño : 0, 2) }}
@@ -616,7 +685,10 @@
                                     @else
                                         @php
                                             $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
-                                                ->where('es_terminado', true)
+                                                ->where(function($q) use ($estadoActual) {
+                                                    if ($estadoActual === 'terminados') $q->where('es_terminado', true);
+                                                    if ($estadoActual === 'cancelados') $q->where('es_cancelado', true);
+                                                })
                                                 ->first();
                                         @endphp
                                         S/ {{ number_format($produccionDet ? $produccionDet->total_receta : 0, 2) }}
@@ -628,7 +700,10 @@
                                     @else
                                         @php
                                             $produccionDet = \App\Models\ProduccionDetalle::whereJsonContains('pedidos_ids', $pedido->id_pedidos_det)
-                                                ->where('es_terminado', true)
+                                                ->where(function($q) use ($estadoActual) {
+                                                    if ($estadoActual === 'terminados') $q->where('es_terminado', true);
+                                                    if ($estadoActual === 'cancelados') $q->where('es_cancelado', true);
+                                                })
                                                 ->first();
                                         @endphp
                                         {{ number_format($produccionDet ? $produccionDet->cant_harina : 0, 2) }} g
@@ -651,11 +726,13 @@
                                     </button>
                                     @endif
                                     
+                                    @if($estadoActual === 'pendientes')
                                     <button type="button" class="btn btn-xs btn-outline-secondary btn-observacion @if(!empty($pedido->observaciones)) btn-observacion-guardada @endif"
                                         data-toggle="tooltip" title="Agregar/Ver observación"
-                                        onclick="mostrarModalObservacionPersonalizado({{ $pedido->id_pedidos_det }}, {{ $idReceta }})">
+                                        onclick="mostrarModalObservacion({{ $pedido->id_pedidos_det }}, {{ $idReceta }})">
                                         <i class="fas fa-comment"></i>
                                     </button>
+                                    @endif
                                 </td>
                             </tr>
                             @endif
@@ -955,14 +1032,25 @@
                     </table>
                 </div>
 
-                @if($recetasAgrupadas && count($recetasAgrupadas) > 0 && $equipoActivo && $estadoActual === 'pendientes')
                 <div class="form-group mt-4 text-center">
+                    @if($recetasAgrupadas && count($recetasAgrupadas) > 0 && $equipoActivo && $estadoActual === 'pendientes')
                     <button type="submit" class="btn btn-primary btn-lg btn-save">
                         <i class="fas fa-save mr-2"></i> Guardar Producción
                     </button>
+                    @endif
                 </div>
-                @endif
             </form>
+            
+            @if($equipoActivo)
+            <div class="form-group mt-4 text-center">
+                <form method="POST" action="{{ route('equipos.registrar-salida', ['id' => $equipoActivo->id_equipos_cab]) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-success btn-lg btn-marcar-salida" onclick="return confirm('¿Está seguro que desea marcar la salida del equipo?')">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Marcar Salida
+                    </button>
+                </form>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -1082,286 +1170,231 @@
     </div>
 </div>
 
+<!-- Modal para ver observaciones de pedidos cancelados -->
+<div class="modal fade" id="verObservacionModal" tabindex="-1" aria-labelledby="verObservacionModalLabel">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="verObservacionModalLabel">Observación del Pedido</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <span id="observacionTextoVer" style="color: #222; font-size: 1.1em;"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
-    /* Estilos CSS para la vista */
-    .modal-notification {
-        position: fixed;
-        top: 0;
-        left: 0;
+    /* Estilos base y reset */
+    .container {
+        padding: 0.5rem;
+        max-width: 100%;
+    }
+
+    /* Estilos para la tabla principal */
+    .production-table {
         width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1050;
-    }
-
-    .notification-content {
-        background-color: white;
-        border-radius: 10px;
-        width: 90%;
-        max-width: 500px;
-        padding: 20px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    }
-
-    .pedido-personalizado .badge-info {
-        font-size: 12px;
-        padding: 3px 8px;
-        font-weight: normal;
-        background-color: #FFD700;
-        color: black;
-    }
-
-    .pedido-personalizado .d-flex.align-items-center {
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-
-    .notification-header {
-        text-align: center;
-        margin-bottom: 15px;
-    }
-
-    .notification-icon {
-        color: #4e73df;
-        margin-bottom: 10px;
-    }
-
-    .notification-title {
-        color: #4e73df;
-        font-weight: bold;
-    }
-
-    .notification-body {
-        margin-bottom: 20px;
-        text-align: center;
-    }
-
-    .notification-footer {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-    }
-
-    .btn-notification {
-        padding: 8px 20px;
-        border-radius: 5px;
-        font-weight: 500;
-    }
-
-    .equipo-card {
-        border: none;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .equipo-card-header {
-        background-color: #4e73df;
-        color: white;
-        padding: 15px 20px;
-        border-bottom: none;
-    }
-
-    .equipo-info {
-        display: flex;
-        flex-wrap: wrap;
-    }
-
-    .equipo-info-item {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-    }
-
-    .equipo-info-icon {
-        width: 40px;
-        height: 40px;
-        background-color: #f8f9fc;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 15px;
-        color: #4e73df;
-    }
-
-    .production-card {
-        border: none;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .production-card-header {
-        background-color: #f8f9fc;
-        border-bottom: 1px solid #e3e6f0;
-    }
-
-    .production-table-header {
-        background-color: #f8f9fc;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin: 0;
+        font-size: 0.9rem;
     }
 
     .production-table th {
-        border-top: none;
-        font-weight: 600;
-        color: #5a5c69;
-    }
-
-    .production-input {
-        max-width: 100px;
-        margin: 0 auto;
-    }
-
-    .estado-btn {
-        padding: 3px 8px;
-        font-size: 12px;
-    }
-
-    .personalizado-row {
-        background-color: #fff8e1;
-    }
-
-    .pedido-personalizado td {
-        padding: 0 !important;
-        background-color: #fff8e1;
-    }
-
-    .no-orders {
         background-color: #f8f9fc;
-        border-radius: 10px;
-    }
-
-    .btn-save {
-        padding: 10px 30px;
-        border-radius: 30px;
+        color: #4e73df;
         font-weight: 600;
+        padding: 0.75rem;
+        border-bottom: 2px solid #e3e6f0;
+        white-space: nowrap;
     }
 
-    @media (max-width: 768px) {
-        .equipo-info-item {
-            width: 100%;
-            margin-bottom: 10px;
-        }
+    .production-table td {
+        padding: 0.75rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #e3e6f0;
+    }
 
-        .production-table th,
-        .production-table td {
-            padding: 8px 5px;
-            font-size: 12px;
-        }
+    /* Estilos para las filas de productos */
+    .production-item {
+        background-color: rgba(78, 115, 223, 0.15) !important; /* Color base más fuerte para filas principales */
+        transition: all 0.3s ease;
+    }
 
-        .estado-btn {
-            padding: 2px 5px;
-            font-size: 10px;
-        }
+    .production-item:hover {
+        background-color: rgba(78, 115, 223, 0.2) !important;
+    }
+
+    /* Estilos para filas personalizadas */
+    .pedido-personalizado {
+        background-color: rgba(78, 115, 223, 0.05) !important; /* Color base más suave para personalizados */
+        transition: all 0.3s ease;
+    }
+
+    .pedido-personalizado:hover {
+        background-color: rgba(78, 115, 223, 0.1) !important;
     }
 
     /* Estilos para los estados */
     .estado-btn {
-        position: relative;
-        z-index: 2;
-        transition: all 0.3s;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+        border-radius: 4px;
+        transition: all 0.3s ease;
     }
 
     .estado-btn.active {
-        font-weight: bold;
-        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    /* Estilo para filas enviadas */
-    .production-item.enviado {
-        background-color: #e8f5e9 !important;
+    /* Estilos para los botones de acción */
+    .btn-action {
+        padding: 0.4rem;
+        border-radius: 4px;
+        transition: all 0.3s ease;
     }
 
-    /* Estilo para filas canceladas */
-    .production-item.cancelado {
-        background-color: #ffebee !important;
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    /* Estilo para botón de observación */
-    .btn-observacion {
-        transition: all 0.3s;
+    /* Estilos para los inputs */
+    .production-input {
+        border: 1px solid #e3e6f0;
+        border-radius: 4px;
+        padding: 0.4rem;
+        transition: all 0.3s ease;
     }
 
-    .btn-observacion:hover {
-        transform: scale(1.1);
+    .production-input:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+
+    /* Estilos para los badges */
+    .badge {
+        padding: 0.4rem 0.6rem;
+        border-radius: 4px;
+        font-weight: 500;
     }
 
     /* Estilos para las pestañas */
     .nav-tabs {
-        border-bottom: 2px solid #dee2e6;
+        border-bottom: 2px solid #e3e6f0;
+        margin-bottom: 1rem;
     }
 
     .nav-tabs .nav-link {
         border: none;
         color: #6c757d;
-        font-weight: 600;
-        padding: 12px 20px;
-        transition: all 0.3s;
+        padding: 0.75rem 1.25rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
     }
 
     .nav-tabs .nav-link:hover {
-        border: none;
         color: #4e73df;
+        border: none;
     }
 
     .nav-tabs .nav-link.active {
         color: #4e73df;
-        background-color: transparent;
+        background: none;
         border-bottom: 3px solid #4e73df;
     }
 
-    .nav-tabs .nav-link .badge {
-        font-size: 0.7rem;
-        position: relative;
-        top: -1px;
+    /* Estilos para los totales */
+    .total-receta-agrupada {
+        background-color: #f8f9fc;
+        font-weight: 600;
     }
 
-    /* Estilos para el contenido de cada pestaña */
-    .tab-content {
-        padding: 20px 0;
+    .total-receta-agrupada td {
+        border-top: 2px solid #e3e6f0;
     }
 
-    .estado-btn {
-        min-width: 80px;
-        text-align: center;
-    }
-    .estado-btn.disabled {
-        opacity: 0.65;
-        pointer-events: none;
+    /* Estilos para los modales */
+    .modal-content {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
-    /* Agrega esto al final de tus estilos */
-    .estado-btn {
-        position: relative;
-    }
-    .estado-btn.disabled {
-        opacity: 0.6;
-        pointer-events: none;
-    }
-    .estado-btn input[type="checkbox"] {
-        position: absolute;
-        opacity: 0;
-        width: 100%;
-        height: 100%;
-        left: 0;
-        top: 0;
-        margin: 0;
-        cursor: pointer;
+    .modal-header {
+        border-bottom: 1px solid #e3e6f0;
+        padding: 1rem;
     }
 
-    /* Estilos específicos para cada estado */
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    /* Estilos para las notificaciones */
+    .alert {
+        border: none;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Estilos para el botón de guardar */
+    .btn-save {
+        padding: 0.75rem 2rem;
+        border-radius: 30px;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Estilos para el botón de observación */
+    .btn-observacion {
+        color: #6c757d;
+        transition: all 0.3s ease;
+    }
+
+    .btn-observacion:hover {
+        color: #4e73df;
+        transform: scale(1.1);
+    }
+
+    .btn-observacion-guardada {
+        color: #4e73df !important;
+        background-color: rgba(78, 115, 223, 0.1) !important;
+    }
+
+    /* Estilos para el scroll horizontal */
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Estilos para los estados específicos */
     .production-item.terminado {
-        background-color: #e8f5e9 !important;
+        background-color: rgba(40, 167, 69, 0.15) !important;
     }
 
     .production-item.cancelado {
-        background-color: #ffebee !important;
+        background-color: rgba(220, 53, 69, 0.15) !important;
     }
 
     .production-item.en-proceso {
-        background-color: #e3f2fd !important;
+        background-color: rgba(78, 115, 223, 0.15) !important;
     }
 
     /* Animación para cambios en totales */
@@ -1370,19 +1403,30 @@
     }
 
     @keyframes highlight {
-        0% { background-color: #fffde7; }
+        0% { background-color: rgba(78, 115, 223, 0.1); }
         100% { background-color: transparent; }
     }
 
-    .input-costo-diseno {
-        min-width: 80px;
-        max-width: 120px;
-    }
+    /* Estilos para dispositivos móviles */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0.25rem;
+        }
 
-    .btn-observacion-guardada {
-        color: #2196f3 !important;
-        border-color: #2196f3 !important;
-        background: #e3f2fd !important;
+        .production-table th,
+        .production-table td {
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .estado-btn {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.7rem;
+        }
+
+        .btn-action {
+            padding: 0.3rem;
+        }
     }
 </style>
 
@@ -2531,6 +2575,35 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== FIN DE INICIALIZACIÓN DE MONITOREO ===');
 
 });
+
+/**
+ * Muestra la observación de un pedido cancelado
+ * @param {number} idPedido - ID del pedido
+ */
+function verObservacion(idPedido) {
+    $('#observacionTextoVer').text(''); // Limpia antes de mostrar
+    $.ajax({
+        url: "{{ route('produccion.obtener-observacion') }}",
+        type: 'GET',
+        data: { id_pedido: idPedido },
+        success: function(response) {
+            if (response.success && response.observacion) {
+                $('#observacionTextoVer').text(response.observacion);
+                $('#verObservacionModal').modal('show');
+            } else {
+                alert(response.message || 'No se encontró observación para este pedido.');
+            }
+        },
+        error: function(xhr) {
+            let errorMessage = 'Error al obtener la observación.';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+            alert(errorMessage);
+            console.error('Error al obtener observación:', xhr.responseText);
+        }
+    });
+}
 
 // ... existing code ...
 @push('scripts')

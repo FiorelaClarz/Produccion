@@ -21,7 +21,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ProduccionController extends Controller
 {
-    public function index()
+    public function indexPersonal()
     {
         $usuario = Auth::user();
         $estadoActual = request()->query('estado', 'pendientes');
@@ -78,8 +78,6 @@ class ProduccionController extends Controller
 
         $unidadesMedida = UMedida::activos()->get();
 
-        
-
         return view('produccion.index-personal', [
             'recetasAgrupadas' => $recetasFiltradas,
             'unidadesMedida' => $unidadesMedida,
@@ -90,6 +88,19 @@ class ProduccionController extends Controller
             'totalTerminados' => $pedidosTerminados->count(),
             'totalCancelados' => $pedidosCancelados->count()
         ]);
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        $producciones = ProduccionCabecera::with(['usuario', 'turno', 'equipo'])
+            ->orderBy('fecha', 'desc')
+            ->orderBy('hora', 'desc')
+            ->paginate(10);
+
+        return view('produccion.index', compact('producciones'));
     }
 
     /**
@@ -426,20 +437,15 @@ class ProduccionController extends Controller
             // Obtener todos los IDs de pedidos para este grupo
             $pedidosIds = $pedidosAActualizar->pluck('id_pedidos_det')->toArray();
 
-            // Observaciones: puedes concatenar todas o tomar la primera, aquí tomo la primera
-            $observacion = null;
-            foreach ($pedidosAActualizar as $pedido) {
-                if (!empty($request->observaciones[$pedido->id_pedidos_det])) {
-                    $observacion = $request->observaciones[$pedido->id_pedidos_det];
-                    break;
-                }
-            }
+            // Observaciones: obtener la observación directamente del request usando el idReceta
+            $observacion = $request->observaciones[$idReceta] ?? null;
 
-            $detalleData = [
+            // Crear detalle de producción
+            $detalle = ProduccionDetalle::create([
                 'id_produccion_cab' => $produccionCab->id_produccion_cab,
                 'id_productos_api' => $receta->id_productos_api,
-                'id_u_medidas' => $receta->id_u_medidas,
-                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta],
+                'id_u_medidas' => $pedidosAActualizar->first()->id_u_medidas,
+                'id_u_medidas_prodcc' => $request->id_u_medidas_prodcc[$idReceta] ?? $pedidosAActualizar->first()->id_u_medidas,
                 'id_recetas_cab' => $receta->id_recetas,
                 'id_areas' => $receta->id_areas,
                 'cantidad_pedido' => $cantidadPedidoTotal,
@@ -455,12 +461,7 @@ class ProduccionController extends Controller
                 'id_recetas_det_harina' => $idHarina,
                 'observaciones' => $observacion,
                 'pedidos_ids' => $pedidosIds
-            ];
-
-            Log::debug("Creando detalle de producción agrupado", [
-                'detalle_data' => $detalleData
             ]);
-            $detalle = ProduccionDetalle::create($detalleData);
 
             // Actualizar estado de todos los pedidos agrupados
             $this->actualizarEstadosPedidos($pedidosAActualizar, $esIniciado, $esTerminado, $esCancelado);
@@ -584,9 +585,9 @@ class ProduccionController extends Controller
         $idHarina = $request->id_recetas_det_harina_personalizado[$pedido->id_pedidos_det] ?? null;
 
         // Calcular subtotal y total
-        $subtotalReceta = ($esCancelado && !$esIniciado) ? 0 : $this->calcularSubtotal($receta, $cantidadPedido);
-        $totalReceta = ($esCancelado && !$esIniciado) ? 0 : ($this->calcularSubtotal($receta, $cantidadPedido) + $costoDiseno);
-        $cantHarina = ($esCancelado && !$esIniciado) ? 0 : $this->calcularHarina($receta, $cantidadPedido);
+        $subtotalReceta = ($esCancelado && !$esIniciado) ? 0 : $this->calcularSubtotal($receta, $cantidadEsperada);
+        $totalReceta = ($esCancelado && !$esIniciado) ? 0 : ($this->calcularSubtotal($receta, $cantidadEsperada) + $costoDiseno);
+        $cantHarina = ($esCancelado && !$esIniciado) ? 0 : $this->calcularHarina($receta, $cantidadEsperada);
 
         // Crear detalle de producción individual para este pedido personalizado
         $detalle = ProduccionDetalle::create([
@@ -736,16 +737,150 @@ class ProduccionController extends Controller
     }
 
     /**
+     * Exportar producción a Excel
+     */
+    public function exportarExcel(Request $request)
+    {
+        $fechaInicio = Carbon::parse($request->input('fecha_inicio', Carbon::now()->startOfDay()));
+        $fechaFin = Carbon::parse($request->input('fecha_fin', Carbon::now()->endOfDay()));
+        $estado = $request->input('estado', 'todos');
+
+        // Consulta base
+        $query = ProduccionDetalle::with(['recetaCabecera.producto', 'recetaCabecera.instructivo', 'area', 'produccionCabecera.usuario'])
+            ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
+            ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin]);
+
+        // Aplicar filtro de estado
+        if ($estado !== 'todos') {
+            switch ($estado) {
+                case 'pendientes':
+                    $query->where('es_terminado', false)->where('es_cancelado', false);
+                    break;
+                case 'terminados':
+                    $query->where('es_terminado', true);
+                    break;
+                case 'cancelados':
+                    $query->where('es_cancelado', true);
+                    break;
+            }
+        }
+
+        $producciones = $query->orderBy('produccion_cab.fecha', 'desc')
+            ->orderBy('produccion_cab.hora', 'desc')
+            ->get();
+
+        // Crear el archivo Excel
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Establecer el título de la hoja
+        $sheet->setTitle('Producciones');
+
+        // Establecer encabezados
+        $headers = [
+            'A1' => 'Fecha',
+            'B1' => 'Hora',
+            'C1' => 'Producto',
+            'D1' => 'Receta',
+            'E1' => 'Área',
+            'F1' => 'Usuario Responsable',
+            'G1' => 'Cant. Pedido',
+            'H1' => 'Cant. Producida',
+            'I1' => 'Estado',
+            'J1' => 'Subtotal',
+            'K1' => 'Costo Diseño',
+            'L1' => 'Total'
+        ];
+
+        // Aplicar estilos a los encabezados
+        foreach ($headers as $cell => $value) {
+            $sheet->setCellValue($cell, $value);
+            $sheet->getStyle($cell)->getFont()->setBold(true);
+            $sheet->getStyle($cell)->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('CCCCCC');
+        }
+
+        // Llenar datos
+        $row = 2;
+        foreach ($producciones as $produccion) {
+            $sheet->setCellValue('A' . $row, Carbon::parse($produccion->fecha)->format('d/m/Y'));
+            $sheet->setCellValue('B' . $row, $produccion->hora);
+            $sheet->setCellValue('C' . $row, $produccion->recetaCabecera->producto->nombre ?? 'N/A');
+            $sheet->setCellValue('D' . $row, $produccion->recetaCabecera->nombre ?? 'N/A');
+            $sheet->setCellValue('E' . $row, $produccion->area->nombre ?? 'N/A');
+            $sheet->setCellValue('F' . $row, $produccion->produccionCabecera->usuario->nombre_personal ?? 'N/A');
+            $sheet->setCellValue('G' . $row, number_format($produccion->cantidad_pedido, 2));
+            $sheet->setCellValue('H' . $row, number_format($produccion->cantidad_producida_real, 2));
+            $sheet->setCellValue('I' . $row, $produccion->es_terminado ? 'Terminado' : ($produccion->es_cancelado ? 'Cancelado' : 'Pendiente'));
+            $sheet->setCellValue('J' . $row, number_format($produccion->subtotal_receta, 2));
+            $sheet->setCellValue('K' . $row, number_format($produccion->costo_diseño, 2));
+            $sheet->setCellValue('L' . $row, number_format($produccion->total_receta, 2));
+            $row++;
+        }
+
+        // Autoajustar el ancho de las columnas
+        foreach (range('A', 'L') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Crear el archivo
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'produccion_' . Carbon::now()->format('YmdHis') . '.xlsx';
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
      * Exportar producción a PDF
      */
-    public function exportarPdf($id)
+    public function exportarPdf(Request $request)
     {
-        $produccion = ProduccionCabecera::with(['usuario', 'turno', 'equipo', 'produccionesDetalle'])
-            ->findOrFail($id);
+        $fechaInicio = Carbon::parse($request->input('fecha_inicio', Carbon::now()->startOfDay()));
+        $fechaFin = Carbon::parse($request->input('fecha_fin', Carbon::now()->endOfDay()));
+        $estado = $request->input('estado', 'todos');
 
-        $pdf = PDF::loadView('produccion.pdf', compact('produccion'));
+        // Consulta base
+        $query = ProduccionDetalle::with(['recetaCabecera.producto', 'recetaCabecera.instructivo'])
+            ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
+            ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin]);
 
-        return $pdf->download('produccion-' . $produccion->id_produccion_cab . '.pdf');
+        // Aplicar filtro de estado
+        if ($estado !== 'todos') {
+            switch ($estado) {
+                case 'pendientes':
+                    $query->where('es_terminado', false)->where('es_cancelado', false);
+                    break;
+                case 'terminados':
+                    $query->where('es_terminado', true);
+                    break;
+                case 'cancelados':
+                    $query->where('es_cancelado', true);
+                    break;
+            }
+        }
+
+        $producciones = $query->orderBy('produccion_cab.fecha', 'desc')
+            ->orderBy('produccion_cab.hora', 'desc')
+            ->get();
+
+        // Configurar DOMPDF para evitar el uso de fuentes externas
+        $pdf = PDF::loadView('produccion.pdf-periodos', compact('producciones', 'fechaInicio', 'fechaFin', 'estado'))
+            ->setPaper('A4', 'landscape')
+            ->setOptions([
+                'defaultFont' => 'Helvetica',
+                'fontCache' => storage_path('fonts'),
+                'tempDir' => storage_path('fonts'),
+                'chroot' => base_path(),
+                'isFontSubsettingEnabled' => false
+            ]);
+
+        return $pdf->download('produccion_' . Carbon::now()->format('YmdHis') . '.pdf');
     }
 
     /**
@@ -801,81 +936,53 @@ class ProduccionController extends Controller
     /**
      * Muestra la vista de producción por períodos
      */
-    public function indexPorPeriodos()
+    public function indexPorPeriodos(Request $request)
     {
-        $usuario = Auth::user();
-        $estadoActual = request()->query('estado', 'pendientes');
-        $periodoActual = request()->query('periodo', 'hoy');
-        $idAreaUsuario = $usuario->id_areas;
+        $fechaInicio = Carbon::parse($request->input('fecha_inicio', Carbon::now()->startOfDay()));
+        $fechaFin = Carbon::parse($request->input('fecha_fin', Carbon::now()->endOfDay()));
+        $estado = $request->input('estado', 'todos');
 
-        // Definir fechas según el período
-        $fechas = $this->obtenerFechasPorPeriodo($periodoActual);
-        $fechaInicio = $fechas['inicio'];
-        $fechaFin = $fechas['fin'];
+        // Consulta base
+        $query = ProduccionDetalle::with(['recetaCabecera.producto', 'recetaCabecera.instructivo', 'area', 'produccionCabecera.usuario'])
+            ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
+            ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin]);
 
-        // Verificar equipo activo del usuario
-        $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
-            ->where('status', true)
-            ->where('is_deleted', false)
-            ->whereDate('created_at', $fechaInicio)
-            ->with(['usuario', 'area', 'turno'])
-            ->first();
+        // Aplicar filtro de estado
+        if ($estado !== 'todos') {
+            switch ($estado) {
+                case 'pendientes':
+                    $query->where('es_terminado', false)->where('es_cancelado', false);
+                    break;
+                case 'terminados':
+                    $query->where('es_terminado', true);
+                    break;
+                case 'cancelados':
+                    $query->where('es_cancelado', true);
+                    break;
+            }
+        }
 
-        // Obtener pedidos del período para el área del usuario
-        $pedidosDetalle = PedidoDetalle::with([
-                'receta', 
-                'receta.producto', 
-                'receta.detalles', 
-                'receta.detalles.producto', 
-                'receta.instructivo', 
-                'uMedida'
-            ])
-            ->whereBetween('created_at', [$fechaInicio, $fechaFin])
-            ->where('id_areas', $idAreaUsuario)
-            ->where('is_deleted', false)
-            ->whereHas('receta', function($query) {
-                $query->whereNotNull('id_recetas')
-                    ->whereHas('producto')
-                    ->whereHas('detalles');
-            })
+        // Obtener totales
+        $totalProducciones = $query->count();
+        $totalTerminadas = (clone $query)->where('es_terminado', true)->count();
+        $totalPendientes = (clone $query)->where('es_terminado', false)->where('es_cancelado', false)->count();
+        $totalCanceladas = (clone $query)->where('es_cancelado', true)->count();
+
+        // Obtener producciones sin paginación
+        $producciones = $query->orderBy('produccion_cab.fecha', 'desc')
+            ->orderBy('produccion_cab.hora', 'desc')
             ->get();
 
-        // Separar pedidos por estado
-        $pedidosPendientes = $pedidosDetalle->filter(function($pedido) {
-            return $pedido->id_estados == null || $pedido->id_estados < 4;
-        });
-
-        $pedidosTerminados = $pedidosDetalle->filter(function($pedido) {
-            return $pedido->id_estados == 4;
-        });
-
-        $pedidosCancelados = $pedidosDetalle->filter(function($pedido) {
-            return $pedido->id_estados == 5;
-        });
-
-        // Agrupar recetas por estado según el filtro
-        $recetasFiltradas = $this->agruparRecetasPorEstado(
-            $estadoActual, 
-            $pedidosPendientes, 
-            $pedidosTerminados, 
-            $pedidosCancelados
-        );
-
-        $unidadesMedida = UMedida::activos()->get();
-
-        return view('produccion.index-periodos', [
-            'recetasAgrupadas' => $recetasFiltradas,
-            'unidadesMedida' => $unidadesMedida,
-            'usuario' => $usuario,
-            'equipoActivo' => $equipoActivo,
-            'estadoActual' => $estadoActual,
-            'periodoActual' => $periodoActual,
-            'totalPendientes' => $pedidosPendientes->count(),
-            'totalTerminados' => $pedidosTerminados->count(),
-            'totalCancelados' => $pedidosCancelados->count(),
-            'fechaInicio' => $fechaInicio,
-            'fechaFin' => $fechaFin
-        ]);
+        return view('produccion.index-periodos', compact(
+            'producciones',
+            'fechaInicio',
+            'fechaFin',
+            'estado',
+            'totalProducciones',
+            'totalTerminadas',
+            'totalPendientes',
+            'totalCanceladas'
+        ));
     }
 
     /**
@@ -905,4 +1012,54 @@ class ProduccionController extends Controller
             'fin' => $fin
         ];
     }
+
+    public function obtenerObservacion(Request $request)
+    {
+        try {
+            $idPedido = (int) $request->id_pedido;
+            \Log::info('Buscando observación para pedido', ['idPedido' => $idPedido]);
+
+            $produccionDet = \App\Models\ProduccionDetalle::whereRaw('pedidos_ids::jsonb @> ?', [json_encode([$idPedido])])
+                ->where('es_cancelado', true)
+                ->first();
+
+            \Log::info('Resultado consulta produccion_det', ['produccionDet' => $produccionDet]);
+
+            if ($produccionDet && $produccionDet->observaciones) {
+                return response()->json([
+                    'success' => true,
+                    'observacion' => $produccionDet->observaciones
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró observación para este pedido'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al obtener observación: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener la observación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function obtenerDetallesPedidos(Request $request)
+    {
+        try {
+            $pedidosIds = $request->pedidos_ids;
+            
+            $pedidos = PedidoDetalle::with(['pedidoCabecera.usuario', 'pedidoCabecera.tienda'])
+                ->whereIn('id_pedidos_det', $pedidosIds)
+                ->get();
+
+            return response()->json($pedidos);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Error al obtener los detalles de los pedidos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
+

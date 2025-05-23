@@ -7,7 +7,7 @@
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Producciones Registradas</h6>
-            <a href="{{ route('produccion.create') }}" class="btn btn-primary btn-sm">
+            <a href="{{ route('produccion.index-personal')}}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Nueva Producción
             </a>
         </div>
@@ -34,7 +34,7 @@
                             <td>{{ $produccion->hora }}</td>
                             <td>{{ $produccion->usuario->nombre_personal }}</td>
                             <td>{{ $produccion->turno->nombre }}</td>
-                            <td>{{ $produccion->equipo->nombre }}</td>
+                            <td>{{ $produccion->equipo->id_equipos_cab }}</td>
                             <td>{{ $produccion->doc_interno }}</td>
                             <td>
                                 <a href="{{ route('produccion.show', $produccion->id_produccion_cab) }}" class="btn btn-info btn-sm">

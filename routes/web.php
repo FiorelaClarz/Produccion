@@ -20,10 +20,8 @@ use Illuminate\Support\Facades\File; // Agrega esta línea
 use Illuminate\Support\Facades\Response; // Agrega esta línea
 
 
-
 use Illuminate\Http\Request; // Necesario para el Request
 use App\Models\Producto;
-
 
 Route::get('/', function () {
     return view('welcome');
@@ -39,7 +37,6 @@ Route::prefix('rols')->group(function () {
     Route::delete('/{id}', [RolController::class, 'destroy'])->name('rols.destroy');
 });
 
-
 Route::prefix('turnos')->group(function () {
     Route::get('/', [TurnoController::class, 'index'])->name('turnos.index');
     Route::get('/create', [TurnoController::class, 'create'])->name('turnos.create');
@@ -49,7 +46,6 @@ Route::prefix('turnos')->group(function () {
     Route::delete('/{id}', [TurnoController::class, 'destroy'])->name('turnos.destroy');
     Route::get('/{id}', [TurnoController::class, 'show'])->name('turnos.show');
 });
-
 
 Route::prefix('estados')->group(function () {
     Route::get('/', [EstadoController::class, 'index'])->name('estados.index');
@@ -82,7 +78,6 @@ Route::prefix('tiendas')->group(function () {
 });
 
 
-
 Route::prefix('umedidas')->group(function () {
     Route::get('/', [UMedidaController::class, 'index'])->name('umedidas.index');
     Route::get('/create', [UMedidaController::class, 'create'])->name('umedidas.create');
@@ -107,7 +102,6 @@ Route::prefix('usuarios')->group(function () {
     Route::put('/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
     Route::delete('/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
 });
-
 
 // Rutas de autenticación
 Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
@@ -162,7 +156,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('recetas.toggle-status');
 
 
-
     // Rutas para instructivos de recetas
     Route::prefix('recetas')->group(function () {
         // Ruta para ver instructivo desde producción (con query param ?id_receta=)
@@ -205,7 +198,6 @@ Route::middleware(['auth'])->group(function () {
         return $response;
     })->name('pedidos.image')->where('filename', '.*'); // Acepta cualquier caracter en el nombre
 
-
     // Rutas para equipos
     Route::prefix('equipos')->group(function () {
         Route::get('/', [EquipoController::class, 'index'])->name('equipos.index');
@@ -220,7 +212,6 @@ Route::middleware(['auth'])->group(function () {
             ->name('equipos.toggle-status');
         Route::post('/{id}/registrar-salida', [EquipoController::class, 'registrarSalida'])->name('equipos.registrar-salida');
     });
-
 
     Route::prefix('pedidos')->group(function () {
         // 1. Primero las rutas fijas (sin parámetros)
@@ -243,34 +234,38 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/{id}/cancelar', [PedidoController::class, 'cancelar'])->name('pedidos.cancelar');
         Route::patch('/{id}/procesar', [PedidoController::class, 'procesar'])->name('pedidos.procesar');
 
-
         Route::get('/pedidos/{id}/pdf', [PedidoController::class, 'generatePdf'])->name('pedidos.pdf');
         Route::get('/pedidos/consolidado-pdf', [PedidoController::class, 'generateConsolidadoPdf'])->name('pedidos.consolidado.pdf');
     });
     Route::resource('hora-limites', HoraLimiteController::class);
 
-
     // Rutas de producción
     Route::prefix('produccion')->group(function () {
         // Rutas específicas primero
-        Route::get('/personal', [ProduccionController::class, 'index'])->name('produccion.index-personal');
+        Route::get('/personal', [ProduccionController::class, 'indexPersonal'])->name('produccion.index-personal');
         Route::post('/guardar-personal', [ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
         
         // Nueva ruta para ver periodos
         Route::get('/periodos', [ProduccionController::class, 'indexPorPeriodos'])->name('produccion.periodos');
         
+        // Rutas para exportar
+        Route::get('/exportar-excel', [ProduccionController::class, 'exportarExcel'])->name('produccion.exportar-excel');
+        Route::get('/exportar-pdf', [ProduccionController::class, 'exportarPdf'])->name('produccion.exportar-pdf');
+        
         // Rutas de recursos estándar después
         Route::get('/', [ProduccionController::class, 'index'])->name('produccion.index');
         Route::get('/create', [ProduccionController::class, 'create'])->name('produccion.create');
         Route::post('/', [ProduccionController::class, 'store'])->name('produccion.store');
+        Route::get('/obtener-observacion', [ProduccionController::class, 'obtenerObservacion'])->name('produccion.obtener-observacion');
         Route::get('/{produccion}', [ProduccionController::class, 'show'])->name('produccion.show');
         Route::get('/{produccion}/edit', [ProduccionController::class, 'edit'])->name('produccion.edit');
         Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
         Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
+        Route::post('/detalles-pedidos', [ProduccionController::class, 'obtenerDetallesPedidos'])->name('produccion.detalles-pedidos');
     });
-
 
 
 
     
 });
+

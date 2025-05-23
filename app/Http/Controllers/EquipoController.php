@@ -368,7 +368,9 @@ class EquipoController extends Controller
                 'salida' => now()
             ]);
 
-            return back()->with('success', 'Hora de salida registrada correctamente');
+            // Redireccionar a la vista principal de producción
+            return redirect()->route('produccion.index')
+                ->with('success', 'Hora de salida registrada correctamente. La sesión de trabajo ha finalizado.');
         } catch (\Exception $e) {
             return back()->with('error', 'Error al registrar la salida: ' . $e->getMessage());
         }
