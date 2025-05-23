@@ -23,8 +23,70 @@
 
     <!-- Notificación para ingresar equipo de trabajo -->
     @if(!$equipoActivo)
-    <div class="modal-notification" id="equipoNotification">
-        <div class="notification-content">
+    <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1050;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-notification {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            padding: 0;
+            z-index: 1051;
+            overflow: hidden;
+        }
+        
+        .notification-header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .notification-icon {
+            color: #4e73df;
+            margin-bottom: 10px;
+        }
+        
+        .notification-title {
+            margin: 0;
+            color: #2e59d9;
+            font-weight: bold;
+        }
+        
+        .notification-body {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .notification-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-notification {
+            padding: 8px 16px;
+        }
+    </style>
+    
+    <div class="modal-overlay">
+        <div class="modal-notification" id="equipoNotification">
             <div class="notification-header">
                 <i class="fas fa-users fa-3x notification-icon"></i>
                 <h3 class="notification-title">¡Atención!</h3>
