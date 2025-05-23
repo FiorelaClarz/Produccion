@@ -1017,13 +1017,13 @@ class ProduccionController extends Controller
     {
         try {
             $idPedido = (int) $request->id_pedido;
-            \Log::info('Buscando observación para pedido', ['idPedido' => $idPedido]);
+            Log::info('Buscando observación para pedido', ['idPedido' => $idPedido]);
 
             $produccionDet = \App\Models\ProduccionDetalle::whereRaw('pedidos_ids::jsonb @> ?', [json_encode([$idPedido])])
                 ->where('es_cancelado', true)
                 ->first();
 
-            \Log::info('Resultado consulta produccion_det', ['produccionDet' => $produccionDet]);
+            Log::info('Resultado consulta produccion_det', ['produccionDet' => $produccionDet]);
 
             if ($produccionDet && $produccionDet->observaciones) {
                 return response()->json([
@@ -1037,7 +1037,7 @@ class ProduccionController extends Controller
                 'message' => 'No se encontró observación para este pedido'
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error al obtener observación: ' . $e->getMessage());
+            Log::error('Error al obtener observación: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener la observación: ' . $e->getMessage()
