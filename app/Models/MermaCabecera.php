@@ -18,7 +18,12 @@ class MermaCabecera extends Model
         'id_tiendas_api',
         'fecha_registro',
         'hora_registro',
-        'last_update'
+        'last_update',
+        'is_deleted'
+    ];
+    
+    protected $attributes = [
+        'is_deleted' => false
     ];
 
     // Relación con Usuario

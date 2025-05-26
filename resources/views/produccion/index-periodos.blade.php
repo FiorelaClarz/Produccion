@@ -125,7 +125,7 @@
             <div class="table-responsive">
                 <table class="table table-hover" id="dataTable" width="100%" cellspacing="0">
                     <thead>
-                        <tr>
+                        <tr class="text-center">
                             <th>#</th>
                             <th>Fecha</th>
                             <th>Hora</th>
@@ -149,9 +149,26 @@
                                 <td>
                                     {{ \Carbon\Carbon::parse($produccion->fecha)->format('d/m/Y') }}
                                 </td>
-                                <td>{{ $produccion->hora }}</td>
+                                <td>
+                                    @if($produccion->updated_at)
+                                        {{ \Carbon\Carbon::parse($produccion->updated_at)->format('H:i:s') }}
+                                    @else
+                                        {{ $produccion->hora }}
+                                    @endif
+                                </td>
                                 <td>{{ $produccion->recetaCabecera->producto->nombre ?? 'N/A' }}</td>
-                                <td>{{ $produccion->recetaCabecera->nombre ?? 'N/A' }}</td>
+                                <td class="text-center">
+                                    @if($produccion->recetaCabecera && $produccion->recetaCabecera->instructivo)
+                                        <button type="button" class="btn btn-sm btn-primary" 
+                                            onclick="verInstructivo({{ $produccion->recetaCabecera->id_recetas }}, {{ $produccion->cantidad_esperada }})" 
+                                            data-toggle="tooltip" 
+                                            title="Ver instructivo de {{ $produccion->recetaCabecera->nombre }}">
+                                            <i class="fas fa-book-open"></i> Ver instructivo
+                                        </button>
+                                    @else
+                                        <span class="text-muted">{{ $produccion->recetaCabecera->nombre ?? 'N/A' }}</span>
+                                    @endif
+                                </td>
                                 <td>{{ $produccion->area->nombre ?? 'N/A' }}</td>
                                 <td>{{ $produccion->produccionCabecera->usuario->nombre_personal ?? 'N/A' }}</td>
                                 <td class="text-center">{{ number_format($produccion->cantidad_pedido, 2) }}</td>
@@ -326,6 +343,221 @@
         max-height: 20px !important;
         width: auto;
     }
+    
+    /* Estilos para el buscador */
+    .dataTables_filter input {
+        border: 2px solid #4e73df !important;
+        border-radius: 50px !important;
+        padding: 10px 15px 10px 40px !important;
+        margin-left: 8px !important;
+        box-shadow: 0 4px 10px rgba(78, 115, 223, 0.15) !important;
+        transition: all 0.3s !important;
+        width: 280px !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="%234e73df" d="M15.7 14.3l-4.2-4.2c1-1.2 1.5-2.7 1.5-4.3 0-3.6-2.9-6.5-6.5-6.5S0 2.2 0 5.8s2.9 6.5 6.5 6.5c1.6 0 3.1-.6 4.3-1.5l4.2 4.2c.2.2.5.3.7.3s.5-.1.7-.3c.4-.4.4-1 0-1.4zM6.5 10.8c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/></svg>') !important;
+        background-repeat: no-repeat !important;
+        background-position: 15px center !important;
+        background-size: 16px !important;
+    }
+    
+    .dataTables_filter input:focus {
+        border-color: #36b9cc !important;
+        box-shadow: 0 0 15px rgba(54, 185, 204, 0.3) !important;
+        outline: none !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill="%2336b9cc" d="M15.7 14.3l-4.2-4.2c1-1.2 1.5-2.7 1.5-4.3 0-3.6-2.9-6.5-6.5-6.5S0 2.2 0 5.8s2.9 6.5 6.5 6.5c1.6 0 3.1-.6 4.3-1.5l4.2 4.2c.2.2.5.3.7.3s.5-.1.7-.3c.4-.4.4-1 0-1.4zM6.5 10.8c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/></svg>') !important;
+    }
+    
+    .dataTables_filter label {
+        font-weight: 700;
+        color: #4e73df;
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    
+    .dataTables_filter label:before {
+        content: '';
+        display: inline-block;
+        height: 2px;
+        width: 30px;
+        background: linear-gradient(90deg, #4e73df, transparent);
+        margin-right: 10px;
+    }
+    
+    /* Estilos para el selector de registros por página */
+    .dataTables_length select {
+        border: 2px solid #1cc88a !important;
+        border-radius: 50px !important;
+        padding: 8px 35px 8px 15px !important;
+        margin: 0 8px !important;
+        box-shadow: 0 4px 10px rgba(28, 200, 138, 0.15) !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><path fill="%231cc88a" d="M7 10.5c-.3 0-.5-.1-.7-.3l-6-6c-.4-.4-.4-1 0-1.4.4-.4 1-.4 1.4 0L7 8.1l5.3-5.3c.4-.4 1-.4 1.4 0 .4.4.4 1 0 1.4l-6 6c-.2.2-.4.3-.7.3z"/></svg>') !important;
+        background-repeat: no-repeat !important;
+        background-position: right 15px center !important;
+        background-size: 14px !important;
+        font-weight: 500 !important;
+        color: #3a3b45 !important;
+        transition: all 0.3s !important;
+        background-color: rgba(28, 200, 138, 0.05) !important;
+    }
+    
+    .dataTables_length select:focus {
+        border-color: #36b9cc;
+        box-shadow: 0 0 15px rgba(28, 200, 138, 0.25);
+        outline: none;
+        background-color: white;
+    }
+    
+    .dataTables_length select option {
+        font-weight: 500;
+        padding: 10px;
+    }
+    
+    .dataTables_length label {
+        font-weight: 700;
+        color: #1cc88a;
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    
+    .dataTables_length label:after {
+        content: '';
+        display: inline-block;
+        height: 2px;
+        width: 30px;
+        background: linear-gradient(90deg, transparent, #1cc88a);
+        margin-left: 10px;
+    }
+    
+    /* Estilos para la paginación */
+    .dataTables_paginate {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        margin-top: 5px !important;
+    }
+    
+    .dataTables_paginate .paginate_button {
+        padding: 8px 14px !important;
+        margin: 0 3px !important;
+        border-radius: 50px !important;
+        border: none !important;
+        background: linear-gradient(135deg, #e74a3b 0%, #fd7e14 100%) !important;
+        color: #fff !important;
+        cursor: pointer !important;
+        transition: all 0.3s !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 10px rgba(231, 74, 59, 0.2) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        z-index: 1 !important;
+    }
+    
+    .dataTables_paginate .paginate_button::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: linear-gradient(135deg, #fd7e14 0%, #e74a3b 100%) !important;
+        opacity: 0 !important;
+        transition: opacity 0.3s !important;
+        z-index: -1 !important;
+    }
+    
+    .dataTables_paginate .paginate_button:hover::before {
+        opacity: 1 !important;
+    }
+    
+    .dataTables_paginate .paginate_button.current {
+        background: linear-gradient(135deg, #36b9cc 0%, #1cc88a 100%) !important;
+        box-shadow: 0 4px 10px rgba(28, 200, 138, 0.3) !important;
+        transform: scale(1.05) !important;
+    }
+    
+    .dataTables_paginate .paginate_button.current::before {
+        display: none !important;
+    }
+    
+    .dataTables_paginate .paginate_button.disabled {
+        background: #e9ecef !important;
+        color: #adb5bd !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+    }
+    
+    .dataTables_paginate .paginate_button.disabled::before {
+        display: none !important;
+    }
+    
+    .dataTables_paginate .ellipsis {
+        color: #4e73df !important;
+        font-weight: bold !important;
+        margin: 0 5px !important;
+    }
+    
+    /* Estilos para la información */
+    .dataTables_info {
+        color: #4e73df !important;
+        font-weight: 600 !important;
+        padding: 10px 15px !important;
+        background-color: rgba(78, 115, 223, 0.05) !important;
+        border-radius: 8px !important;
+        border-left: 4px solid #4e73df !important;
+        box-shadow: 0 2px 5px rgba(78, 115, 223, 0.1) !important;
+    }
+    
+    /* Estilos adicionales para la tabla */
+    .dataTable {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        width: 100% !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .dataTable thead th {
+        background: linear-gradient(to right, #4e73df, #224abe) !important;
+        color: white !important;
+        font-weight: 600 !important;
+        padding: 12px 15px !important;
+        border: none !important;
+        text-align: left !important;
+        font-size: 14px !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+    }
+    
+    .dataTable thead th:first-child {
+        border-radius: 10px 0 0 10px !important;
+    }
+    
+    .dataTable thead th:last-child {
+        border-radius: 0 10px 10px 0 !important;
+    }
+    
+    .dataTable tbody tr {
+        transition: all 0.3s !important;
+    }
+    
+    .dataTable tbody tr:hover {
+        background-color: rgba(78, 115, 223, 0.05) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05) !important;
+    }
+    
+    .dataTable tbody td {
+        padding: 12px 15px !important;
+        border-bottom: 1px solid #e3e6f0 !important;
+        vertical-align: middle !important;
+    }
+    
+    .dataTable tbody tr:last-child td {
+        border-bottom: none !important;
+    }
 </style>
 @endpush
 
@@ -337,12 +569,15 @@ function verObservaciones(observaciones) {
     $('#observacionesModal').modal('show');
 }
 
-function verInstructivo(idReceta) {
-    $('#instructivoContenido').html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+function verInstructivo(idReceta, cantidadEsperada) {
+    $('#instructivoContenido').html('<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Cargando...</span></div><p class="mt-2">Cargando instructivo...</p></div>');
     $('#instructivoModal').modal('show');
     
-    $.get(`{{ route('recetas.show-instructivo') }}?id_receta=${idReceta}`, function(data) {
+    // Realizar la solicitud AJAX incluyendo la cantidad esperada
+    $.get(`{{ route('recetas.show-instructivo') }}?id_receta=${idReceta}&cantidad=${cantidadEsperada}`, function(data) {
         $('#instructivoContenido').html(data);
+    }).fail(function(xhr, status, error) {
+        $('#instructivoContenido').html(`<div class="alert alert-danger">Error al cargar el instructivo: ${error}</div>`);
     });
 }
 
@@ -418,9 +653,9 @@ $(document).ready(function() {
             }
         },
         pageLength: -1,
-        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "<span class='font-weight-bold'>Todos</span>"]],
         responsive: true,
-        dom: '<"top"lf>rt<"bottom"ip><"clear">',
+        dom: '<"row mb-3"<"col-md-6"<"d-flex align-items-center"l>><"col-md-6"<"d-flex justify-content-end"f>>>rt<"row mt-3"<"col-md-6"i><"col-md-6"<"d-flex justify-content-end"p>>>',
         buttons: [
             'copy', 'excel', 'pdf', 'print'
         ],
@@ -494,32 +729,37 @@ $(document).ready(function() {
         }
     });
     
-    // Función para actualizar los contadores
-    // function updateCounters() {
-    //     let total = table.rows().count();
-    //     let terminadas = 0;
-    //     let pendientes = 0;
-    //     let canceladas = 0;
-
-    //     // Recorrer todas las filas visibles
-    //     table.rows().every(function() {
-    //         let estado = $(this.node()).find('td:eq(9) .badge').text().trim();
-    //         if (estado === 'Terminado') {
-    //             terminadas++;
-    //         } else if (estado === 'Pendiente') {
-    //             pendientes++;
-    //         } else if (estado === 'Cancelado') {
-    //             canceladas++;
-    //         }
-    //     });
-        
-    //     $('#totalProducciones').text(total);
-    //     $('#totalTerminadas').text(terminadas);
-    //     $('#totalPendientes').text(pendientes);
-    //     $('#totalCanceladas').text(canceladas);
-    // }
 });
 </script>
 @endpush
 
-@endsection 
+<!-- Modal para ver instructivo -->
+<div class="modal fade" id="instructivoModal" tabindex="-1" aria-labelledby="instructivoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="instructivoModalLabel">Instructivo de Producción</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="instructivoContenido">
+                <!-- Contenido cargado via AJAX -->
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando instructivo...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@endsection

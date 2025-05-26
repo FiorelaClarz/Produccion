@@ -943,8 +943,15 @@ class ProduccionController extends Controller
         $estado = $request->input('estado', 'todos');
 
         // Consulta base
-        $query = ProduccionDetalle::with(['recetaCabecera.producto', 'recetaCabecera.instructivo', 'area', 'produccionCabecera.usuario'])
+        $query = ProduccionDetalle::with([
+                'recetaCabecera.producto', 
+                'recetaCabecera.instructivo', 
+                'recetaCabecera.detalles.producto',
+                'area', 
+                'produccionCabecera.usuario'
+            ])
             ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
+            ->select('produccion_det.*', 'produccion_cab.fecha', 'produccion_cab.hora', 'produccion_det.updated_at', 'produccion_det.cantidad_esperada')
             ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin]);
 
         // Aplicar filtro de estado

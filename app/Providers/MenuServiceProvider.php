@@ -146,6 +146,25 @@ class MenuServiceProvider extends ServiceProvider
                         'icon' => 'fas fa-chart-bar'
                     ]
                 ]
+            ],
+            // Menú de Mermas para Admin
+            [
+                'text' => 'Mermas',
+                'route' => 'mermas.index',
+                'icon' => 'fas fa-trash-alt',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todas las Mermas',
+                        'route' => 'mermas.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Registrar Merma',
+                        'route' => 'mermas.create',
+                        'icon' => 'fas fa-plus-circle'
+                    ]
+                ]
             ]
         ];
 
@@ -284,6 +303,25 @@ class MenuServiceProvider extends ServiceProvider
                         'text' => 'Reportes',
                         'route' => 'produccion.reportes',
                         'icon' => 'fas fa-chart-bar'
+                    ]
+                ]
+            ],
+            // Menú de Mermas para operador
+            [
+                'text' => 'Mermas',
+                'route' => 'mermas.index',
+                'icon' => 'fas fa-trash-alt',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todas las Mermas',
+                        'route' => 'mermas.index',
+                        'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Registrar Merma',
+                        'route' => 'mermas.create',
+                        'icon' => 'fas fa-plus-circle'
                     ]
                 ]
             ]

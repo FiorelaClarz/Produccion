@@ -15,6 +15,8 @@ class MermaDetalle extends Model
 
     protected $fillable = [
         'id_mermas_cab',
+        'id_areas',      // Nueva columna agregada - área de la merma
+        'id_recetas',    // Nueva columna agregada - receta relacionada
         'id_productos_api',
         'cantidad',
         'id_u_medidas',
@@ -32,15 +34,30 @@ class MermaDetalle extends Model
         return $this->belongsTo(MermaCabecera::class, 'id_mermas_cab');
     }
 
-    // Relación con Producto
+    // No usamos relación con productos_api directamente
+    // En su lugar, obtenemos el producto de la receta
     public function producto()
     {
-        return $this->belongsTo(Producto::class, 'id_productos_api', 'id_item');
+        // Devolvemos un accessor que obtiene el ID del producto desde la receta
+        // Esto evita tener que acceder a la tabla productos_api
+        return $this->receta ? $this->receta->producto : null;
     }
 
     // Relación con UMedida
     public function uMedida()
     {
         return $this->belongsTo(UMedida::class, 'id_u_medidas');
+    }
+
+    // Relación con Área
+    public function area()
+    {
+        return $this->belongsTo(Area::class, 'id_areas');
+    }
+
+    // Relación con Receta
+    public function receta()
+    {
+        return $this->belongsTo(RecetaCabecera::class, 'id_recetas');
     }
 }

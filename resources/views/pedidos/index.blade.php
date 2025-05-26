@@ -65,19 +65,36 @@
                 </a>
                 @endif
                 
-                <a href="{{ route('pedidos.create') }}" 
+                <a href="#" 
+                   id="btn-nuevo-pedido"
                    class="btn btn-primary {{ !$dentroDeHoraPermitida ? 'disabled' : '' }}" 
                    @if(!$dentroDeHoraPermitida) 
                        data-bs-toggle="tooltip" 
                        title="Los pedidos solo se pueden crear entre {{ $horaInicioPedidos->format('H:i') }} y {{ $horaFinPedidos->format('H:i') }}" 
                    @else
                        data-bs-toggle="tooltip" 
-                       title="Crear nuevo pedido"
+                       title="Crear nuevo pedido (borrará cualquier borrador guardado)"
                    @endif>
                     <i class="fas fa-plus"></i> Nuevo Pedido
                     @if(!$dentroDeHoraPermitida)
                         <span class="badge bg-danger ms-2">Fuera de horario</span>
                     @endif
+                </a>
+                
+                <!-- Botón Continuar Pedido - solo visible si hay datos guardados temporalmente -->
+                <a href="{{ route('pedidos.create') }}?mode=continue" 
+                   id="btn-continuar-pedido"
+                   class="btn btn-success {{ !$dentroDeHoraPermitida ? 'disabled' : '' }}" 
+                   style="display: none;"
+                   @if(!$dentroDeHoraPermitida) 
+                       data-bs-toggle="tooltip" 
+                       title="Los pedidos solo se pueden continuar entre {{ $horaInicioPedidos->format('H:i') }} y {{ $horaFinPedidos->format('H:i') }}" 
+                   @else
+                       data-bs-toggle="tooltip" 
+                       title="Continuar con el pedido guardado temporalmente"
+                   @endif>
+                    <i class="fas fa-clipboard-list"></i> Continuar Pedido
+                    <span class="badge bg-warning text-dark ms-2">Borrador</span>
                 </a>
             </div>
         </div>
@@ -430,10 +447,125 @@
 @section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Verificar si venimos de una redirección de limpieza
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('clean') === '1') {
+            console.log('Detectada página de limpieza de localStorage');
+            // Limpiar localStorage con múltiples métodos para garantizar limpieza
+            try {
+                // Primer método: clear completo
+                localStorage.clear();
+                
+                // Segundo método: eliminar los items específicos
+                localStorage.removeItem('pedido_temp_data');
+                localStorage.removeItem('pedido_temp_count');
+                
+                // Tercer método: sobrescribir con datos vacíos
+                localStorage.setItem('pedido_temp_data', '');
+                localStorage.setItem('pedido_temp_count', '0');
+                localStorage.removeItem('pedido_temp_data');
+                localStorage.removeItem('pedido_temp_count');
+                
+                console.log('localStorage limpiado completamente');
+                
+                // Limpiar la URL para evitar problemas si se recarga la página
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            } catch (e) {
+                console.error('Error al limpiar localStorage:', e);
+            }
+        }
+        
         // Inicializar tooltips
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Verificar si hay un pedido guardado temporalmente
+        const verificarPedidoTemporal = function() {
+            // Limpiar cualquier localStorage inválido o vacío
+            const limpiarStorage = () => {
+                console.log('Limpiando localStorage inválido');
+                localStorage.removeItem('pedido_temp_data');
+                localStorage.removeItem('pedido_temp_count');
+            };
+            
+            // Obtener datos guardados
+            const pedidoTempData = localStorage.getItem('pedido_temp_data');
+            if (!pedidoTempData) return;
+            
+            try {
+                // Verificar si hay al menos un pedido en la lista
+                const formData = JSON.parse(pedidoTempData);
+                
+                // Validar la estructura de los datos
+                if (!formData || !formData.pedidos || !Array.isArray(formData.pedidos)) {
+                    limpiarStorage();
+                    return;
+                }
+                
+                // Verificar que haya al menos un pedido en la lista
+                if (formData.pedidos.length === 0) {
+                    limpiarStorage();
+                    return;
+                }
+                
+                // Verificar que los pedidos tengan la estructura correcta
+                const pedidoValido = formData.pedidos.some(p => {
+                    return p && p.id_area && p.cantidad && p.id_u_medida;
+                });
+                
+                if (!pedidoValido) {
+                    limpiarStorage();
+                    return;
+                }
+                
+                // Si llegamos aquí, hay pedidos válidos guardados
+                console.log(`Pedido temporal válido encontrado con ${formData.pedidos.length} items`);
+                document.getElementById('btn-continuar-pedido').style.display = 'inline-block';
+            } catch (e) {
+                console.error('Error al verificar pedido temporal:', e);
+                limpiarStorage();
+            }
+        };
+        
+        // Ejecutar verificación al cargar la página
+        verificarPedidoTemporal();
+        
+        // Configurar el botón de "Nuevo Pedido" para que borre el localStorage
+        document.getElementById('btn-nuevo-pedido').addEventListener('click', function(e) {
+            if (@json($dentroDeHoraPermitida)) {
+                // Solo si está dentro del horario permitido
+                e.preventDefault();
+                
+                // Verificar si hay datos guardados
+                const hayDatosGuardados = localStorage.getItem('pedido_temp_data');
+                
+                if (hayDatosGuardados) {
+                    // Preguntar si desea borrar el borrador existente
+                    Swal.fire({
+                        title: '¿Crear nuevo pedido?',
+                        text: 'Tienes un borrador guardado. Si continúas, se perderá ese borrador.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, crear nuevo',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Eliminar datos guardados
+                            localStorage.removeItem('pedido_temp_data');
+                            localStorage.removeItem('pedido_temp_count');
+                            
+                            // Redireccionar a crear nuevo pedido
+                            window.location.href = '{{ route("pedidos.create") }}?mode=new';
+                        }
+                    });
+                } else {
+                    // No hay datos guardados, simplemente redireccionar
+                    window.location.href = '{{ route("pedidos.create") }}?mode=new';
+                }
+            }
         });
 
         // Actualizar automáticamente la página cada 5 minutos

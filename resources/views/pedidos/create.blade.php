@@ -8,9 +8,14 @@
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">Nuevo Pedido</h4>
-                        <div id="contador-regresivo" class="badge fs-5">
-                            <i class="fas fa-clock me-2"></i>
-                            <span id="tiempo-restante">--:--</span>
+                        <div class="d-flex align-items-center">
+                            <div id="mensaje-guardado-temporal" style="display: none;" class="me-3">
+                                <span class="badge bg-success"><i class="fas fa-save me-1"></i> Guardado temporal</span>
+                            </div>
+                            <div id="contador-regresivo" class="badge fs-5">
+                                <i class="fas fa-clock me-2"></i>
+                                <span id="tiempo-restante">--:--</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -166,7 +171,13 @@
                     <!-- Lista de pedidos agregados -->
                     <div class="mt-4">
                         <h5><i class="fas fa-list-ol me-2"></i>Lista de Pedidos</h5>
-                        <div class="table-responsive">
+                        <!-- Mensaje cuando no hay pedidos -->
+                        <div id="info-sin-pedidos" class="alert alert-info text-center">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>No hay pedidos agregados</p>
+                        </div>
+                        <!-- Tabla de pedidos (inicialmente oculta) -->
+                        <div id="seccion-pedidos" class="table-responsive" style="display:none;">
                             <table class="table table-bordered table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
@@ -179,14 +190,7 @@
                                         <th width="10%">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="lista-pedidos">
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">
-                                            <i class="fas fa-inbox fa-2x mb-2"></i>
-                                            <p>No hay pedidos agregados</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
+                                <tbody id="lista-pedidos"></tbody>
                             </table>
                         </div>
                     </div>
@@ -241,6 +245,22 @@
         let hora_limite = '{{ $horaLimite->hora_limite }}';
         let intervaloContador = null;
         let modalConfirmacion = new bootstrap.Modal(document.getElementById('confirmModal'));
+        
+        // Verificar el parámetro mode en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        
+        // Si el modo es 'new', limpiar localStorage y empezar fresco
+        if (mode === 'new') {
+            console.log('Modo: nuevo pedido - limpiando datos guardados');
+            localStorage.removeItem('pedido_temp_data');
+            localStorage.removeItem('pedido_temp_count');
+        } 
+        // Si el modo es 'continue' o no está especificado, intentar restaurar datos
+        else {
+            console.log('Modo: continuar pedido - restaurando datos guardados');
+            restoreFormData();
+        }
 
         // Inicializar el contador regresivo
         function iniciarContadorRegresivo() {
@@ -402,7 +422,7 @@
         }
 
         // Limpiar formulario
-        $('#btn-limpiar').click(function() {
+        function limpiarFormulario() {
             $('#form-detalle-pedido')[0].reset();
             $('#campos-personalizado').hide();
             $('#es_personalizado').prop('checked', false);
@@ -410,6 +430,12 @@
             $('#preview-container').hide();
             $('.invalid-feedback').hide();
             $('.is-invalid').removeClass('is-invalid');
+        }
+
+        $('#btn-limpiar').click(function() {
+            limpiarFormulario();
+            // Guardar en localStorage después de limpiar
+            saveFormData();
         });
 
         // Validar formulario antes de agregar
@@ -489,26 +515,28 @@
                 };
 
                 pedidos.push(pedido);
-                actualizarListaPedidos();
-                $('#btn-limpiar').click();
+                actualizarTablaPedidos();
+                limpiarFormulario();
+                // Guardar en localStorage después de agregar
+                saveFormData();
             }
         });
 
-        function actualizarListaPedidos() {
+        function actualizarTablaPedidos() {
+            console.log('Actualizando tabla con', pedidos.length, 'pedidos');
             const $lista = $('#lista-pedidos');
             $lista.empty();
 
-            if (pedidos.length === 0) {
-                $lista.append(`
-                    <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">
-                            <i class="fas fa-inbox fa-2x mb-2"></i>
-                            <p>No hay pedidos agregados</p>
-                        </td>
-                    </tr>
-                `);
+            if (!pedidos || pedidos.length === 0) {
+                // Mostrar mensaje de no hay pedidos
+                $('#info-sin-pedidos').show();
+                $('#seccion-pedidos').hide();
                 return;
             }
+            
+            // Hay pedidos para mostrar
+            $('#info-sin-pedidos').hide();
+            $('#seccion-pedidos').show();
 
             pedidos.forEach(function(pedido, index) {
                 const estadoColor = getColorEstado(pedido.id_estado);
@@ -602,7 +630,7 @@
 
             // Eliminar el pedido de la lista temporal
             pedidos.splice(index, 1);
-            actualizarListaPedidos();
+            actualizarTablaPedidos();
         });
 
         // Eliminar pedido
@@ -620,7 +648,7 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     pedidos.splice(index, 1);
-                    actualizarListaPedidos();
+                    actualizarTablaPedidos();
                     Swal.fire(
                         'Eliminado!',
                         'El pedido ha sido eliminado.',
@@ -687,13 +715,58 @@
                 },
                 success: function(response) {
                     if (response.success) {
+                        // Forzar la limpieza total del localStorage usando un enfoque definitivo
+                        console.log('Pedido enviado exitosamente - iniciando limpieza de localStorage');
+                        
+                        // 1. Vaciamos primero el localStorage completo
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            console.log('Limpiando clave:', key);
+                        }
+                        localStorage.clear();
+                        
+                        // 2. Eliminamos específicamente los datos del pedido temporal
+                        localStorage.removeItem('pedido_temp_data');
+                        localStorage.removeItem('pedido_temp_count');
+                        
+                        // 3. Establecemos valores vacíos y luego los eliminamos
+                        localStorage.setItem('pedido_temp_data', JSON.stringify({pedidos:[]}));
+                        localStorage.setItem('pedido_temp_count', '0');
+                        localStorage.removeItem('pedido_temp_data');
+                        localStorage.removeItem('pedido_temp_count');
+                        
+                        // 4. Verificamos que se haya limpiado correctamente
+                        const tempData = localStorage.getItem('pedido_temp_data');
+                        if (tempData) {
+                            console.error('ADVERTENCIA: No se pudo limpiar localStorage. Contenido:', tempData);
+                        } else {
+                            console.log('Verificación exitosa: localStorage limpiado correctamente');
+                        }
+                        
                         Swal.fire({
                             title: '¡Éxito!',
                             text: response.message,
                             icon: 'success',
                             confirmButtonText: 'Aceptar'
                         }).then(() => {
-                            window.location.href = response.redirect;
+                            // Limpiar ABSOLUTAMENTE TODO en localStorage antes de redirigir
+                            console.log('Limpiando localStorage antes de redireccionar');
+                            
+                            // Usar window.localStorage para asegurar acceso completo
+                            window.localStorage.clear();
+                            
+                            // Eliminar items específicos por su nombre
+                            window.localStorage.removeItem('pedido_temp_data');
+                            window.localStorage.removeItem('pedido_temp_count');
+                            
+                            // Forzar a una página intermedia que limpia el localStorage
+                            if (response.clearStorage) {
+                                const cleanerUrl = '{{ route("pedidos.index") }}?clean=1&timestamp=' + new Date().getTime();
+                                console.log('Redirigiendo a través de página limpiadora:', cleanerUrl);
+                                window.location.href = cleanerUrl;
+                            } else {
+                                window.location.href = response.redirect;
+                            }
                         });
                     } else {
                         Swal.fire({
@@ -710,13 +783,26 @@
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMsg = xhr.responseJSON.message;
                     }
+                    
+                    // Preguntar al usuario si desea mantener los datos guardados
                     Swal.fire({
                         title: 'Error',
                         text: errorMsg,
                         icon: 'error',
-                        confirmButtonText: 'Entendido'
+                        showCancelButton: true,
+                        confirmButtonText: 'Intentar de nuevo',
+                        cancelButtonText: 'Descartar borrador'
+                    }).then((result) => {
+                        if (result.dismiss === Swal.DismissReason.cancel) {
+                            // Usuario eligió descartar el borrador
+                            localStorage.removeItem('pedido_temp_data');
+                            localStorage.removeItem('pedido_temp_count');
+                            window.location.href = '{{ route("pedidos.index") }}';
+                        } else {
+                            // Usuario quiere intentarlo de nuevo, mantener los datos
+                            $('#btn-pedir').prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i> Enviar Pedido');
+                        }
                     });
-                    $('#btn-pedir').prop('disabled', false).html('<i class="fas fa-paper-plane me-2"></i> Enviar Pedido');
                 }
             });
         }
@@ -735,16 +821,183 @@
                     cancelButtonText: 'Continuar editando'
                 }).then((result) => {
                     if (result.isConfirmed) {
+                        // Limpiar localStorage al cancelar
+                        localStorage.removeItem('pedido_temp_data');
+                        localStorage.removeItem('pedido_temp_count');
                         window.location.href = '{{ route("pedidos.index") }}';
                     }
                 });
             } else {
+                // Incluso si no hay pedidos, limpiar localStorage
+                localStorage.removeItem('pedido_temp_data');
+                localStorage.removeItem('pedido_temp_count');
                 window.location.href = '{{ route("pedidos.index") }}';
             }
         });
 
         // Iniciar el contador al cargar la página
         iniciarContadorRegresivo();
+
+        // Función para guardar datos del formulario en localStorage
+        function saveFormData() {
+            // Obtener los datos del formulario principal
+            let formData = {
+                'id_areas': $('#id_areas').val(),
+                'buscar-receta': $('#buscar-receta').val(),
+                'id_recetas': $('#id_recetas').val(),
+                'id_productos_api': $('#id_productos_api').val(),
+                'cantidad': $('#cantidad').val(),
+                'id_u_medidas': $('#id_u_medidas').val(),
+                'descripcion': $('#descripcion').val(),
+                'es_personalizado': $('#es_personalizado').is(':checked')
+            };
+            
+            // Crear una copia serializable de los pedidos
+            // Elimina las propiedades que no se pueden serializar como File objects
+            const pedidosSerializables = pedidos.map(pedido => {
+                // Crear una copia del pedido sin las propiedades no serializables
+                const pedidoCopiado = { ...pedido };
+                
+                // Eliminar las propiedades no serializables
+                if (pedidoCopiado.foto_referencial) {
+                    // No podemos guardar el File object directamente
+                    delete pedidoCopiado.foto_referencial;
+                }
+                
+                return pedidoCopiado;
+            });
+            
+            // Añadir los pedidos serializables al objeto formData
+            formData.pedidos = pedidosSerializables;
+            
+            // Guardar en localStorage - con una clave que indique que contiene pedidos
+            localStorage.setItem('pedido_temp_data', JSON.stringify(formData));
+            localStorage.setItem('pedido_temp_count', pedidos.length.toString());
+            
+            console.log('Datos guardados en localStorage:', formData);
+            
+            // Mostrar indicador visual de guardado
+            mostrarMensajeGuardadoTemporal();
+        }
+        
+        // Función para restaurar datos del formulario desde localStorage
+        function restoreFormData() {
+            const savedData = localStorage.getItem('pedido_temp_data');
+            if (!savedData) {
+                console.log('No se encontraron datos guardados');
+                return;
+            }
+            
+            try {
+                const formData = JSON.parse(savedData);
+                console.log('Restaurando datos:', formData);
+                
+                // Restaurar estado de pedido personalizado primero
+                if (formData.es_personalizado) {
+                    $('#es_personalizado').prop('checked', true).trigger('change');
+                }
+                
+                // Restaurar valores en los campos (con comprobaciones de seguridad)
+                $('#id_areas').val(formData.id_areas || '');
+                $('#buscar-receta').val(formData['buscar-receta'] || '');
+                $('#id_recetas').val(formData.id_recetas || '');
+                $('#id_productos_api').val(formData.id_productos_api || '');
+                $('#cantidad').val(formData.cantidad || '1');
+                $('#id_u_medidas').val(formData.id_u_medidas || '');
+                $('#descripcion').val(formData.descripcion || '');
+                
+                // IMPORTANTE: Restaurar la lista de pedidos
+                if (formData.pedidos && Array.isArray(formData.pedidos) && formData.pedidos.length > 0) {
+                    console.log('Restaurando ' + formData.pedidos.length + ' pedidos');
+                    
+                    // Limpiar el array de pedidos actual y copiar los pedidos guardados
+                    pedidos = [];
+                    
+                    formData.pedidos.forEach(pedidoGuardado => {
+                        // Crear una copia profunda del pedido guardado
+                        const pedidoRestaurado = JSON.parse(JSON.stringify(pedidoGuardado));
+                        pedidos.push(pedidoRestaurado);
+                    });
+                    
+                    // Actualizar inmediatamente la interfaz
+                    console.log('Pedidos restaurados:', pedidos);
+                    actualizarTablaPedidos();
+                    
+                    // Verificar que se muestren los pedidos (ocultar mensaje de "no hay pedidos")
+                    if (pedidos.length > 0) {
+                        setTimeout(() => {
+                            $('#info-sin-pedidos').hide();
+                            $('#seccion-pedidos').show();
+                        }, 500);
+                    }
+                    
+                    // Mostrar notificación de restauración
+                    Swal.fire({
+                        title: '¡Pedidos restaurados!',
+                        text: 'Se han recuperado ' + pedidos.length + ' pedidos guardados anteriormente.',
+                        icon: 'success',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } else {
+                    console.log('No hay pedidos para restaurar');
+                }
+                
+            } catch (e) {
+                console.error('Error al restaurar datos:', e);
+                // Si hay error, limpiar localStorage para evitar problemas futuros
+                localStorage.removeItem('pedido_temp_data');
+                localStorage.removeItem('pedido_temp_count');
+                
+                // Informar al usuario del error
+                Swal.fire({
+                    title: 'Error al restaurar datos',
+                    text: 'Hubo un problema al recuperar tus datos guardados. Por favor, comienza de nuevo.',
+                    icon: 'error',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000
+                });
+            }
+        }
+        
+        // Función para mostrar mensaje de guardado temporal
+        function mostrarMensajeGuardadoTemporal() {
+            $('#mensaje-guardado-temporal').fadeIn().delay(2000).fadeOut();
+        }
+
+        // Guardar formulario al cambiar cualquier campo
+        $('#form-detalle-pedido input, #form-detalle-pedido select, #form-detalle-pedido textarea').on('change', function() {
+            saveFormData();
+        });
+        
+        // Guardar al navegar a otra página
+        // Guardar datos cuando el usuario sale de la página
+        $(window).on('beforeunload', function() {
+            saveFormData();
+            // No mostrar diálogo de confirmación
+            return undefined;
+        });
+        
+        // Verificar y corregir la interfaz según el estado de los pedidos
+        setInterval(function() {
+            if (pedidos && pedidos.length > 0) {
+                console.log('Verificación de pedidos:', pedidos.length);
+                // Mostrar la sección de pedidos y actualizar la tabla
+                $('#info-sin-pedidos').hide();
+                $('#seccion-pedidos').show();
+                
+                // Asegurarse de que la tabla refleja correctamente los pedidos
+                const filasPedidos = $('#lista-pedidos tr').length;
+                if (filasPedidos === 0 || (filasPedidos === 1 && $('#lista-pedidos tr:first').find('td[colspan]').length > 0)) {
+                    console.log('Actualizando tabla de pedidos forzadamente');
+                    actualizarTablaPedidos();
+                }
+            }
+        }, 1000);
     });
 </script>
 

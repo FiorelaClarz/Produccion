@@ -204,15 +204,18 @@ class PedidoController extends Controller
             $ahora = Carbon::now();
             $horaLimite = HoraLimite::find($request->id_hora_limite);
 
-            // Verificar si está dentro de la hora límite
-            $horaInicioPedidos = Carbon::parse($horaLimite->hora_limite)->subHour();
-            $estaDentroDeHora = $ahora->between($horaInicioPedidos, Carbon::parse($horaLimite->hora_limite));
+            // Validar la hora límite
+            $horaFinPedidos = Carbon::createFromFormat('H:i:s', $horaLimite->hora_limite);
+            $horaInicioPedidos = (clone $horaFinPedidos)->subHour();
 
-            if (!$estaDentroDeHora) {
+            $currentTime = Carbon::createFromFormat('H:i:s', $ahora->format('H:i:s'));
+
+            if (!$currentTime->between($horaInicioPedidos, $horaFinPedidos)) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'El tiempo para realizar pedidos ha terminado'
-                ], 400);
+                    'success' => false, 
+                    'message' => 'No es posible realizar pedidos en este momento. El horario permitido es de ' . 
+                                 $horaInicioPedidos->format('H:i') . ' a ' . $horaFinPedidos->format('H:i')
+                ], 403);
             }
 
             // Crear cabecera del pedido
@@ -223,7 +226,7 @@ class PedidoController extends Controller
                 'hora_created' => $ahora->toTimeString(),
                 'fecha_last_update' => $ahora->toDateString(),
                 'hora_last_update' => $ahora->toTimeString(),
-                'esta_dentro_de_hora' => $estaDentroDeHora,
+                'esta_dentro_de_hora' => true,
                 'id_hora_limite' => $horaLimite->id_hora_limite,
                 'hora_limite' => $horaLimite->hora_limite,
                 'doc_interno' => 'PED-' . $ahora->format('Ymd-His') . '-' . strtoupper(substr(uniqid(), -5)),
@@ -262,7 +265,8 @@ class PedidoController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido creado correctamente',
-                'redirect' => route('pedidos.index')
+                'redirect' => route('pedidos.index'),
+                'clearStorage' => true // Señal para que el frontend limpie el localStorage
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

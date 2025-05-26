@@ -13,6 +13,7 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\EquipoController;
 use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\HoraLimiteController;
+use App\Http\Controllers\MermaController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
@@ -269,3 +270,18 @@ Route::middleware(['auth'])->group(function () {
     
 });
 
+// Rutas para el módulo de Mermas
+Route::prefix('mermas')->middleware('auth')->group(function () {
+    // Rutas principales CRUD
+    Route::get('/', [MermaController::class, 'index'])->name('mermas.index');
+    Route::get('/create', [MermaController::class, 'create'])->name('mermas.create');
+    Route::post('/', [MermaController::class, 'store'])->name('mermas.store');
+    Route::get('/{id}', [MermaController::class, 'show'])->name('mermas.show');
+    Route::get('/{id}/edit', [MermaController::class, 'edit'])->name('mermas.edit');
+    Route::put('/{id}', [MermaController::class, 'update'])->name('mermas.update');
+    Route::delete('/{id}', [MermaController::class, 'destroy'])->name('mermas.destroy');
+    
+    // Rutas adicionales
+    Route::get('/generar-pdf/{id}', [MermaController::class, 'generatePdf'])->name('mermas.pdf');
+    Route::post('/buscar-recetas', [MermaController::class, 'buscarRecetas'])->name('mermas.buscar-recetas');
+});
