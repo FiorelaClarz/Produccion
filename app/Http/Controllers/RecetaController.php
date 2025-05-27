@@ -561,6 +561,9 @@ public function showInstructivo(Request $request, $id = null)
             ->with('warning', 'Esta receta no tiene instructivo registrado');
     }
     
+    // Obtener el ID de la producción específica si se proporciona
+    $idProduccionDet = $request->query('id_produccion_det');
+    
     // Obtener el ID del pedido si se proporciona
     $idPedido = $request->query('id_pedido');
     
@@ -570,7 +573,12 @@ public function showInstructivo(Request $request, $id = null)
     
     // Si no se proporcionaron las cantidades, calcularlas
     if (!$cantidadPedido || !$cantidadEsperada) {
-        if ($idPedido) {
+        // Si se proporciona el ID de producción específica, usar ese dato
+        if ($idProduccionDet) {
+            $produccion = ProduccionDetalle::findOrFail($idProduccionDet);
+            $cantidadPedido = $produccion->cantidad_pedido;
+            $cantidadEsperada = $produccion->cantidad_esperada;
+        } else if ($idPedido) {
             // Si es un pedido específico, obtener su cantidad
             $pedido = PedidoDetalle::where('id_pedidos_det', $idPedido)
                 ->where('id_recetas', $idReceta)
@@ -585,11 +593,11 @@ public function showInstructivo(Request $request, $id = null)
                 ? $cantidadPedido * $receta->constante_peso_lata
                 : $cantidadPedido;
         } else {
-            // Si no es un pedido específico, sumar todos los pedidos del día
-    $cantidadPedido = PedidoDetalle::where('id_recetas', $idReceta)
-        ->whereDate('created_at', Carbon::today())
-        ->where('is_deleted', false)
-        ->sum('cantidad');
+            // Si no se proporciona ningún ID específico, sumar todos los pedidos del día
+            $cantidadPedido = PedidoDetalle::where('id_recetas', $idReceta)
+                ->whereDate('created_at', Carbon::today())
+                ->where('is_deleted', false)
+                ->sum('cantidad');
 
             $cantidadEsperada = ($receta->id_areas == 1)
                 ? $cantidadPedido * $receta->constante_peso_lata

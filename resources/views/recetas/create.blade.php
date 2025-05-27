@@ -133,7 +133,7 @@
 
         <!-- Formulario para agregar ingredientes -->
         <div class="row mb-3">
-            <div class="col-md-8">
+            <div class="col-md-5">
                 <div class="form-group">
                     <label for="ingrediente_nombre">Producto Ingrediente</label>
                     <div class="position-relative">
@@ -149,6 +149,22 @@
                     @enderror
                 </div>
             </div>
+
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="ingrediente_u_medida">Unidad de Medida</label>
+                    <select class="form-control" id="ingrediente_u_medida">
+                        <option value="">Seleccione unidad</option>
+                        @foreach($unidades as $unidad)
+                        <option value="{{ $unidad->id_u_medidas }}">{{ $unidad->nombre }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-danger" id="uMedidaError" style="display:none;">Este campo es requerido</small>
+                </div>
+            </div>
+
+
+            
             <div class="col-md-2">
                 <div class="form-group">
                     <label for="ingrediente_cantidad">Cantidad a usar</label>
@@ -166,8 +182,8 @@
         </div>
 
         <div class="row mb-3">
-            <div class="col-md-8">
-                <div class="form-group">
+            <div class="col-md-10">
+                <!-- <div class="form-group">
                     <label for="ingrediente_u_medida">Unidad de Medida</label>
                     <select class="form-control" id="ingrediente_u_medida">
                         <option value="">Seleccione unidad</option>
@@ -176,9 +192,9 @@
                         @endforeach
                     </select>
                     <small class="text-danger" id="uMedidaError" style="display:none;">Este campo es requerido</small>
-                </div>
+                </div> -->
             </div>
-            <div class="col-md-4 d-flex align-items-end">
+            <div class="col-md-2 d-flex align-items-end">
                 <button type="button" id="limpiarIngrediente" class="btn btn-secondary mr-2">Limpiar</button>
                 <button type="button" id="agregarIngrediente" class="btn btn-primary">Agregar</button>
             </div>

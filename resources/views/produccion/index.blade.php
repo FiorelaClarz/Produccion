@@ -3,13 +3,34 @@
 @section('content')
 <div class="container">
     <h1 class="mb-4">Listado de Producciones</h1>
-    
+
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Producciones Registradas</h6>
+            @php
+            // Verificar si el usuario tiene un equipo activo con salida registrada
+            $usuario = Auth::user();
+            $fechaActual = \Carbon\Carbon::now()->toDateString();
+            $equipoActivo = \App\Models\EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
+            ->where('status', true)
+            ->where('is_deleted', false)
+            ->whereDate('created_at', $fechaActual)
+            ->first();
+            $salidaRegistrada = $equipoActivo && $equipoActivo->salida !== null;
+            @endphp
+
+            @if($salidaRegistrada)
+            <div>
+                <button disabled class="btn btn-secondary btn-sm">
+                    <i class="fas fa-plus"></i> Nueva Producción
+                </button>
+                <span class="text-danger ml-2"><i class="fas fa-info-circle"></i> Ya registró su salida</span>
+            </div>
+            @else
             <a href="{{ route('produccion.index-personal')}}" class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Nueva Producción
             </a>
+            @endif
         </div>
         <div class="card-body">
             <div class="table-responsive">

@@ -42,6 +42,7 @@ class Usuario extends Authenticatable
         'id_roles',
         'status',
         'is_deleted',
+        'email',
     ];
 
     /**

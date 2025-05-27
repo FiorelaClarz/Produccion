@@ -23,7 +23,7 @@
             <div class="card bg-light">
                 <div class="card-body p-2">
                     <small class="text-muted">Factor de ajuste:</small>
-                    <p class="mb-0">{{ number_format($factor, 2) }}</p>
+                    <p class="mb-0">{{ number_format($cantidadEsperada, 2) }}</p>
                     <small class="text-muted">({{ $cantidadEsperada }} {{ $receta->uMedida->nombre }})</small>
                 </div>
             </div>

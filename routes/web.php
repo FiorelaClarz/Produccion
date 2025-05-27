@@ -16,6 +16,7 @@ use App\Http\Controllers\HoraLimiteController;
 use App\Http\Controllers\MermaController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\PerfilController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
 use Illuminate\Support\Facades\File; // Agrega esta línea
 use Illuminate\Support\Facades\Response; // Agrega esta línea
@@ -244,7 +245,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('produccion')->group(function () {
         // Rutas específicas primero
         Route::get('/personal', [ProduccionController::class, 'indexPersonal'])->name('produccion.index-personal');
+        Route::get('/admin', [ProduccionController::class, 'indexAdmin'])->name('produccion.index-admin');
         Route::post('/guardar-personal', [ProduccionController::class, 'guardarProduccionPersonal'])->name('produccion.guardar-personal');
+        Route::post('/guardar-admin', [ProduccionController::class, 'guardarProduccionAdmin'])->name('produccion.guardar-admin');
         
         // Nueva ruta para ver periodos
         Route::get('/periodos', [ProduccionController::class, 'indexPorPeriodos'])->name('produccion.periodos');
@@ -261,11 +264,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{produccion}', [ProduccionController::class, 'show'])->name('produccion.show');
         Route::get('/{produccion}/edit', [ProduccionController::class, 'edit'])->name('produccion.edit');
         Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
+        Route::get('get_observacion', [ProduccionController::class, 'obtenerObservacion'])->name('produccion.get_observacion');
+        Route::get('get_detalles_pedidos', [ProduccionController::class, 'obtenerDetallesPedidos'])->name('produccion.get_detalles_pedidos');
         Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
         Route::post('/detalles-pedidos', [ProduccionController::class, 'obtenerDetallesPedidos'])->name('produccion.detalles-pedidos');
     });
 
-
+    // Rutas para cambio de contraseña
+    Route::post('/cambiar-password', [PerfilController::class, 'cambiarPassword'])->middleware('auth')->name('perfil.cambiar-password');
 
     
 });

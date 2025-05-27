@@ -66,38 +66,129 @@
             </form>
         </div>
     </div>
-
-    <!-- Resumen de producción -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Total Producciones</h5>
-                    <h2 class="mb-0">{{ $totalProducciones }}</h2>
+    
+    <!-- Resumen de métricas con barras horizontales (actualizadas por DataTables) -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-chart-bar mr-2"></i>Resumen de Métricas Filtradas
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Cantidad producida -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card border-left-primary shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Cantidad Producida / Cantidad Pedida</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        <span id="sumaCantidadProducida">0.00</span> / 
+                                        <span id="sumaCantidadPedido" class="text-primary">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                            <div class="progress progress-sm mt-3">
+                                <div class="progress-bar bg-primary" role="progressbar" id="barraCantidadProducida" 
+                                    style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="small mt-1 text-muted" id="porcentajeCantidadProducida">0% de lo pedido</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Valor total -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card border-left-success shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Valor Total Producción</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="sumaTotal">Calculando...</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                            <div class="progress progress-sm mt-3">
+                                <div class="progress-bar bg-success" role="progressbar" id="barraTotal" 
+                                    style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="small mt-1 text-muted" id="porcentajeTotal">0% del objetivo</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Terminadas</h5>
-                    <h2 class="mb-0">{{ $totalTerminadas }}</h2>
+            
+            <div class="row">
+                <!-- Contador de ítems filtrados -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card border-left-info shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Ítems (Filtrados)</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="contadorItems">0</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-list fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                            <div class="progress progress-sm mt-3">
+                                <div class="progress-bar bg-info" role="progressbar" id="barraItems" 
+                                    style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="small mt-1 text-muted" id="porcentajeItems">0% del total</div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Pendientes</h5>
-                    <h2 class="mb-0">{{ $totalPendientes }}</h2>
+                
+                <!-- Contador de terminados (filtrados) -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card border-left-success shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Terminados (Filtrados)</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="contadorTerminados">0</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                            <div class="progress progress-sm mt-3">
+                                <div class="progress-bar bg-success" role="progressbar" id="barraTerminados" 
+                                    style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="small mt-1 text-muted" id="porcentajeTerminados">0% del total filtrado</div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Canceladas</h5>
-                    <h2 class="mb-0">{{ $totalCanceladas }}</h2>
+                
+                <!-- Contador de cancelados (filtrados) -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card border-left-danger shadow h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Cancelados (Filtrados)</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800" id="contadorCancelados">0</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                            <div class="progress progress-sm mt-3">
+                                <div class="progress-bar bg-danger" role="progressbar" id="barraCancelados" 
+                                    style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <div class="small mt-1 text-muted" id="porcentajeCancelados">0% del total filtrado</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -160,7 +251,7 @@
                                 <td class="text-center">
                                     @if($produccion->recetaCabecera && $produccion->recetaCabecera->instructivo)
                                         <button type="button" class="btn btn-sm btn-primary" 
-                                            onclick="verInstructivo({{ $produccion->recetaCabecera->id_recetas }}, {{ $produccion->cantidad_esperada }})" 
+                                            onclick="verInstructivo({{ $produccion->recetaCabecera->id_recetas }}, {{ $produccion->cantidad_esperada }}, {{ $produccion->id_produccion_det }})" 
                                             data-toggle="tooltip" 
                                             title="Ver instructivo de {{ $produccion->recetaCabecera->nombre }}">
                                             <i class="fas fa-book-open"></i> Ver instructivo
@@ -569,12 +660,12 @@ function verObservaciones(observaciones) {
     $('#observacionesModal').modal('show');
 }
 
-function verInstructivo(idReceta, cantidadEsperada) {
+function verInstructivo(idReceta, cantidadEsperada, idProduccionDet) {
     $('#instructivoContenido').html('<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Cargando...</span></div><p class="mt-2">Cargando instructivo...</p></div>');
     $('#instructivoModal').modal('show');
     
-    // Realizar la solicitud AJAX incluyendo la cantidad esperada
-    $.get(`{{ route('recetas.show-instructivo') }}?id_receta=${idReceta}&cantidad=${cantidadEsperada}`, function(data) {
+    // Realizar la solicitud AJAX incluyendo el ID de la producción específica
+    $.get(`{{ route('recetas.show-instructivo') }}?id_receta=${idReceta}&cantidad=${cantidadEsperada}&id_produccion_det=${idProduccionDet}`, function(data) {
         $('#instructivoContenido').html(data);
     }).fail(function(xhr, status, error) {
         $('#instructivoContenido').html(`<div class="alert alert-danger">Error al cargar el instructivo: ${error}</div>`);
@@ -719,16 +810,113 @@ $(document).ready(function() {
             }
         ],
         initComplete: function() {
-            // Actualizar contadores
+            // Actualizar contadores y métricas
             updateCounters();
+            updateMetrics(this.api());
             
             // Escuchar cambios en la tabla
             this.api().on('draw.dt', function() {
                 updateCounters();
+                updateMetrics(this.api());
             });
         }
     });
     
+    // Función para actualizar las métricas basadas en los datos filtrados
+    function updateMetrics(tableApi) {
+        // Obtener los datos de las filas visibles (filtradas)
+        const filteredData = tableApi.rows({ search: 'applied' }).data();
+        
+        // Valores totales (sin filtro) para comparación
+        const allData = tableApi.rows().data();
+        const totalItems = allData.length;
+        
+        // Calcular totales filtrados
+        let sumaCantidadProducida = 0;
+        let sumaCantidadPedido = 0;
+        let sumaTotal = 0;
+        let contadorTerminados = 0;
+        let contadorCancelados = 0;
+        
+        // Objetivos para las barras de progreso
+        // Ya no usamos un objetivo fijo para cantidad producida
+        const objetivoTotal = 10000;   // Ajustar según sea necesario
+        
+        // Calcular sumas de los datos filtrados
+        for (let i = 0; i < filteredData.length; i++) {
+            // La columna 7 contiene la cantidad pedido
+            const cantidadPedido = parseFloat(filteredData[i][7].toString().replace(/[^0-9.-]/g, '')) || 0;
+            sumaCantidadPedido += cantidadPedido;
+            
+            // La columna 8 contiene la cantidad producida real
+            const cantidadProducida = parseFloat(filteredData[i][8].toString().replace(/[^0-9.-]/g, '')) || 0;
+            sumaCantidadProducida += cantidadProducida;
+            
+            // La columna 12 contiene el total ($)
+            const total = parseFloat(filteredData[i][12].toString().replace(/[^0-9.-]/g, '')) || 0;
+            sumaTotal += total;
+            
+            // La columna 9 contiene el estado
+            const estado = filteredData[i][9];
+            if (estado && estado.includes('Terminado')) {
+                contadorTerminados++;
+            } else if (estado && estado.includes('Cancelado')) {
+                contadorCancelados++;
+            }
+        }
+        
+        // Formatear cantidades
+        const formattedCantidad = new Intl.NumberFormat('es-PE', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(sumaCantidadProducida);
+        
+        const formattedCantidadPedido = new Intl.NumberFormat('es-PE', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }).format(sumaCantidadPedido);
+        
+        const formattedTotal = new Intl.NumberFormat('es-PE', { 
+            style: 'currency', 
+            currency: 'PEN',
+            minimumFractionDigits: 2
+        }).format(sumaTotal);
+        
+        // Calcular porcentajes para barras de progreso
+        // Calculamos el porcentaje de producción como cantidad_producida / cantidad_pedido
+        const porcentajeCantidad = sumaCantidadPedido > 0 ? Math.min(100, (sumaCantidadProducida / sumaCantidadPedido) * 100) : 0;
+        const porcentajeTotal = Math.min(100, (sumaTotal / objetivoTotal) * 100);
+        const porcentajeItems = Math.min(100, (filteredData.length / totalItems) * 100);
+        const porcentajeTerminados = filteredData.length > 0 ? Math.min(100, (contadorTerminados / filteredData.length) * 100) : 0;
+        const porcentajeCancelados = filteredData.length > 0 ? Math.min(100, (contadorCancelados / filteredData.length) * 100) : 0;
+        
+        // Actualizar métricas en los cards
+        $('#sumaCantidadProducida').text(formattedCantidad);
+        $('#sumaCantidadPedido').text(formattedCantidadPedido);
+        $('#sumaTotal').text(formattedTotal);
+        $('#contadorItems').text(filteredData.length);
+        $('#contadorTerminados').text(contadorTerminados);
+        $('#contadorCancelados').text(contadorCancelados);
+        
+        // Actualizar barras de progreso
+        $('#barraCantidadProducida').css('width', porcentajeCantidad + '%').attr('aria-valuenow', porcentajeCantidad);
+        $('#barraTotal').css('width', porcentajeTotal + '%').attr('aria-valuenow', porcentajeTotal);
+        $('#barraItems').css('width', porcentajeItems + '%').attr('aria-valuenow', porcentajeItems);
+        $('#barraTerminados').css('width', porcentajeTerminados + '%').attr('aria-valuenow', porcentajeTerminados);
+        $('#barraCancelados').css('width', porcentajeCancelados + '%').attr('aria-valuenow', porcentajeCancelados);
+        
+        // Actualizar textos de porcentaje
+        $('#porcentajeCantidadProducida').text(Math.round(porcentajeCantidad) + '% del objetivo');
+        $('#porcentajeTotal').text(Math.round(porcentajeTotal) + '% del objetivo');
+        $('#porcentajeItems').text(Math.round(porcentajeItems) + '% del total');
+        $('#porcentajeTerminados').text(Math.round(porcentajeTerminados) + '% del total filtrado');
+        $('#porcentajeCancelados').text(Math.round(porcentajeCancelados) + '% del total filtrado');
+    }
+    
+    // Función para mantener compatibilidad con el código existente
+    function updateCounters() {
+        // Esta función se mantiene para compatibilidad
+    }
 });
 </script>
 @endpush

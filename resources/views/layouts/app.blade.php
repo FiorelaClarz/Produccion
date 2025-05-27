@@ -130,6 +130,11 @@
                                 </span>
                             </li>
                             <li>
+                                <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#cambiarPasswordModal">
+                                    <i class="fas fa-key me-1"></i> Cambiar Contraseña
+                                </a>
+                            </li>
+                            <li>
                                 <hr class="dropdown-divider">
                             </li>
                             <li>
@@ -288,6 +293,112 @@
                 }
             }
         }
+    </script>
+    
+    <!-- Modal para cambiar contraseña -->
+    <div class="modal fade" id="cambiarPasswordModal" tabindex="-1" aria-labelledby="cambiarPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="cambiarPasswordModalLabel"><i class="fas fa-key me-2"></i>Cambiar Contraseña</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="cambiarPasswordAlert" class="alert d-none"></div>
+                    <form id="cambiarPasswordForm">
+                        @csrf
+                        
+                        <div class="mb-3">
+                            <label for="clave_actual" class="form-label">Contraseña Actual</label>
+                            <input type="password" class="form-control" id="clave_actual" name="clave_actual" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="clave_nueva" class="form-label">Nueva Contraseña</label>
+                            <input type="password" class="form-control" id="clave_nueva" name="clave_nueva" required>
+                            <div class="form-text">La contraseña debe tener al menos 6 caracteres.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="clave_nueva_confirmation" class="form-label">Confirmar Nueva Contraseña</label>
+                            <input type="password" class="form-control" id="clave_nueva_confirmation" name="clave_nueva_confirmation" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnCambiarPassword">
+                        <i class="fas fa-save me-1"></i> Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Script para cambiar contraseña -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cambiarPasswordForm = document.getElementById('cambiarPasswordForm');
+            const cambiarPasswordAlert = document.getElementById('cambiarPasswordAlert');
+            const btnCambiarPassword = document.getElementById('btnCambiarPassword');
+            
+            btnCambiarPassword.addEventListener('click', function() {
+                // Validar que las contraseñas coincidan
+                const claveNueva = document.getElementById('clave_nueva').value;
+                const claveNuevaConfirmation = document.getElementById('clave_nueva_confirmation').value;
+                
+                if (claveNueva !== claveNuevaConfirmation) {
+                    mostrarAlerta('Las contraseñas no coinciden', 'danger');
+                    return;
+                }
+                
+                if (claveNueva.length < 6) {
+                    mostrarAlerta('La contraseña debe tener al menos 6 caracteres', 'danger');
+                    return;
+                }
+                
+                // Enviar formulario mediante AJAX
+                const formData = new FormData(cambiarPasswordForm);
+                
+                fetch('{{ route("perfil.cambiar-password") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        mostrarAlerta(data.error, 'danger');
+                    } else if (data.success) {
+                        mostrarAlerta(data.success, 'success');
+                        // Limpiar el formulario
+                        cambiarPasswordForm.reset();
+                        // Cerrar el modal después de 2 segundos
+                        setTimeout(() => {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('cambiarPasswordModal'));
+                            modal.hide();
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    mostrarAlerta('Error al procesar la solicitud', 'danger');
+                });
+            });
+            
+            function mostrarAlerta(mensaje, tipo) {
+                cambiarPasswordAlert.textContent = mensaje;
+                cambiarPasswordAlert.className = `alert alert-${tipo}`;
+                // Ocultar la alerta después de 5 segundos si es de éxito
+                if (tipo === 'success') {
+                    setTimeout(() => {
+                        cambiarPasswordAlert.className = 'alert d-none';
+                    }, 5000);
+                }
+            }
+        });
     </script>
 </body>
 </html>

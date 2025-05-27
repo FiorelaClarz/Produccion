@@ -23,7 +23,13 @@ class ProduccionController extends Controller
 {
     public function indexPersonal()
     {
+        // Verificar que el usuario tenga el rol de Personal (id_roles === 3)
         $usuario = Auth::user();
+        if ($usuario->id_roles !== 3) {
+            return redirect()->route('produccion.index')
+                ->with('error', 'No tienes permisos para acceder a esta vista. Usa la vista de administrador.');
+        }
+        
         $estadoActual = request()->query('estado', 'pendientes');
         $fechaActual = Carbon::now()->toDateString();
         $idAreaUsuario = $usuario->id_areas;
@@ -87,6 +93,105 @@ class ProduccionController extends Controller
             'totalPendientes' => $pedidosPendientes->count(),
             'totalTerminados' => $pedidosTerminados->count(),
             'totalCancelados' => $pedidosCancelados->count()
+        ]);
+    }
+
+    /**
+     * Vista para administradores que muestra todos los pedidos organizados por áreas
+     */
+    public function indexAdmin()
+    {
+        $usuario = Auth::user();
+        
+        // Verificar que el usuario tenga el rol de Administrador (id_roles === 1)
+        if ($usuario->id_roles !== 1) {
+            return redirect()->route('produccion.index')
+                ->with('error', 'No tienes permisos para acceder a esta vista de administrador.');
+        }
+        
+        $estadoActual = request()->query('estado', 'pendientes');
+        $fechaActual = Carbon::now()->toDateString();
+        
+        // Obtener todas las áreas para el administrador
+        $areas = Area::where('status', true)
+            ->where('is_deleted', false)
+            ->get();
+        
+        // Obtener todos los pedidos del día sin filtrar por área
+        $pedidosDetalle = PedidoDetalle::with([
+                'receta', 
+                'receta.producto', 
+                'receta.detalles', 
+                'receta.detalles.producto', 
+                'receta.instructivo', 
+                'uMedida'
+            ])
+            ->whereDate('created_at', $fechaActual)
+            ->where('is_deleted', false)
+            ->whereHas('receta', function($query) {
+                $query->whereNotNull('id_recetas')
+                    ->whereHas('producto')
+                    ->whereHas('detalles');
+            })
+            ->get();
+
+        // Separar pedidos por estado
+        $pedidosPendientes = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == null || $pedido->id_estados < 4;
+        });
+
+        $pedidosTerminados = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == 4;
+        });
+
+        $pedidosCancelados = $pedidosDetalle->filter(function($pedido) {
+            return $pedido->id_estados == 5;
+        });
+
+        // Agrupar recetas por estado según el filtro
+        $recetasFiltradas = $this->agruparRecetasPorEstado(
+            $estadoActual, 
+            $pedidosPendientes, 
+            $pedidosTerminados, 
+            $pedidosCancelados
+        );
+
+        // Agrupar por áreas para visualización organizada
+        $recetasPorArea = [];
+        foreach ($areas as $area) {
+            $recetasArea = $recetasFiltradas->filter(function($receta, $idReceta) use ($area) {
+                return isset($receta['id_areas']) && $receta['id_areas'] == $area->id_areas;
+            });
+            
+            if ($recetasArea->count() > 0) {
+                $recetasPorArea[$area->id_areas] = [
+                    'area' => $area,
+                    'recetas' => $recetasArea
+                ];
+            }
+        }
+
+        $unidadesMedida = UMedida::activos()->get();
+        
+        // Verificar equipo activo del usuario (aunque no lo necesite para operar)
+        $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
+            ->where('status', true)
+            ->where('is_deleted', false)
+            ->whereDate('created_at', $fechaActual)
+            ->with(['usuario', 'area', 'turno'])
+            ->first();
+
+        return view('produccion.index-admin', [
+            'recetasAgrupadas' => $recetasFiltradas,
+            'recetasPorArea' => $recetasPorArea,
+            'unidadesMedida' => $unidadesMedida,
+            'usuario' => $usuario,
+            'equipoActivo' => $equipoActivo,
+            'estadoActual' => $estadoActual,
+            'totalPendientes' => $pedidosPendientes->count(),
+            'totalTerminados' => $pedidosTerminados->count(),
+            'totalCancelados' => $pedidosCancelados->count(),
+            'areas' => $areas
         ]);
     }
 
@@ -271,6 +376,95 @@ class ProduccionController extends Controller
     }
 
     /**
+     * Guarda la producción registrada por el administrador
+     */
+    public function guardarProduccionAdmin(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            Log::info("Inicio de guardarProduccionAdmin", ['user_id' => Auth::id()]);
+            
+            $usuario = auth()->user();
+            
+            // Verificar que sea un administrador
+            if ($usuario->id_roles !== 1) {
+                throw new \Exception("No tienes permisos para realizar esta acción. Se requiere rol de administrador.");
+            }
+            
+            $equipo = EquipoCabecera::findOrFail($request->id_equipos);
+            $fechaActual = Carbon::now()->format('Y-m-d');
+
+            // Validación de estados con logs
+            $recetasTerminadas = array_filter($request->es_terminado ?? []);
+            $recetasCanceladas = array_filter($request->es_cancelado ?? []);
+            $personalizadosTerminados = array_filter($request->es_terminado_personalizado ?? []);
+            $personalizadosCancelados = array_filter($request->es_cancelado_personalizado ?? []);
+
+            // Validar observaciones para pedidos cancelados
+            $this->validarObservacionesCancelacion($request, $recetasCanceladas, $personalizadosCancelados);
+
+            Log::debug("Estados recibidos por administrador", [
+                'recetas_terminadas' => array_keys($recetasTerminadas),
+                'recetas_canceladas' => array_keys($recetasCanceladas),
+                'personalizados_terminados' => array_keys($personalizadosTerminados),
+                'personalizados_cancelados' => array_keys($personalizadosCancelados)
+            ]);
+
+            // Verificar si hay algo para procesar
+            $hayQueProcesar = !empty($recetasTerminadas) || !empty($recetasCanceladas) || 
+                             !empty($personalizadosTerminados) || !empty($personalizadosCancelados);
+
+            if (!$hayQueProcesar) {
+                $errorMsg = "Intento de guardar producción sin estados activos";
+                Log::warning($errorMsg);
+                throw new \Exception($errorMsg);
+            }
+
+            // Buscar o crear cabecera de producción
+            $produccionCab = $this->obtenerOCrearCabeceraProduccion($equipo, $usuario, $fechaActual);
+            Log::info("Cabecera de producción (Admin)", ['produccion_cab_id' => $produccionCab->id_produccion_cab]);
+
+            // Procesar recetas normales (no personalizadas)
+            $recetasProcesadas = array_unique(array_merge(array_keys($recetasTerminadas), array_keys($recetasCanceladas)));
+            Log::info("Procesando recetas normales (Admin)", ['recetas' => $recetasProcesadas]);
+            
+            foreach ($recetasProcesadas as $idReceta) {
+                Log::info("Admin procesando receta ID: {$idReceta}");
+                $this->procesarRecetaProduccionAdmin($idReceta, $request, $produccionCab, $usuario);
+            }
+
+            // Procesar pedidos personalizados individualmente
+            $personalizadosProcesados = array_unique(array_merge(array_keys($personalizadosTerminados), array_keys($personalizadosCancelados)));
+            Log::info("Procesando pedidos personalizados (Admin)", ['pedidos' => $personalizadosProcesados]);
+            
+            foreach ($personalizadosProcesados as $idPedido) {
+                Log::info("Admin procesando pedido personalizado ID: {$idPedido}");
+                $pedido = PedidoDetalle::find($idPedido);
+                if ($pedido) {
+                    $this->procesarPedidoPersonalizadoAdmin($request, $produccionCab, $pedido->receta, $pedido);
+                } else {
+                    Log::error("Pedido personalizado no encontrado", ['pedido_id' => $idPedido]);
+                }
+            }
+
+            DB::commit();
+            Log::info("Producción guardada exitosamente por administrador");
+            
+            return redirect()->route('produccion.index-admin', ['estado' => 'pendientes'])
+                ->with('success', "Producción registrada correctamente por administrador");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error al guardar producción (Admin): " . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all()
+            ]);
+            
+            return back()->with('error', 'Error al registrar la producción: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Valida que existan observaciones para los pedidos cancelados
      */
     protected function validarObservacionesCancelacion($request, $recetasCanceladas, $personalizadosCancelados)
@@ -343,8 +537,122 @@ class ProduccionController extends Controller
     }
 
     /**
-     * Procesa un grupo de pedidos normales (no personalizados)
+     * Procesa una receta completa para el administrador (sin restricción de área)
      */
+    protected function procesarRecetaProduccionAdmin($idReceta, $request, $produccionCab, $usuario)
+    {
+        $receta = RecetaCabecera::with(['detalles.producto'])->findOrFail($idReceta);
+        
+        // Obtener solo pedidos no personalizados SIN filtrar por área
+        $pedidos = PedidoDetalle::where('id_recetas', $idReceta)
+            ->whereDate('created_at', Carbon::today())
+            ->where('es_personalizado', false) // Solo pedidos no personalizados
+            ->get();
+
+        Log::debug("Admin procesando receta para todos los pedidos", [
+            'receta_id' => $idReceta,
+            'cantidad_pedidos' => $pedidos->count()
+        ]);
+
+        if ($pedidos->count() > 0) {
+            $this->procesarPedidosNormales($request, $produccionCab, $receta, $pedidos, $idReceta);
+        }
+    }
+
+    /**
+     * Procesa un pedido personalizado para el administrador (sin restricción de área)
+     */
+    protected function procesarPedidoPersonalizadoAdmin($request, $produccionCab, $receta, $pedido)
+    {
+        // Validar que el pedido tenga los datos necesarios
+        if (!$pedido || !$receta) {
+            Log::error("Error al procesar pedido personalizado (Admin): Datos incompletos", [
+                'pedido_id' => $pedido->id_pedidos_det ?? null,
+                'receta_id' => $receta->id_recetas ?? null
+            ]);
+            return null;
+        }
+
+        $esIniciado = (bool)($request->es_iniciado_personalizado[$pedido->id_pedidos_det] ?? false);
+        $esTerminado = (bool)($request->es_terminado_personalizado[$pedido->id_pedidos_det] ?? false);
+        $esCancelado = (bool)($request->es_cancelado_personalizado[$pedido->id_pedidos_det] ?? false);
+
+        // Solo procesar si tiene algún estado activo
+        if (!$esIniciado && !$esTerminado && !$esCancelado) {
+            Log::info("Pedido personalizado {$pedido->id_pedidos_det} no procesado - Sin estados activos");
+            return null;
+        }
+
+        // Validar que solo un estado esté activo
+        if ($esTerminado && $esCancelado) {
+            throw new \Exception("No se puede terminar y cancelar el mismo pedido");
+        }
+
+        $cantidadPedido = $pedido->cantidad;
+        $cantidadEsperada = ($receta->id_areas == 1)
+            ? $cantidadPedido * $receta->constante_peso_lata
+            : $cantidadPedido;
+        
+        // Obtener cantidad producida real para este pedido
+        $cantidadProducida = (float)($request->cantidad_producida_real_personalizado[$pedido->id_pedidos_det] ?? $cantidadPedido);
+        
+        // Obtener costo diseño para este pedido específico
+        $costoDiseno = (float)($request->costo_diseño[$pedido->id_pedidos_det] ?? 0);
+
+        // --- LÓGICA PARA CANCELADOS ---
+        if ($esCancelado && !$esIniciado) {
+            $cantidadEsperada = 0;
+            $cantidadProducida = 0;
+            $costoDiseno = 0;
+        }
+        // --------------------------------
+
+        // Validar costo diseño si se está terminando
+        if ($esTerminado && $costoDiseno <= 0) {
+            throw new \Exception("Debe ingresar un costo de diseño válido para el pedido personalizado #{$pedido->id_pedidos_det}");
+        }
+
+        // Obtener ID del componente de harina
+        $idHarina = $request->id_recetas_det_harina_personalizado[$pedido->id_pedidos_det] ?? null;
+
+        // Calcular subtotal y total
+        $subtotalReceta = ($esCancelado && !$esIniciado) ? 0 : $this->calcularSubtotal($receta, $cantidadEsperada);
+        $totalReceta = ($esCancelado && !$esIniciado) ? 0 : ($this->calcularSubtotal($receta, $cantidadEsperada) + $costoDiseno);
+        $cantHarina = ($esCancelado && !$esIniciado) ? 0 : $this->calcularHarina($receta, $cantidadEsperada);
+
+        // Crear detalle de producción individual para este pedido personalizado
+        $detalle = ProduccionDetalle::create([
+            'id_produccion_cab' => $produccionCab->id_produccion_cab,
+            'id_productos_api' => $receta->id_productos_api,
+            'id_u_medidas' => $pedido->id_u_medidas,
+            'id_u_medidas_prodcc' => $pedido->id_u_medidas,
+            'id_recetas_cab' => $receta->id_recetas,
+            'id_areas' => $receta->id_areas,
+            'cantidad_pedido' => $cantidadPedido,
+            'cantidad_esperada' => $cantidadEsperada,
+            'cantidad_producida_real' => $cantidadProducida,
+            'es_iniciado' => $esIniciado,
+            'es_terminado' => $esTerminado,
+            'es_cancelado' => $esCancelado,
+            'costo_diseño' => $costoDiseno,
+            'subtotal_receta' => $subtotalReceta,
+            'total_receta' => $totalReceta,
+            'cant_harina' => $cantHarina,
+            'id_recetas_det_harina' => $idHarina,
+            'observaciones' => $request->observaciones_personalizado[$pedido->id_pedidos_det] ?? null,
+            'pedidos_ids' => [$pedido->id_pedidos_det]
+        ]);
+
+        // Actualizar estado de este pedido individual
+        $this->actualizarEstadosPedidos(collect([$pedido]), $esIniciado, $esTerminado, $esCancelado);
+
+        Log::info("Registrado detalle de producción para pedido personalizado (Admin)", [
+            'produccion_det_id' => $detalle->id_produccion_det,
+            'pedido_id' => $pedido->id_pedidos_det
+        ]);
+
+        return $detalle;
+    }
     protected function procesarPedidosNormales($request, $produccionCab, $receta, $pedidos, $idReceta)
     {
         Log::info("Iniciando procesamiento de pedidos normales para receta ID: {$idReceta}");

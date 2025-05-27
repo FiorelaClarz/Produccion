@@ -594,46 +594,102 @@
         // Validación del formulario principal
         function validateFormFields() {
             let isValid = true;
+            let camposFallidos = [];
 
             // Validar campos requeridos
             $('[required]').each(function() {
                 const $field = $(this);
+                const fieldId = $field.attr('id') || $field.attr('name');
+                
                 if ($field.val() === '') {
                     $field.addClass('is-invalid');
                     isValid = false;
+                    camposFallidos.push(fieldId);
+                    console.log('Campo requerido vacío:', fieldId);
                 } else {
                     $field.removeClass('is-invalid');
                 }
             });
 
+            if (!isValid) {
+                console.warn('Validación de campos falló. Campos faltantes:', camposFallidos);
+            } else {
+                console.log('Todos los campos requeridos están completos');
+            }
+            
             return isValid;
         }
 
         // Validación completa del formulario
         function validateRecetaForm() {
+            console.log('Iniciando validación del formulario completo...');
             let isValid = true;
             $('#ingredientesError').hide();
 
             // Validar campos del formulario
-            isValid = validateFormFields();
-
-            // Validar ingredientes
-            if (ingredientes.length === 0) {
-                $('#ingredientesError').show();
+            const camposValidos = validateFormFields();
+            if (!camposValidos) {
+                console.warn('La validación de campos requeridos falló');
                 isValid = false;
             }
 
+            // Validar ingredientes
+            console.log('Validando ingredientes. Cantidad actual:', ingredientes.length);
+            if (ingredientes.length === 0) {
+                $('#ingredientesError').show();
+                console.warn('No hay ingredientes agregados a la receta');
+                isValid = false;
+            }
+
+            console.log('Resultado final de validación:', isValid ? 'Éxito' : 'Fallido');
             return isValid;
         }
 
         // Validar al enviar el formulario
         $('#recetaForm').on('submit', function(e) {
-            if (!validateRecetaForm()) {
-                e.preventDefault();
-                $('html, body').animate({
-                    scrollTop: $('.is-invalid').first().offset().top - 100
-                }, 500);
-            }
+            console.log('Enviando formulario...');
+            e.preventDefault(); // Detener el envío normal
+            
+            // Convertir el array de ingredientes a JSON y asignarlo al campo oculto
+            const ingredientesJSON = JSON.stringify(ingredientes);
+            $('#ingredientesData').val(ingredientesJSON);
+            console.log('Ingredientes serializados:', ingredientesJSON);
+            console.log('Número de ingredientes:', ingredientes.length);
+            
+            // Asegurarse de que la ruta está correcta
+            const formAction = $(this).attr('action');
+            const formMethod = $(this).attr('method');
+            console.log('Ruta de envío:', formAction);
+            console.log('Método HTTP:', formMethod);
+            
+            // Simplemente enviar el formulario con una redirección manual
+            $.ajax({
+                url: formAction,
+                type: formMethod,
+                data: $(this).serialize(),
+                success: function(response) {
+                    console.log('Respuesta recibida');
+                    // Redirigir a la lista de recetas
+                    window.location.href = '{{ route("recetas.index") }}';
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error en la solicitud:', error);
+                    
+                    // Intentar mostrar la respuesta del servidor
+                    if (xhr.responseText) {
+                        console.log('Respuesta del servidor:', xhr.responseText);
+                    }
+                    
+                    // Si la respuesta contiene HTML (posiblemente una redirección)
+                    if (xhr.responseText && xhr.responseText.includes('<html')) {
+                        console.log('La respuesta parece ser HTML, posiblemente una redirección');
+                        window.location.href = '{{ route("recetas.index") }}';
+                        return;
+                    }
+                    
+                    alert('Error al actualizar la receta. Por favor, revisa la consola para más detalles.');
+                }
+            });
         });
 
         // Validación en tiempo real para campos requeridos
