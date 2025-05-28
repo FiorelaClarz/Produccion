@@ -83,6 +83,7 @@ class TiendaController extends Controller
     {
         $validated = $request->validate([
             'nombre' => 'required|string|max:45',
+            'codigo_tienda' => 'nullable|string|max:10',
             'status' => 'required|boolean',
         ]);
 
@@ -90,6 +91,7 @@ class TiendaController extends Controller
             $tienda = Tienda::findOrFail($id);
             $tienda->update([
                 'nombre' => $validated['nombre'],
+                'codigo_tienda' => $validated['codigo_tienda'],
                 'status' => $validated['status'],
                 'updated_at_datetime' => now()->timezone(config('app.timezone'))
             ]);

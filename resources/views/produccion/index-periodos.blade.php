@@ -810,26 +810,45 @@ $(document).ready(function() {
             }
         ],
         initComplete: function() {
+            var table = this.api();
             // Actualizar contadores y métricas
             updateCounters();
-            updateMetrics(this.api());
+            updateMetrics(table);
             
             // Escuchar cambios en la tabla
-            this.api().on('draw.dt', function() {
+            table.on('draw.dt', function() {
                 updateCounters();
-                updateMetrics(this.api());
+                updateMetrics(table);
+            });
+            
+            // Escuchar eventos de filtrado
+            table.on('search.dt', function() {
+                updateMetrics(table);
+            });
+            
+            // Escuchar cambios de página
+            table.on('page.dt', function() {
+                updateMetrics(table);
+            });
+            
+            // Escuchar cambios en la longitud de página
+            table.on('length.dt', function() {
+                updateMetrics(table);
             });
         }
     });
     
     // Función para actualizar las métricas basadas en los datos filtrados
     function updateMetrics(tableApi) {
+        console.log('Actualizando métricas con filas filtradas');
         // Obtener los datos de las filas visibles (filtradas)
         const filteredData = tableApi.rows({ search: 'applied' }).data();
+        console.log('Número de filas filtradas:', filteredData.length);
         
         // Valores totales (sin filtro) para comparación
         const allData = tableApi.rows().data();
         const totalItems = allData.length;
+        console.log('Total de filas:', totalItems);
         
         // Calcular totales filtrados
         let sumaCantidadProducida = 0;
@@ -837,10 +856,6 @@ $(document).ready(function() {
         let sumaTotal = 0;
         let contadorTerminados = 0;
         let contadorCancelados = 0;
-        
-        // Objetivos para las barras de progreso
-        // Ya no usamos un objetivo fijo para cantidad producida
-        const objetivoTotal = 10000;   // Ajustar según sea necesario
         
         // Calcular sumas de los datos filtrados
         for (let i = 0; i < filteredData.length; i++) {
@@ -885,7 +900,11 @@ $(document).ready(function() {
         // Calcular porcentajes para barras de progreso
         // Calculamos el porcentaje de producción como cantidad_producida / cantidad_pedido
         const porcentajeCantidad = sumaCantidadPedido > 0 ? Math.min(100, (sumaCantidadProducida / sumaCantidadPedido) * 100) : 0;
-        const porcentajeTotal = Math.min(100, (sumaTotal / objetivoTotal) * 100);
+        // Aquí vamos a usar el valor más alto de los filtrados como referencia para el total
+        const maxTotal = filteredData.length > 0 ? Math.max(...[...Array(filteredData.length).keys()].map(i => {
+            return parseFloat(filteredData[i][12].toString().replace(/[^0-9.-]/g, '')) || 0;
+        })) : 1;
+        const porcentajeTotal = maxTotal > 0 ? Math.min(100, (sumaTotal / (maxTotal * filteredData.length)) * 100) : 0;
         const porcentajeItems = Math.min(100, (filteredData.length / totalItems) * 100);
         const porcentajeTerminados = filteredData.length > 0 ? Math.min(100, (contadorTerminados / filteredData.length) * 100) : 0;
         const porcentajeCancelados = filteredData.length > 0 ? Math.min(100, (contadorCancelados / filteredData.length) * 100) : 0;
@@ -906,8 +925,8 @@ $(document).ready(function() {
         $('#barraCancelados').css('width', porcentajeCancelados + '%').attr('aria-valuenow', porcentajeCancelados);
         
         // Actualizar textos de porcentaje
-        $('#porcentajeCantidadProducida').text(Math.round(porcentajeCantidad) + '% del objetivo');
-        $('#porcentajeTotal').text(Math.round(porcentajeTotal) + '% del objetivo');
+        $('#porcentajeCantidadProducida').text(Math.round(porcentajeCantidad) + '% producido vs pedido');
+        $('#porcentajeTotal').text(Math.round(porcentajeTotal) + '% del máximo');
         $('#porcentajeItems').text(Math.round(porcentajeItems) + '% del total');
         $('#porcentajeTerminados').text(Math.round(porcentajeTerminados) + '% del total filtrado');
         $('#porcentajeCancelados').text(Math.round(porcentajeCancelados) + '% del total filtrado');

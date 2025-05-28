@@ -1,0 +1,178 @@
+{
+	"info": {
+		"_postman_id": "0aa05146-a613-475b-b612-781a6b9bf022",
+		"name": "Sales",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12772120"
+	},
+	"item": [
+		{
+			"name": "GetSalesStore",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ2b3ZlcmtvayIsImlhdCI6MTc0ODQ1NDEwMCwiZXhwIjoxNzQ4NDk3MzAwLCJ1c2VySUQiOiJ2b3Zlcmtva19yZWQlOTk0MTQifQ.r5Nt6mUrCUIjZie7D5h8LROQ7hkrE8v6Uhdr_gjzq9M",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "http://64.227.4.218/stargroup/middleware/awsSalesStore.php?accion=MostrarByIdDate&store_code=T03&id_item=250704&fecha1=2025-01-28&fecha2=2025-03-28",
+					"protocol": "http",
+					"host": [
+						"64",
+						"227",
+						"4",
+						"218"
+					],
+					"path": [
+						"stargroup",
+						"middleware",
+						"awsSalesStore.php"
+					],
+					"query": [
+						{
+							"key": "accion",
+							"value": "MostrarByIdDate",
+							"description": "Identificador del controlador "
+						},
+						{
+							"key": "store_code",
+							"value": "T03",
+							"description": "Codigo de la Tienda donde buscar"
+						},
+						{
+							"key": "id_item",
+							"value": "250704",
+							"description": "Id del producto "
+						},
+						{
+							"key": "fecha1",
+							"value": "2025-01-28",
+							"description": "formato ISO 8601"
+						},
+						{
+							"key": "fecha2",
+							"value": "2025-03-28",
+							"description": "formato ISO 8601"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "GetSalesStore",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer  eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ2b3ZlcmtvayIsImlhdCI6MTc0ODQ1NDEwMCwiZXhwIjoxNzQ4NDk3MzAwLCJ1c2VySUQiOiJ2b3Zlcmtva19yZWQlOTk0MTQifQ.r5Nt6mUrCUIjZie7D5h8LROQ7hkrE8v6Uhdr_gjzq9M",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
+						"url": {
+							"raw": "http://64.227.4.218/stargroup/middleware/awsSalesStore.php?accion=MostrarByIdDate&store_code=T03&id_item=250704&fecha1=2025-01-28&fecha2=2025-03-28",
+							"protocol": "http",
+							"host": [
+								"64",
+								"227",
+								"4",
+								"218"
+							],
+							"path": [
+								"stargroup",
+								"middleware",
+								"awsSalesStore.php"
+							],
+							"query": [
+								{
+									"key": "accion",
+									"value": "MostrarByIdDate",
+									"description": "Identificador del controlador "
+								},
+								{
+									"key": "store_code",
+									"value": "T03",
+									"description": "Codigo de la Tienda donde buscar"
+								},
+								{
+									"key": "id_item",
+									"value": "250704",
+									"description": "Id del producto "
+								},
+								{
+									"key": "fecha1",
+									"value": "2025-01-28",
+									"description": "formato ISO 8601"
+								},
+								{
+									"key": "fecha2",
+									"value": "2025-03-28",
+									"description": "formato ISO 8601"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Wed, 28 May 2025 17:45:39 GMT"
+						},
+						{
+							"key": "Server",
+							"value": "Apache/2.4.6 (CentOS) mod_wsgi/4.7.1 Python/3.6 PHP/7.4.16"
+						},
+						{
+							"key": "X-Powered-By",
+							"value": "PHP/7.4.16"
+						},
+						{
+							"key": "Content-Length",
+							"value": "7155"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5, max=100"
+						},
+						{
+							"key": "Connection",
+							"value": "Keep-Alive"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						}
+					],
+					"cookie": [],
+					"body": "[\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-01-28\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-07\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-03\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-01-28\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-01-30\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-08\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-10\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-10\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-13\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-15\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-16\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-15\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-15\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-19\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-17\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-18\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-17\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-20\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-11\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-22\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-03\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-08\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-02-20\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-01\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-08\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-09\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-14\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-12\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-18\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-15\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-20\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-19\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-23\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-22\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-23\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-21\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-22\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-26\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-25\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-25\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"2.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-25\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"3.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    },\n    {\n        \"store_code\": \"T03\",\n        \"sale_date\": \"2025-03-28\",\n        \"id_item\": 250704,\n        \"sales_quantity\": \"1.000\",\n        \"cost\": \"0.720\",\n        \"nombre\": \"AJINOMOTO DELI ARROZ 12G X 5UND\"\n    }\n]"
+				}
+			]
+		}
+	]
+}

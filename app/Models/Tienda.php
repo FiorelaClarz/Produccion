@@ -16,6 +16,7 @@ class Tienda extends Model
     
     protected $fillable = [
         'nombre',
+        'codigo_tienda',
         'created_at_datetime',
         'updated_at_datetime',
         'deleted_at',

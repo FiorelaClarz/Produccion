@@ -167,6 +167,31 @@ class ComparativoController extends Controller
             return $a['area'] <=> $b['area'];
         });
         
+        // Obtener las unidades de medida para cada receta
+        $unidadesProduccion = [];
+        $idsRecetas = array_column($resultados, 'receta');
+        
+        // Obtener las unidades de medida de producción para todas las recetas encontradas
+        $unidadesData = ProduccionDetalle::select('id_recetas_cab', 'id_u_medidas_prodcc')
+            ->whereIn('id_recetas_cab', array_column($produccionData->toArray(), 'id_recetas_cab'))
+            ->whereNotNull('id_u_medidas_prodcc')
+            ->groupBy('id_recetas_cab', 'id_u_medidas_prodcc')
+            ->get();
+            
+        // Crear un array asociativo de receta => id_u_medidas_prodcc
+        foreach ($unidadesData as $unidad) {
+            $unidadesProduccion[$unidad->id_recetas_cab] = $unidad->id_u_medidas_prodcc;
+        }
+        
+        // Agregar las unidades de medida a cada resultado
+        foreach ($resultados as &$resultado) {
+            $idReceta = array_search($resultado['receta'], array_column($produccionData->toArray(), 'receta_nombre'));
+            if ($idReceta !== false) {
+                $idRecetaCab = $produccionData[$idReceta]->id_recetas_cab;
+                $resultado['id_u_medidas_prodcc'] = $unidadesProduccion[$idRecetaCab] ?? null;
+            }
+        }
+        
         return view('produccion.comparativo', compact(
             'resultados', 
             'totales', 

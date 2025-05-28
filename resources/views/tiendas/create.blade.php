@@ -15,6 +15,15 @@
             @enderror
         </div>
 
+        <div class="mb-3">
+            <label for="codigo_tienda" class="form-label">Código de Tienda</label>
+            <input type="text" class="form-control" id="codigo_tienda" name="codigo_tienda" maxlength="10">
+            <small class="form-text text-muted">Código de identificación único para la tienda (máximo 10 caracteres)</small>
+            @error('codigo_tienda')
+                <div class="text-danger">{{ $message }}</div>
+            @enderror
+        </div>
+
         <button type="submit" class="btn btn-primary">Guardar</button>
         <a href="{{ route('tiendas.index') }}" class="btn btn-secondary">Cancelar</a>
     </form>

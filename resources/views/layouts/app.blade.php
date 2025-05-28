@@ -1,3 +1,27 @@
+@php
+/**
+ * Función auxiliar para generar URLs seguras
+ */
+function generarRuta($item) {
+    if (!isset($item['route']) || !Route::has($item['route'])) {
+        return '#';
+    }
+    
+    if ($item['route'] == 'usuarios.show' && Auth::check()) {
+        return route('usuarios.show', ['usuario' => Auth::id()]);
+    }
+    
+    if (isset($item['params'])) {
+        if (is_array($item['params'])) {
+            return route($item['route'], $item['params']);
+        } elseif ($item['params'] == 'active_equipment_id' && session()->has('active_equipment_id')) {
+            return route($item['route'], ['id' => session('active_equipment_id')]);
+        }
+    }
+    
+    return route($item['route']);
+}
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 
@@ -159,25 +183,27 @@
             <div class="d-none d-md-block sidebar bg-dark">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
+                        
+                        <!-- Menú dinámico generado por MenuServiceProvider -->
                         @foreach($menuItems as $item)
-                        @if($item['visible'] && Route::has($item['route']))
+                        @if(isset($item['visible']) && $item['visible'] && isset($item['route']) && Route::has($item['route']))
                             @if(isset($item['submenu']))
                             <li class="nav-item">
                                 <a class="nav-link d-flex justify-content-between align-items-center {{ (request()->routeIs($item['route']) || request()->routeIs($item['route'].'*')) ? 'active' : '' }}"
                                     data-bs-toggle="collapse" href="#submenu-{{ $loop->index }}" role="button" aria-expanded="false">
                                     <span>
-                                        <i class="{{ $item['icon'] }} me-2"></i>
-                                        {{ $item['text'] }}
+                                        <i class="{{ isset($item['icon']) ? $item['icon'] : 'fas fa-circle' }} me-2"></i>
+                                        {{ $item['text'] ?? 'Menú' }}
                                     </span>
                                     <i class="fas fa-chevron-down"></i>
                                 </a>
                                 <div class="collapse {{ (request()->routeIs($item['route']) || request()->routeIs($item['route'].'*')) ? 'show' : '' }}" id="submenu-{{ $loop->index }}">
                                     <ul class="nav flex-column ms-3 mt-2">
                                         @foreach($item['submenu'] as $submenu)
-                                        @if(Route::has($submenu['route']))
+                                        @if(isset($submenu['route']) && Route::has($submenu['route']))
                                         <li class="nav-item">
                                             <a class="nav-link {{ request()->routeIs($submenu['route']) ? 'active' : '' }}" 
-                                               href="{{ route($submenu['route']) }}">
+                                               href="{{ generarRuta($submenu) }}">
                                                 <i class="{{ $submenu['icon'] ?? 'fas fa-circle' }} me-2"></i>
                                                 {{ $submenu['text'] }}
                                             </a>
@@ -190,7 +216,7 @@
                             @else
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }}"
-                                    href="{{ route($item['route']) }}">
+                                    href="{{ generarRuta($item) }}">
                                     <i class="{{ $item['icon'] }} me-2"></i>
                                     {{ $item['text'] }}
                                 </a>
@@ -198,6 +224,73 @@
                             @endif
                         @endif
                         @endforeach
+                        
+                        <!-- Menú de Administración de Tablas para administradores (forzado) -->
+                        @if(Auth::check() && Auth::user()->id_roles == 1)
+                        <li class="nav-item">
+                            <a class="nav-link d-flex justify-content-between align-items-center"
+                                data-bs-toggle="collapse" href="#adminTablesMenu" role="button" aria-expanded="false">
+                                <span>
+                                    <i class="fas fa-database me-2"></i>
+                                    Administración de Tablas
+                                </span>
+                                <i class="fas fa-chevron-down"></i>
+                            </a>
+                            <div class="collapse" id="adminTablesMenu">
+                                <ul class="nav flex-column ms-3 mt-2">
+                                    <!-- Gestión de Usuarios -->
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('usuarios.index') }}">
+                                            <i class="fas fa-users me-2"></i>
+                                            Usuarios
+                                        </a>
+                                    </li>
+                                    <!-- Gestión de Roles -->
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('rols.index') }}">
+                                            <i class="fas fa-user-tag me-2"></i>
+                                            Roles
+                                        </a>
+                                    </li>
+                                    <!-- Gestión de Turnos -->
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('turnos.index') }}">
+                                            <i class="fas fa-calendar-alt me-2"></i>
+                                            Turnos
+                                        </a>
+                                    </li>
+                                    <!-- Gestión de Áreas -->
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('areas.index') }}">
+                                            <i class="fas fa-map-marked-alt me-2"></i>
+                                            Áreas
+                                        </a>
+                                    </li>
+                                    <!-- Gestión de Tiendas -->
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('tiendas.index') }}">
+                                            <i class="fas fa-store me-2"></i>
+                                            Tiendas
+                                        </a>
+                                    </li>
+                                    <!-- Otras tablas del sistema -->
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('estados.index') }}">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Estados
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="{{ route('umedidas.index') }}">
+                                            <i class="fas fa-balance-scale me-2"></i>
+                                            Unidades de medida
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        @endif
+                        
                     </ul>
                 </div>
             </div>

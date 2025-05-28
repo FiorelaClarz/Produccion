@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Barryvdh\DomPDF\Facade\Pdf;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class MermaController extends Controller
 {
@@ -586,6 +591,189 @@ class MermaController extends Controller
 
         $pdf = Pdf::loadView('mermas.pdf_multiple', compact('mermas', 'title'));
         return $pdf->stream('mermas_lista_' . Carbon::now()->format('Y-m-d') . '.pdf');
+    }
+    
+    /**
+     * Generar Excel de mermas basado en los filtros aplicados
+     * 
+     * @param Request $request
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function generateExcel(Request $request)
+    {
+        $usuario = Auth::user();
+        
+        $query = MermaCabecera::with([
+            'usuario',
+            'tienda',
+            'mermasDetalle' => function ($query) {
+                $query->where('is_deleted', false);
+            },
+            'mermasDetalle.area',
+            'mermasDetalle.receta',
+            'mermasDetalle.receta.producto',
+            'mermasDetalle.uMedida'
+        ])
+        ->where('is_deleted', false);
+
+        // Filtro por rol de usuario
+        if ($usuario->id_roles == 4) { // Rol operador
+            $query->where('id_tiendas_api', $usuario->id_tiendas_api);
+        }
+
+        // Ordenamiento
+        $query->orderBy('fecha_registro', 'desc')
+              ->orderBy('hora_registro', 'desc');
+
+        // Determinar el filtro a aplicar
+        $filter = $request->filter ?? 'today';
+        $today = Carbon::today();
+
+        switch ($filter) {
+            case 'today':
+                $query->whereDate('fecha_registro', $today);
+                $title = 'Mermas de Hoy';
+                break;
+            case 'yesterday':
+                $query->whereDate('fecha_registro', $today->copy()->subDay());
+                $title = 'Mermas de Ayer';
+                break;
+            case 'week':
+                $query->whereBetween('fecha_registro', [$today->copy()->subWeek(), $today]);
+                $title = 'Mermas de la Última Semana';
+                break;
+            case 'custom':
+                if ($request->has('custom_date')) {
+                    $query->whereDate('fecha_registro', $request->custom_date);
+                    $title = 'Mermas del ' . Carbon::parse($request->custom_date)->format('d/m/Y');
+                } else {
+                    $title = 'Todas las Mermas';
+                }
+                break;
+            default:
+                $title = 'Todas las Mermas';
+        }
+
+        $mermas = $query->get();
+        
+        // Crear un nuevo spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle("Listado de Mermas");
+        
+        // Estilos para los encabezados
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '4472C4'],
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                ],
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ];
+        
+        // Configurar el ancho de las columnas
+        $sheet->getColumnDimension('A')->setWidth(15); // ID Merma
+        $sheet->getColumnDimension('B')->setWidth(15); // Fecha
+        $sheet->getColumnDimension('C')->setWidth(10); // Hora
+        $sheet->getColumnDimension('D')->setWidth(25); // Usuario
+        $sheet->getColumnDimension('E')->setWidth(20); // Tienda
+        $sheet->getColumnDimension('F')->setWidth(20); // Área
+        $sheet->getColumnDimension('G')->setWidth(25); // Receta
+        $sheet->getColumnDimension('H')->setWidth(25); // Producto
+        $sheet->getColumnDimension('I')->setWidth(15); // Cantidad
+        $sheet->getColumnDimension('J')->setWidth(15); // Costo
+        $sheet->getColumnDimension('K')->setWidth(15); // Total
+        $sheet->getColumnDimension('L')->setWidth(15); // Unidad Medida
+        $sheet->getColumnDimension('M')->setWidth(40); // Observación
+        $sheet->getColumnDimension('N')->setWidth(20); // Fecha Actualización
+        
+        // Agregar título del reporte
+        $sheet->setCellValue('A1', $title);
+        $sheet->mergeCells('A1:N1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        
+        // Agregar fecha de generación
+        $sheet->setCellValue('A2', 'Generado el: ' . Carbon::now()->format('d/m/Y H:i:s'));
+        $sheet->mergeCells('A2:N2');
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        
+        // Agregar encabezados
+        $headers = [
+            'ID Merma', 'Fecha', 'Hora', 'Usuario', 'Tienda', 'Área', 'Receta', 'Producto', 
+            'Cantidad', 'Costo', 'Total', 'Unidad Medida', 'Observación', 'Fecha Actualización'
+        ];
+        
+        $col = 'A';
+        $row = 4;
+        
+        foreach ($headers as $header) {
+            $sheet->setCellValue($col . $row, $header);
+            $col++;
+        }
+        
+        $sheet->getStyle('A4:N4')->applyFromArray($headerStyle);
+        
+        // Agregar datos
+        $row = 5;
+        $initRow = $row;
+        
+        foreach ($mermas as $merma) {
+            foreach ($merma->mermasDetalle as $detalle) {
+                $col = 'A';
+                
+                // Datos de cabecera
+                $sheet->setCellValue($col++ . $row, $merma->id_mermas_cab);
+                $sheet->setCellValue($col++ . $row, Carbon::parse($merma->fecha_registro)->format('d/m/Y'));
+                $sheet->setCellValue($col++ . $row, $merma->hora_registro);
+                $sheet->setCellValue($col++ . $row, $merma->usuario->nombre_personal ?? 'N/A');
+                $sheet->setCellValue($col++ . $row, $merma->tienda->nombre ?? 'N/A');
+                
+                // Datos de detalle
+                $sheet->setCellValue($col++ . $row, $detalle->area->nombre ?? 'N/A');
+                $sheet->setCellValue($col++ . $row, $detalle->receta->nombre ?? 'N/A');
+                $sheet->setCellValue($col++ . $row, $detalle->receta->producto->nombre ?? 'N/A');
+                $sheet->setCellValue($col++ . $row, number_format($detalle->cantidad, 2));
+                $sheet->setCellValue($col++ . $row, number_format($detalle->costo ?? 0, 2));
+                $sheet->setCellValue($col++ . $row, number_format($detalle->total ?? 0, 2));
+                $sheet->setCellValue($col++ . $row, $detalle->uMedida->nombre ?? 'N/A');
+                $sheet->setCellValue($col++ . $row, $detalle->obs ?? '-');
+                $sheet->setCellValue($col++ . $row, Carbon::parse($merma->updated_at)->format('d/m/Y H:i:s'));
+                
+                $row++;
+            }
+        }
+        
+        // Aplicar bordes a todas las celdas con datos
+        $lastRow = $row - 1;
+        if ($lastRow >= $initRow) {
+            $sheet->getStyle('A' . $initRow . ':N' . $lastRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        }
+        
+        // Crear el archivo Excel
+        $filename = 'mermas_detallado_' . Carbon::now()->format('Y-m-d_H-i-s') . '.xlsx';
+        $writer = new Xlsx($spreadsheet);
+        $path = storage_path('app/public/' . $filename);
+        
+        // Asegurarse de que el directorio exista
+        if (!file_exists(storage_path('app/public'))) {
+            mkdir(storage_path('app/public'), 0755, true);
+        }
+        
+        $writer->save($path);
+        
+        return response()->download($path, $filename)->deleteFileAfterSend(true);
     }
 }
 

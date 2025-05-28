@@ -15,6 +15,7 @@ use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\HoraLimiteController;
 use App\Http\Controllers\MermaController;
 use App\Http\Controllers\ComparativoController;
+use App\Http\Controllers\VentaController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\PerfilController;
@@ -262,6 +263,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{produccion}', [ProduccionController::class, 'show'])->name('produccion.show');
         Route::get('/{produccion}/edit', [ProduccionController::class, 'edit'])->name('produccion.edit');
         Route::put('/{produccion}', [ProduccionController::class, 'update'])->name('produccion.update');
+        Route::put('/detalle/{id}', [ProduccionController::class, 'updateDetalle'])->name('produccion.updateDetalle');
         Route::get('get_observacion', [ProduccionController::class, 'obtenerObservacion'])->name('produccion.get_observacion');
         Route::get('get_detalles_pedidos', [ProduccionController::class, 'obtenerDetallesPedidos'])->name('produccion.get_detalles_pedidos');
         Route::delete('/{produccion}', [ProduccionController::class, 'destroy'])->name('produccion.destroy');
@@ -271,6 +273,12 @@ Route::middleware(['auth'])->group(function () {
     // Rutas para cambio de contraseña
     Route::post('/cambiar-password', [PerfilController::class, 'cambiarPassword'])->middleware('auth')->name('perfil.cambiar-password');
 
+    // Rutas para consulta de ventas por tienda
+    Route::prefix('ventas')->group(function () {
+        Route::get('/consulta', [VentaController::class, 'consulta'])->name('ventas.consulta');
+        Route::get('/consulta-avanzada', [VentaController::class, 'consultaAvanzada'])->name('ventas.consulta-avanzada');
+        Route::get('/api-proxy', [VentaController::class, 'proxy'])->name('ventas.proxy');
+    });
     
 });
 
@@ -289,6 +297,7 @@ Route::prefix('mermas')->middleware('auth')->group(function () {
     
     // Rutas adicionales específicas (deben ir ANTES de las rutas con parámetros)
     Route::get('/generar-pdf-multiple', [MermaController::class, 'generateBulkPdf'])->name('mermas.pdf-multiple');
+    Route::get('/generar-excel', [MermaController::class, 'generateExcel'])->name('mermas.excel');
     Route::post('/buscar-recetas', [MermaController::class, 'buscarRecetas'])->name('mermas.buscar-recetas');
     Route::post('/obtener-costo', [MermaController::class, 'obtenerCosto'])->name('mermas.obtener-costo');
     

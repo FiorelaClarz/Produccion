@@ -1043,6 +1043,112 @@ class ProduccionController extends Controller
         return redirect()->route('produccion.index')
             ->with('success', 'Producción eliminada exitosamente');
     }
+    
+    /**
+     * Update the specified production detail in storage.
+     * 
+     * This method allows editing individual production details including
+     * the real production quantity, status (started, finished, cancelled),
+     * design cost for personalized items, and observations.
+     * 
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id ID of the production detail
+     * @return \Illuminate\Http\Response
+     */
+    public function updateDetalle(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+            
+            // Find the production detail
+            $detalle = ProduccionDetalle::findOrFail($id);
+            
+            // Get the production header
+            $produccion = $detalle->produccionCabecera;
+            
+            // Get all associated PedidoDetalle records
+            $pedidoIds = $detalle->pedidos_ids ?? [];
+            $pedidos = PedidoDetalle::whereIn('id_pedidos_det', $pedidoIds)->get();
+            
+            // Process form data
+            $cantidadReal = $request->input('cantidad_producida_real', $detalle->cantidad_producida_real);
+            $esIniciado = $request->has('es_iniciado');
+            $esTerminado = $request->has('es_terminado');
+            $esCancelado = $request->has('es_cancelado');
+            $observaciones = $request->input('observaciones');
+            
+            // Validate the data
+            if ($esTerminado && !$esIniciado) {
+                throw new \Exception('No se puede marcar como terminado sin iniciar primero');
+            }
+            
+            if ($esTerminado && $esCancelado) {
+                throw new \Exception('No se puede marcar como terminado y cancelado al mismo tiempo');
+            }
+            
+            if ($esCancelado && empty($observaciones)) {
+                throw new \Exception('Debe ingresar observaciones al cancelar un detalle de producción');
+            }
+            
+            // For personalized items, validate design cost
+            if ($detalle->es_personalizado) {
+                $costoDiseno = $request->input('costo_diseño', 0);
+                
+                if ($esTerminado && $costoDiseno <= 0 && !$esCancelado) {
+                    throw new \Exception('Debe ingresar un costo de diseño válido para el producto personalizado');
+                }
+                
+                $detalle->costo_diseño = $costoDiseno;
+            }
+            
+            // Update detail fields
+            $detalle->cantidad_producida_real = $cantidadReal;
+            $detalle->es_iniciado = $esIniciado;
+            $detalle->es_terminado = $esTerminado;
+            $detalle->es_cancelado = $esCancelado;
+            $detalle->observaciones = $observaciones;
+            
+            // Recalculate totals if not cancelled
+            if (!$esCancelado) {
+                // Only recalculate if not cancelling or the recalculation is needed
+                $cantidadEsperada = $detalle->cantidad_esperada;
+                $receta = $detalle->recetaCabecera;
+                
+                if ($receta) {
+                    $detalle->subtotal_receta = $this->calcularSubtotal($receta, $cantidadEsperada);
+                    $detalle->total_receta = $detalle->subtotal_receta + ($detalle->costo_diseño ?? 0);
+                    $detalle->cant_harina = $this->calcularHarina($receta, $cantidadEsperada);
+                }
+            } else if ($esCancelado && !$esIniciado) {
+                // If cancelled without starting, zero out all values
+                $detalle->cantidad_producida_real = 0;
+                $detalle->subtotal_receta = 0;
+                $detalle->total_receta = 0;
+                $detalle->cant_harina = 0;
+                $detalle->costo_diseño = 0;
+            }
+            
+            $detalle->save();
+            
+            // Update associated order details
+            $this->actualizarEstadosPedidos($pedidos, $esIniciado, $esTerminado, $esCancelado);
+            
+            DB::commit();
+            
+            return redirect()->route('produccion.edit', $produccion->id_produccion_cab)
+                ->with('success', 'Detalle de producción actualizado exitosamente');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al actualizar detalle de producción: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all(),
+                'detalle_id' => $id
+            ]);
+            
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
 
     /**
      * Exportar producción a Excel

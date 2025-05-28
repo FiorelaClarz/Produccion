@@ -8,6 +8,9 @@
             <a href="{{ route('mermas.pdf-multiple', ['filter' => $filter, 'custom_date' => request('custom_date')]) }}" class="btn btn-sm btn-secondary shadow-sm mr-2" target="_blank">
                 <i class="fas fa-file-pdf fa-sm text-white-50"></i> Exportar Lista PDF
             </a>
+            <a href="{{ route('mermas.excel', ['filter' => $filter, 'custom_date' => request('custom_date')]) }}" class="btn btn-sm btn-success shadow-sm mr-2">
+                <i class="fas fa-file-excel fa-sm text-white-50"></i> Exportar Excel
+            </a>
             <a href="{{ route('mermas.create') }}" class="btn btn-sm btn-primary shadow-sm">
                 <i class="fas fa-plus fa-sm text-white-50"></i> Nueva Merma
             </a>
@@ -103,18 +106,20 @@
                                         <a href="{{ route('mermas.show', $merma->id_mermas_cab) }}" class="btn btn-sm btn-primary">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('mermas.edit', $merma->id_mermas_cab) }}" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{{ route('mermas.pdf', $merma->id_mermas_cab) }}" class="btn btn-sm btn-secondary" target="_blank">
-                                            <i class="fas fa-file-pdf"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-danger delete-merma" 
-                                            data-id="{{ $merma->id_mermas_cab }}"
-                                            data-toggle="modal" 
-                                            data-target="#deleteModal">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        @if($merma->id_usuarios == Auth::id())
+                                            <a href="{{ route('mermas.edit', $merma->id_mermas_cab) }}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ route('mermas.pdf', $merma->id_mermas_cab) }}" class="btn btn-sm btn-secondary" target="_blank">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger delete-merma" 
+                                                data-id="{{ $merma->id_mermas_cab }}"
+                                                data-toggle="modal" 
+                                                data-target="#deleteModal">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

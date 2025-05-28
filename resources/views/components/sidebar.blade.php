@@ -14,28 +14,49 @@
         @can('admin-access')
         <li class="nav-item">
             <a class="nav-link text-white" data-bs-toggle="collapse" href="#adminMenu">
-                <i class="fas fa-user-shield me-2"></i> Administración
+                <i class="fas fa-database me-2"></i> Administración de Tablas
             </a>
             <div class="collapse show" id="adminMenu">
                 <ul class="nav flex-column ps-4">
+                    <!-- Gestión de Usuarios -->
                     <li class="nav-item">
-                        <a href="{{ route('tiendas.index') }}" class="nav-link text-white">
-                            <i class="fas fa-store me-2"></i> Tiendas
+                        <a href="{{ route('usuarios.index') }}" class="nav-link text-white">
+                            <i class="fas fa-users me-2"></i> Usuarios
                         </a>
                     </li>
+                    <!-- Gestión de Roles -->
+                    <li class="nav-item">
+                        <a href="{{ route('rols.index') }}" class="nav-link text-white">
+                            <i class="fas fa-user-tag me-2"></i> Roles
+                        </a>
+                    </li>
+                    <!-- Gestión de Turnos -->
+                    <li class="nav-item">
+                        <a href="{{ route('turnos.index') }}" class="nav-link text-white">
+                            <i class="fas fa-calendar-alt me-2"></i> Turnos
+                        </a>
+                    </li>
+                    <!-- Gestión de Áreas -->
                     <li class="nav-item">
                         <a href="{{ route('areas.index') }}" class="nav-link text-white">
                             <i class="fas fa-map-marked-alt me-2"></i> Áreas
                         </a>
                     </li>
+                    <!-- Gestión de Tiendas -->
+                    <li class="nav-item">
+                        <a href="{{ route('tiendas.index') }}" class="nav-link text-white">
+                            <i class="fas fa-store me-2"></i> Tiendas
+                        </a>
+                    </li>
+                    <!-- Otras tablas del sistema -->
                     <li class="nav-item">
                         <a href="{{ route('estados.index') }}" class="nav-link text-white">
-                            <i class="fas fa-list-alt me-2"></i> Estados
+                            <i class="fas fa-info-circle me-2"></i> Estados
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="{{ route('roles.index') }}" class="nav-link text-white">
-                            <i class="fas fa-users-cog me-2"></i> Roles
+                        <a href="{{ route('umedidas.index') }}" class="nav-link text-white">
+                            <i class="fas fa-balance-scale me-2"></i> Unidades de medida
                         </a>
                     </li>
                 </ul>

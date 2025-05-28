@@ -18,6 +18,16 @@
         </div>
 
         <div class="mb-3">
+            <label for="codigo_tienda" class="form-label">Código de Tienda</label>
+            <input type="text" class="form-control" id="codigo_tienda" name="codigo_tienda" 
+                   value="{{ old('codigo_tienda', $tienda->codigo_tienda) }}" maxlength="10" placeholder="Ej: T01, T02, etc.">
+            <small class="text-muted">Código para integración con servicios externos</small>
+            @error('codigo_tienda')
+                <div class="text-danger">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="mb-3">
             <label for="status" class="form-label">Estado</label>
             <select class="form-select" id="status" name="status" required>
                 <option value="1" {{ $tienda->status ? 'selected' : '' }}>Activo</option>

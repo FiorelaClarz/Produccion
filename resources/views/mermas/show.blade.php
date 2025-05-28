@@ -9,12 +9,14 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">Detalles de Merma #{{ $merma->id_mermas_cab }}</h4>
                         <div>
-                            <a href="{{ route('mermas.pdf', $merma->id_mermas_cab) }}" class="btn btn-sm btn-secondary" target="_blank">
-                                <i class="fas fa-file-pdf"></i> Exportar PDF
-                            </a>
-                            <a href="{{ route('mermas.edit', $merma->id_mermas_cab) }}" class="btn btn-sm btn-warning">
-                                <i class="fas fa-edit"></i> Editar
-                            </a>
+                            @if($merma->id_usuarios == Auth::id())
+                                <a href="{{ route('mermas.pdf', $merma->id_mermas_cab) }}" class="btn btn-sm btn-secondary" target="_blank">
+                                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                                </a>
+                                <a href="{{ route('mermas.edit', $merma->id_mermas_cab) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -53,7 +55,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="font-weight-bold"><i class="fas fa-history me-1"></i> Última actualización:</label>
-                                    <p>{{ \Carbon\Carbon::parse($merma->last_update)->format('d/m/Y H:i:s') }}</p>
+                                    <p>{{ \Carbon\Carbon::parse($merma->updated_at)->format('d/m/Y H:i:s') }}</p>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -113,13 +115,15 @@
                         <a href="{{ route('mermas.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i> Volver
                         </a>
-                        <form action="{{ route('mermas.destroy', $merma->id_mermas_cab) }}" method="POST" class="d-inline delete-form">
-                            @csrf
-                            @method('DELETE')
-                            <button type="button" class="btn btn-danger" id="btn-eliminar">
-                                <i class="fas fa-trash me-1"></i> Eliminar Merma
-                            </button>
-                        </form>
+                        @if($merma->id_usuarios == Auth::id())
+                            <form action="{{ route('mermas.destroy', $merma->id_mermas_cab) }}" method="POST" class="d-inline delete-form">
+                                @csrf
+                                @method('DELETE')
+                                <button type="button" class="btn btn-danger" id="btn-eliminar">
+                                    <i class="fas fa-trash me-1"></i> Eliminar Merma
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             </div>
