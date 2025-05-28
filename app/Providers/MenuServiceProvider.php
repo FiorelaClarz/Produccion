@@ -165,6 +165,13 @@ class MenuServiceProvider extends ServiceProvider
                         'icon' => 'fas fa-plus-circle'
                     ]
                 ]
+            ],
+            // Comparativo de Producción y Mermas
+            [
+                'text' => 'Comparativo',
+                'route' => 'produccion.comparativo',
+                'icon' => 'fas fa-chart-pie',
+                'visible' => true
             ]
         ];
 
@@ -341,3 +348,4 @@ class MenuServiceProvider extends ServiceProvider
         }
     }
 }
+

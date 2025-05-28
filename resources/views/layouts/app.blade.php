@@ -17,7 +17,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- CSRF Token para AJAX -->
@@ -162,13 +161,41 @@
                     <ul class="nav flex-column">
                         @foreach($menuItems as $item)
                         @if($item['visible'] && Route::has($item['route']))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }}"
-                                href="{{ route($item['route']) }}">
-                                <i class="{{ $item['icon'] }} me-2"></i>
-                                {{ $item['text'] }}
-                            </a>
-                        </li>
+                            @if(isset($item['submenu']))
+                            <li class="nav-item">
+                                <a class="nav-link d-flex justify-content-between align-items-center {{ (request()->routeIs($item['route']) || request()->routeIs($item['route'].'*')) ? 'active' : '' }}"
+                                    data-bs-toggle="collapse" href="#submenu-{{ $loop->index }}" role="button" aria-expanded="false">
+                                    <span>
+                                        <i class="{{ $item['icon'] }} me-2"></i>
+                                        {{ $item['text'] }}
+                                    </span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </a>
+                                <div class="collapse {{ (request()->routeIs($item['route']) || request()->routeIs($item['route'].'*')) ? 'show' : '' }}" id="submenu-{{ $loop->index }}">
+                                    <ul class="nav flex-column ms-3 mt-2">
+                                        @foreach($item['submenu'] as $submenu)
+                                        @if(Route::has($submenu['route']))
+                                        <li class="nav-item">
+                                            <a class="nav-link {{ request()->routeIs($submenu['route']) ? 'active' : '' }}" 
+                                               href="{{ route($submenu['route']) }}">
+                                                <i class="{{ $submenu['icon'] ?? 'fas fa-circle' }} me-2"></i>
+                                                {{ $submenu['text'] }}
+                                            </a>
+                                        </li>
+                                        @endif
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </li>
+                            @else
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }}"
+                                    href="{{ route($item['route']) }}">
+                                    <i class="{{ $item['icon'] }} me-2"></i>
+                                    {{ $item['text'] }}
+                                </a>
+                            </li>
+                            @endif
                         @endif
                         @endforeach
                     </ul>
@@ -402,3 +429,4 @@
     </script>
 </body>
 </html>
+

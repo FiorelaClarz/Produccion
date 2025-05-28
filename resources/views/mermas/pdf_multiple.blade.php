@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merma #{{ $merma->id_mermas_cab }}</title>
+    <title>{{ $title }}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -38,28 +38,11 @@
             border-bottom: 1px solid #eee;
             color: #3498db;
         }
-        .info-grid {
-            display: table;
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .info-row {
-            display: table-row;
-        }
-        .info-cell {
-            display: table-cell;
-            padding: 5px 10px;
-            border: 1px solid #ddd;
-        }
-        .info-label {
-            font-weight: bold;
-            background-color: #f9f9f9;
-            width: 130px;
-        }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+            margin-bottom: 20px;
         }
         table, th, td {
             border: 1px solid #ddd;
@@ -92,40 +75,97 @@
         .text-right {
             text-align: right;
         }
+        .merma-header {
+            background-color: #f8f9fa;
+            padding: 8px;
+            margin-top: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .merma-header h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .summary-table th {
+            background-color: #34495e;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+        .summary-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        .page-break {
+            page-break-after: always;
+        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>REPORTE DE MERMA #{{ $merma->id_mermas_cab }}</h1>
+        <h1>{{ $title }}</h1>
         <p>Documento generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i:s') }}</p>
     </div>
 
     <div class="info-section">
-        <h2>Información General</h2>
-        <div class="info-grid">
-            <div class="info-row">
-                <div class="info-cell info-label">Fecha:</div>
-                <div class="info-cell">{{ \Carbon\Carbon::parse($merma->fecha_registro)->format('d/m/Y') }}</div>
-                <div class="info-cell info-label">Hora:</div>
-                <div class="info-cell">{{ $merma->hora_registro }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-cell info-label">Usuario:</div>
-                <div class="info-cell">{{ $merma->usuario->nombre_personal ?? 'N/A' }}</div>
-                <div class="info-cell info-label">Tienda:</div>
-                <div class="info-cell">{{ $merma->tienda->nombre ?? 'N/A' }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-cell info-label">Última actualización:</div>
-                <div class="info-cell">{{ \Carbon\Carbon::parse($merma->last_update)->format('d/m/Y H:i:s') }}</div>
-                <div class="info-cell info-label">Total de ítems:</div>
-                <div class="info-cell">{{ $merma->mermasDetalle->where('is_deleted', false)->count() }}</div>
-            </div>
-        </div>
+        <h2>Resumen de Mermas</h2>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th style="width: 80px;">Fecha</th>
+                    <th style="width: 70px;">Hora</th>
+                    <th>Usuario</th>
+                    <th>Tienda</th>
+                    <th style="width: 50px;" class="text-center">Ítems</th>
+                    <th style="width: 80px;" class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php
+                    $totalMermas = 0;
+                @endphp
+                @forelse($mermas as $merma)
+                    @php
+                        $subtotal = $merma->mermasDetalle->where('is_deleted', false)->sum('total');
+                        $totalMermas += $subtotal;
+                    @endphp
+                    <tr>
+                        <td class="text-center">{{ $merma->id_mermas_cab }}</td>
+                        <td>{{ \Carbon\Carbon::parse($merma->fecha_registro)->format('d/m/Y') }}</td>
+                        <td>{{ $merma->hora_registro }}</td>
+                        <td>{{ $merma->usuario->nombre_personal ?? 'N/A' }}</td>
+                        <td>{{ $merma->tienda->nombre ?? 'N/A' }}</td>
+                        <td class="text-center">{{ $merma->mermasDetalle->where('is_deleted', false)->count() }}</td>
+                        <td class="text-right">{{ number_format($subtotal, 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center">No hay mermas disponibles</td>
+                    </tr>
+                @endforelse
+                @if($mermas->count() > 0)
+                    <tr>
+                        <td colspan="6" class="text-right"><strong>TOTAL:</strong></td>
+                        <td class="text-right"><strong>{{ number_format($totalMermas, 2) }}</strong></td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
     </div>
 
-    <div class="info-section">
-        <h2>Detalle de Productos</h2>
+    @foreach($mermas as $merma)
+        <div class="merma-header">
+            <h3>Merma #{{ $merma->id_mermas_cab }} - {{ \Carbon\Carbon::parse($merma->fecha_registro)->format('d/m/Y') }} {{ $merma->hora_registro }}</h3>
+        </div>
+        
         <table>
             <thead>
                 <tr>
@@ -160,7 +200,7 @@
                 @endforelse
             </tbody>
         </table>
-    </div>
+    @endforeach
 
     <div class="footer">
         <p>Este documento es un reporte oficial de mermas. Conserve este documento para sus registros.</p>

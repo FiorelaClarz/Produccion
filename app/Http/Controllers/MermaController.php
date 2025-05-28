@@ -19,6 +19,38 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class MermaController extends Controller
 {
     /**
+     * Obtiene el costo de un producto por su ID
+     * 
+     * @param Request $request Request con el id_productos_api
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function obtenerCosto(Request $request)
+    {
+        try {
+            $idProducto = $request->id_productos_api;
+            $costo = 0;
+            
+            if ($idProducto) {
+                $producto = Producto::find($idProducto);
+                if ($producto) {
+                    $costo = $producto->costo ?? 0;
+                }
+            }
+            
+            return response()->json([
+                'status' => 'success',
+                'costo' => $costo
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error al obtener costo: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error al obtener el costo del producto: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Constructor del controlador
      * Aplica middleware de autenticación y verifica que solo
      * administradores y operadores puedan acceder
@@ -167,12 +199,27 @@ class MermaController extends Controller
                     throw new \Exception('La receta seleccionada no existe');
                 }
                 
+                // Obtener el costo del producto
+                $costo = 0;
+                if ($receta->id_productos_api) {
+                    $producto = Producto::find($receta->id_productos_api);
+                    if ($producto) {
+                        $costo = $producto->costo ?? 0;
+                    }
+                }
+                
+                // Calcular el total (cantidad * costo)
+                $cantidad = floatval($detalle['cantidad']);
+                $total = $cantidad * $costo;
+                
                 MermaDetalle::create([
                     'id_mermas_cab' => $mermaCabecera->id_mermas_cab,
                     'id_areas' => $detalle['id_areas'],
                     'id_recetas' => $detalle['id_recetas'],
                     'id_productos_api' => $receta->id_productos_api, // Obtenemos el ID del producto desde la receta
-                    'cantidad' => $detalle['cantidad'],
+                    'cantidad' => $cantidad,
+                    'costo' => $costo, // Costo unitario del producto
+                    'total' => $total, // Total calculado (cantidad * costo)
                     'id_u_medidas' => $detalle['id_u_medidas'],
                     'obs' => $detalle['obs'] ?? null,
                     'is_deleted' => false
@@ -474,4 +521,72 @@ class MermaController extends Controller
         $pdf = Pdf::loadView('mermas.pdf', compact('merma'));
         return $pdf->stream('merma_' . $id . '.pdf');
     }
+    
+    /**
+     * Generar PDF de múltiples mermas basado en los filtros aplicados
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function generateBulkPdf(Request $request)
+    {
+        $usuario = Auth::user();
+        
+        $query = MermaCabecera::with([
+            'usuario',
+            'tienda',
+            'mermasDetalle' => function ($query) {
+                $query->where('is_deleted', false);
+            },
+            'mermasDetalle.area',
+            'mermasDetalle.receta',
+            'mermasDetalle.uMedida'
+        ])
+        ->where('is_deleted', false);
+
+        // Filtro por rol de usuario
+        if ($usuario->id_roles == 4) { // Rol operador
+            $query->where('id_tiendas_api', $usuario->id_tiendas_api);
+        }
+
+        // Ordenamiento
+        $query->orderBy('fecha_registro', 'desc')
+              ->orderBy('hora_registro', 'desc');
+
+        // Determinar el filtro a aplicar
+        $filter = $request->filter ?? 'today';
+        $today = Carbon::today();
+
+        switch ($filter) {
+            case 'today':
+                $query->whereDate('fecha_registro', $today);
+                $title = 'Mermas de Hoy';
+                break;
+            case 'yesterday':
+                $query->whereDate('fecha_registro', $today->copy()->subDay());
+                $title = 'Mermas de Ayer';
+                break;
+            case 'week':
+                $query->whereBetween('fecha_registro', [$today->copy()->subWeek(), $today]);
+                $title = 'Mermas de la Última Semana';
+                break;
+            case 'custom':
+                if ($request->has('custom_date')) {
+                    $query->whereDate('fecha_registro', $request->custom_date);
+                    $title = 'Mermas del ' . Carbon::parse($request->custom_date)->format('d/m/Y');
+                } else {
+                    $title = 'Todas las Mermas';
+                }
+                break;
+            default:
+                $title = 'Todas las Mermas';
+        }
+
+        $mermas = $query->limit(100)->get(); // Limitamos a 100 para evitar PDFs muy grandes
+
+        $pdf = Pdf::loadView('mermas.pdf_multiple', compact('mermas', 'title'));
+        return $pdf->stream('mermas_lista_' . Carbon::now()->format('Y-m-d') . '.pdf');
+    }
 }
+
+

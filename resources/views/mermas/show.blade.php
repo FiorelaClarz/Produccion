@@ -78,6 +78,8 @@
                                         <th>Receta</th>
                                         <th>Producto</th>
                                         <th class="text-center">Cantidad</th>
+                                        <th class="text-center">Costo</th>
+                                        <th class="text-center">Total</th>
                                         <th>U. Medida</th>
                                         <th>Observación</th>
                                     </tr>
@@ -90,12 +92,14 @@
                                             <td>{{ $detalle->receta->nombre ?? 'N/A' }}</td>
                                             <td>{{ optional($detalle->receta)->id_productos_api ?? 'N/A' }}</td>
                                             <td class="text-center">{{ number_format($detalle->cantidad, 2) }}</td>
+                                            <td class="text-center">{{ number_format($detalle->costo ?? 0, 2) }}</td>
+                                            <td class="text-center">{{ number_format($detalle->total ?? 0, 2) }}</td>
                                             <td>{{ $detalle->uMedida->nombre ?? 'N/A' }}</td>
                                             <td>{{ $detalle->obs ?? '-' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center">No hay detalles disponibles</td>
+                                            <td colspan="9" class="text-center">No hay detalles disponibles</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -148,3 +152,5 @@
     });
 </script>
 @endpush
+
+

@@ -14,13 +14,13 @@ use App\Http\Controllers\EquipoController;
 use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\HoraLimiteController;
 use App\Http\Controllers\MermaController;
+use App\Http\Controllers\ComparativoController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\PerfilController;
 use Illuminate\Support\Facades\Auth; // Agrega esta línea
 use Illuminate\Support\Facades\File; // Agrega esta línea
 use Illuminate\Support\Facades\Response; // Agrega esta línea
-
 
 use Illuminate\Http\Request; // Necesario para el Request
 use App\Models\Producto;
@@ -78,7 +78,6 @@ Route::prefix('tiendas')->group(function () {
     Route::put('/{id}', [TiendaController::class, 'update'])->name('tiendas.update');
     Route::delete('/{id}', [TiendaController::class, 'destroy'])->name('tiendas.destroy');
 });
-
 
 Route::prefix('umedidas')->group(function () {
     Route::get('/', [UMedidaController::class, 'index'])->name('umedidas.index');
@@ -156,7 +155,6 @@ Route::middleware(['auth'])->group(function () {
     // Agregar esta ruta
     Route::patch('/recetas/{id}/toggle-status', [RecetaController::class, 'toggleStatus'])
         ->name('recetas.toggle-status');
-
 
     // Rutas para instructivos de recetas
     Route::prefix('recetas')->group(function () {
@@ -276,18 +274,30 @@ Route::middleware(['auth'])->group(function () {
     
 });
 
+// Rutas para el Comparativo de Producción y Mermas
+Route::prefix('comparativo')->middleware('auth')->group(function () {
+    Route::get('/produccion-mermas', [ComparativoController::class, 'index'])->name('produccion.comparativo');
+    Route::get('/produccion-mermas/pdf', [ComparativoController::class, 'generarPdf'])->name('produccion.comparativo.pdf');
+});
+
 // Rutas para el módulo de Mermas
 Route::prefix('mermas')->middleware('auth')->group(function () {
-    // Rutas principales CRUD
+    // Rutas principales sin parámetros
     Route::get('/', [MermaController::class, 'index'])->name('mermas.index');
     Route::get('/create', [MermaController::class, 'create'])->name('mermas.create');
     Route::post('/', [MermaController::class, 'store'])->name('mermas.store');
+    
+    // Rutas adicionales específicas (deben ir ANTES de las rutas con parámetros)
+    Route::get('/generar-pdf-multiple', [MermaController::class, 'generateBulkPdf'])->name('mermas.pdf-multiple');
+    Route::post('/buscar-recetas', [MermaController::class, 'buscarRecetas'])->name('mermas.buscar-recetas');
+    Route::post('/obtener-costo', [MermaController::class, 'obtenerCosto'])->name('mermas.obtener-costo');
+    
+    // Rutas con parámetros (deben ir DESPUÉS de las rutas específicas)
+    Route::get('/generar-pdf/{id}', [MermaController::class, 'generatePdf'])->name('mermas.pdf');
     Route::get('/{id}', [MermaController::class, 'show'])->name('mermas.show');
     Route::get('/{id}/edit', [MermaController::class, 'edit'])->name('mermas.edit');
     Route::put('/{id}', [MermaController::class, 'update'])->name('mermas.update');
     Route::delete('/{id}', [MermaController::class, 'destroy'])->name('mermas.destroy');
-    
-    // Rutas adicionales
-    Route::get('/generar-pdf/{id}', [MermaController::class, 'generatePdf'])->name('mermas.pdf');
-    Route::post('/buscar-recetas', [MermaController::class, 'buscarRecetas'])->name('mermas.buscar-recetas');
 });
+
+

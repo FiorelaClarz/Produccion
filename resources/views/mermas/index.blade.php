@@ -5,6 +5,9 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Gestión de Mermas</h1>
         <div>
+            <a href="{{ route('mermas.pdf-multiple', ['filter' => $filter, 'custom_date' => request('custom_date')]) }}" class="btn btn-sm btn-secondary shadow-sm mr-2" target="_blank">
+                <i class="fas fa-file-pdf fa-sm text-white-50"></i> Exportar Lista PDF
+            </a>
             <a href="{{ route('mermas.create') }}" class="btn btn-sm btn-primary shadow-sm">
                 <i class="fas fa-plus fa-sm text-white-50"></i> Nueva Merma
             </a>
@@ -128,6 +131,8 @@
                                                         <th>Receta</th>
                                                         <th>Producto</th>
                                                         <th>Cantidad</th>
+                                                        <th>Costo</th>
+                                                        <th>Total</th>
                                                         <th>U. Medida</th>
                                                         <th>Observación</th>
                                                     </tr>
@@ -137,14 +142,16 @@
                                                         <tr>
                                                             <td>{{ $detalle->area->nombre ?? 'N/A' }}</td>
                                                             <td>{{ $detalle->receta->nombre ?? 'N/A' }}</td>
-                                                            <td>{{ optional($detalle->receta)->id_productos_api ?? 'N/A' }}
+                                                            <td>{{ optional($detalle->receta)->id_productos_api ?? 'N/A' }}</td>
                                                             <td class="text-right">{{ number_format($detalle->cantidad, 2) }}</td>
+                                                            <td class="text-right">{{ number_format($detalle->costo ?? 0, 2) }}</td>
+                                                            <td class="text-right">{{ number_format($detalle->total ?? 0, 2) }}</td>
                                                             <td>{{ $detalle->uMedida->nombre ?? 'N/A' }}</td>
                                                             <td>{{ $detalle->obs ?? '-' }}</td>
                                                         </tr>
                                                     @empty
                                                         <tr>
-                                                            <td colspan="6" class="text-center">No hay detalles disponibles</td>
+                                                            <td colspan="8" class="text-center">No hay detalles disponibles</td>
                                                         </tr>
                                                     @endforelse
                                                 </tbody>
@@ -254,3 +261,5 @@
     });
 </script>
 @endpush
+
+

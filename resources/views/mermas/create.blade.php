@@ -142,6 +142,8 @@
                                         <th>Receta</th>
                                         <th>Producto</th>
                                         <th>Cantidad</th>
+                                        <th>Costo</th>
+                                        <th>Total</th>
                                         <th>U. Medida</th>
                                         <th>Observación</th>
                                         <th class="text-center">Acciones</th>
@@ -334,40 +336,102 @@
             const uMedidaNombre = $('#id_u_medidas option:selected').text();
             const obs = $('#obs').val();
             
-            // Crear objeto merma
-            const merma = {
-                id_areas: areaId,
-                area_nombre: areaNombre,
-                id_recetas: recetaId,
-                receta_nombre: recetaNombre,
-                id_productos_api: productoId,
-                producto_nombre: productoNombre,
-                cantidad: cantidad,
-                id_u_medidas: uMedidaId,
-                u_medida_nombre: uMedidaNombre,
-                obs: obs
-            };
-            
-            // Si estamos editando, actualizamos el elemento en lugar de añadir uno nuevo
-            if (editandoIndex >= 0) {
-                mermas[editandoIndex] = merma;
-                // Cambiar el botón de vuelta a "Agregar"
-                $('#btn-agregar-merma').html('<i class="fas fa-plus"></i> Agregar');
-                editandoIndex = -1; // Resetear el índice de edición
-            } else {
-                // Agregar a la lista si es un nuevo elemento
-                mermas.push(merma);
-            }
-            
-            // Actualizar tabla
-            actualizarTablaMermas();
-            
-            // Limpiar formulario de detalle
-            limpiarFormularioDetalle();
-            
-            // Guardar en localStorage automáticamente
-            guardarDatosTemporales();
-            mostrarIndicadorGuardado();
+            // Obtener el costo del producto usando AJAX
+            $.ajax({
+                url: '{{ route("mermas.obtener-costo") }}',
+                type: 'POST',
+                async: false,
+                data: {
+                    id_productos_api: productoId,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    // Crear objeto merma con costo y total
+                    const costo = response.costo || 0;
+                    const total = parseFloat(cantidad) * parseFloat(costo);
+                    
+                    const merma = {
+                        id_areas: areaId,
+                        area_nombre: areaNombre,
+                        id_recetas: recetaId,
+                        receta_nombre: recetaNombre,
+                        id_productos_api: productoId,
+                        producto_nombre: productoNombre,
+                        cantidad: cantidad,
+                        costo: costo,
+                        total: total,
+                        id_u_medidas: uMedidaId,
+                        u_medida_nombre: uMedidaNombre,
+                        obs: obs
+                    };
+                    
+                    // Si estamos editando, actualizamos el elemento en lugar de añadir uno nuevo
+                    if (editandoIndex >= 0) {
+                        mermas[editandoIndex] = merma;
+                        // Cambiar el botón de vuelta a "Agregar"
+                        $('#btn-agregar-merma').html('<i class="fas fa-plus"></i> Agregar');
+                        editandoIndex = -1; // Resetear el índice de edición
+                    } else {
+                        // Agregar a la lista si es un nuevo elemento
+                        mermas.push(merma);
+                    }
+                    
+                    // Actualizar tabla
+                    actualizarTablaMermas();
+                    
+                    // Limpiar formulario de detalle
+                    limpiarFormularioDetalle();
+                    
+                    // Guardar en localStorage automáticamente
+                    guardarDatosTemporales();
+                    mostrarIndicadorGuardado();
+                },
+                error: function() {
+                    // En caso de error, usar valor por defecto
+                    const costo = 0;
+                    const total = 0;
+                    
+                    const merma = {
+                        id_areas: areaId,
+                        area_nombre: areaNombre,
+                        id_recetas: recetaId,
+                        receta_nombre: recetaNombre,
+                        id_productos_api: productoId,
+                        producto_nombre: productoNombre,
+                        cantidad: cantidad,
+                        costo: costo,
+                        total: total,
+                        id_u_medidas: uMedidaId,
+                        u_medida_nombre: uMedidaNombre,
+                        obs: obs
+                    };
+                    
+                    // Continuar con el proceso aunque haya error
+                    if (editandoIndex >= 0) {
+                        mermas[editandoIndex] = merma;
+                        $('#btn-agregar-merma').html('<i class="fas fa-plus"></i> Agregar');
+                        editandoIndex = -1;
+                    } else {
+                        mermas.push(merma);
+                    }
+                    
+                    actualizarTablaMermas();
+                    limpiarFormularioDetalle();
+                    guardarDatosTemporales();
+                    mostrarIndicadorGuardado();
+                    
+                    // Mostrar mensaje de error
+                    Swal.fire({
+                        title: 'Advertencia',
+                        text: 'No se pudo obtener el costo del producto',
+                        icon: 'warning',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
+            });
         });
 
         // Validar formulario de merma
@@ -414,12 +478,18 @@
             let html = '';
             
             mermas.forEach(function(merma, index) {
+                // Asegurar que costo y total tengan valores por defecto si no existen
+                const costo = merma.costo || 0;
+                const total = merma.total || (parseFloat(merma.cantidad) * parseFloat(costo));
+                
                 html += `
                     <tr>
                         <td>${merma.area_nombre}</td>
                         <td>${merma.receta_nombre}</td>
                         <td>${merma.producto_nombre}</td>
                         <td class="text-right">${parseFloat(merma.cantidad).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(costo).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(total).toFixed(2)}</td>
                         <td>${merma.u_medida_nombre}</td>
                         <td>${merma.obs || '-'}</td>
                         <td class="text-center">
@@ -724,3 +794,5 @@
     });
 </script>
 @endpush
+
+

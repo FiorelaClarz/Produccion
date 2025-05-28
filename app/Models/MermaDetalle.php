@@ -19,6 +19,8 @@ class MermaDetalle extends Model
         'id_recetas',    // Nueva columna agregada - receta relacionada
         'id_productos_api',
         'cantidad',
+        'costo',         // Costo unitario del producto
+        'total',         // Total calculado (cantidad * costo)
         'id_u_medidas',
         'obs',
         'is_deleted'
@@ -61,3 +63,4 @@ class MermaDetalle extends Model
         return $this->belongsTo(RecetaCabecera::class, 'id_recetas');
     }
 }
+
