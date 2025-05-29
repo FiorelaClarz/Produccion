@@ -23,7 +23,8 @@ class RecetaCabecera extends Model
         'is_deleted',
         'cant_rendimiento',
         'constante_crecimiento',
-        'constante_peso_lata'
+        'constante_peso_lata',
+        'costo_receta'
     ];
 
     protected $casts = [

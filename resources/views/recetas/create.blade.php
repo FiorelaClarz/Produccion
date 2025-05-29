@@ -230,6 +230,7 @@
 
         <!-- Campos ocultos para enviar datos al servidor -->
         <input type="hidden" name="ingredientes" id="ingredientesData" value="">
+        <input type="hidden" name="costo_receta" id="costoRecetaTotal" value="0">
         <input type="hidden" id="editingIndex" value="-1">
 
         <!-- Botones de acción -->
@@ -573,8 +574,9 @@
                 `);
             });
 
-            // Actualizar total
+            // Actualizar total y el campo oculto para costo_receta
             $('#subtotalTotal').text('S/ ' + totalSubtotal.toFixed(2));
+            $('#costoRecetaTotal').val(totalSubtotal.toFixed(2));
 
             // Preparar datos para enviar al servidor
             const datosParaEnviar = ingredientes.map(ing => ({

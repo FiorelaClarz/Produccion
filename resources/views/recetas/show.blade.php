@@ -47,6 +47,9 @@
                         </span>
                     </p>
                 </div>
+                <div class="col-md-4">
+                    <p><strong>Costo Total:</strong> S/ {{ number_format($receta->costo_receta, 2) }}</p>
+                </div>
             </div>
         </div>
     </div>

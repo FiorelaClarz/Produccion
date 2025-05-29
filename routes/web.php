@@ -16,6 +16,7 @@ use App\Http\Controllers\HoraLimiteController;
 use App\Http\Controllers\MermaController;
 use App\Http\Controllers\ComparativoController;
 use App\Http\Controllers\VentaController;
+use App\Http\Controllers\ApiTestController;
 // use App\Http\Controllers\Auth;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\PerfilController;
@@ -286,6 +287,7 @@ Route::middleware(['auth'])->group(function () {
 Route::prefix('comparativo')->middleware('auth')->group(function () {
     Route::get('/produccion-mermas', [ComparativoController::class, 'index'])->name('produccion.comparativo');
     Route::get('/produccion-mermas/pdf', [ComparativoController::class, 'generarPdf'])->name('produccion.comparativo.pdf');
+    Route::get('/produccion-mermas/excel', [ComparativoController::class, 'exportarExcel'])->name('produccion.comparativo.excel');
 });
 
 // Rutas para el módulo de Mermas
@@ -307,6 +309,12 @@ Route::prefix('mermas')->middleware('auth')->group(function () {
     Route::get('/{id}/edit', [MermaController::class, 'edit'])->name('mermas.edit');
     Route::put('/{id}', [MermaController::class, 'update'])->name('mermas.update');
     Route::delete('/{id}', [MermaController::class, 'destroy'])->name('mermas.destroy');
+});
+
+// Rutas para tests de API y tokens
+Route::prefix('api-test')->middleware('auth')->group(function () {
+    Route::get('/token', [ApiTestController::class, 'testSalesApi'])->name('api.test.token');
+    Route::get('/helper', [ApiTestController::class, 'testHelperMethod'])->name('api.test.helper');
 });
 
 

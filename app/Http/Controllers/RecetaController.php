@@ -243,7 +243,8 @@ class RecetaController extends Controller
                 'cant_rendimiento' => $request->cant_rendimiento,
                 'id_u_medidas' => $request->id_u_medidas,
                 'constante_crecimiento' => $request->constante_crecimiento,
-                'constante_peso_lata' => $request->constante_peso_lata
+                'constante_peso_lata' => $request->constante_peso_lata,
+                'costo_receta' => $request->costo_receta
             ]);
 
             // Procesar ingredientes del formulario

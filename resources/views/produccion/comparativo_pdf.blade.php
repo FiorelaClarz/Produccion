@@ -93,10 +93,10 @@
                     <th>VENTA</th>
                     <th>MERMA</th>
                     <th>DIFERENCIA</th>
+                    <th>COSTO PROD.</th>
                     <th>UTIL. BRUTA</th>
                     <th>VENTAS</th>
                     <th>COSTO MERMA</th>
-                    <th>COSTO DIF.</th>
                 </tr>
             </thead>
             <tbody>
@@ -108,14 +108,14 @@
                         <td class="text-right">{{ number_format($resultado['cantidad_vendida'], 2) }}</td>
                         <td class="text-right">{{ number_format($resultado['cantidad_merma'], 2) }}</td>
                         <td class="text-right">{{ number_format($resultado['diferencia'], 2) }}</td>
-                        <td class="text-right">S/ {{ number_format($resultado['utilidad_bruta'], 2) }}</td>
+                        <td class="text-right">S/ {{ number_format($resultado['costo_produccion'] ?? 0, 2) }}</td>
+                        <td class="text-right">S/ {{ number_format(($resultado['ventas'] ?? 0) - ($resultado['costo_produccion'] ?? 0), 2) }}</td>
                         <td class="text-right">S/ {{ number_format($resultado['ventas'], 2) }}</td>
                         <td class="text-right">S/ {{ number_format($resultado['costo_merma'], 2) }}</td>
-                        <td class="text-right">S/ {{ number_format($resultado['costo_diferencia'], 2) }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center">No hay datos disponibles</td>
+                        <td colspan="11" class="text-center">No hay datos disponibles</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -126,10 +126,10 @@
                     <td class="text-right">{{ number_format($totales['venta'], 2) }}</td>
                     <td class="text-right">{{ number_format($totales['merma'], 2) }}</td>
                     <td class="text-right">{{ number_format($totales['diferencia'], 2) }}</td>
-                    <td class="text-right">S/ {{ number_format($totales['utilidad_bruta'], 2) }}</td>
+                    <td class="text-right">S/ {{ number_format($totales['costo_produccion'] ?? 0, 2) }}</td>
+                    <td class="text-right">S/ {{ number_format($totales['ventas'] - ($totales['costo_produccion'] ?? 0), 2) }}</td>
                     <td class="text-right">S/ {{ number_format($totales['ventas'], 2) }}</td>
                     <td class="text-right">S/ {{ number_format($totales['costo_merma'], 2) }}</td>
-                    <td class="text-right">S/ {{ number_format($totales['costo_diferencia'], 2) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -137,11 +137,12 @@
         <div>
             <h3>Resumen de resultados:</h3>
             <ul>
-                <li><strong>Producción total:</strong> {{ number_format($totales['produccion'], 2) }} KG</li>
-                <li><strong>Ventas estimadas:</strong> {{ number_format($totales['venta'], 2) }} KG (S/ {{ number_format($totales['ventas'], 2) }})</li>
-                <li><strong>Mermas registradas:</strong> {{ number_format($totales['merma'], 2) }} KG (S/ {{ number_format($totales['costo_merma'], 2) }})</li>
-                <li><strong>Diferencia:</strong> {{ number_format($totales['diferencia'], 2) }} KG (S/ {{ number_format($totales['costo_diferencia'], 2) }})</li>
-                <li><strong>Utilidad bruta estimada:</strong> S/ {{ number_format($totales['utilidad_bruta'], 2) }}</li>
+                <li><strong>Producción total:</strong> {{ number_format($totales['produccion'], 2) }}</li>
+                <li><strong>Ventas estimadas:</strong> {{ number_format($totales['venta'], 2) }} (S/ {{ number_format($totales['ventas'], 2) }})</li>
+                <li><strong>Mermas registradas:</strong> {{ number_format($totales['merma'], 2) }} (S/ {{ number_format($totales['costo_merma'], 2) }})</li>
+                <li><strong>Diferencia:</strong> {{ number_format($totales['diferencia'], 2) }}</li>
+                <li><strong>Costo de producción:</strong> S/ {{ number_format($totales['costo_produccion'] ?? 0, 2) }}</li>
+                <li><strong>Utilidad bruta estimada:</strong> S/ {{ number_format($totales['ventas'] - ($totales['costo_produccion'] ?? 0), 2) }}</li>
             </ul>
         </div>
 
