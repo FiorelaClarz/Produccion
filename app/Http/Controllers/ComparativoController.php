@@ -185,8 +185,10 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             
             // Calcular valores monetarios
             // $ventasTotal = $cantidadVendida * $costoUnitario;
-            // Calcular el costo de producción (cantidad esperada * costo receta)
-            $costoProduccion = $produccion->cantidad_esperada * $produccion->costo_receta;
+            
+            // Usar directamente el costo de producción calculado en la consulta SQL (suma de total_receta)
+            $costoProduccion = $produccion->costo_produccion;
+            
             // Actualizar el cálculo de utilidad bruta para que sea ventas - costo produccion
             $utilidadBruta = $ventasTotal - $costoProduccion;
             $costoDiferencia = $diferencia * $costoUnitario;
@@ -397,7 +399,7 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             
             // Calcular valores monetarios
             // $ventasTotal = $cantidadVendida * $costoUnitario;
-            $costoProduccion = $produccion->cantidad_esperada * $produccion->costo_receta;
+            $costoProduccion = $produccion->costo_produccion;
 $utilidadBruta = $ventasTotal - $costoProduccion;
 $costoDiferencia = $diferencia * $costoUnitario;
             
@@ -587,7 +589,7 @@ $costoDiferencia = $diferencia * $costoUnitario;
             $diferencia = $cantidadProducida - $cantidadVendida - $cantidadMerma;
             
             // Calcular valores monetarios
-            $costoProduccion = $produccion->cantidad_esperada * $produccion->costo_receta;
+            $costoProduccion = $produccion->costo_produccion;
             $utilidadBruta = $ventasTotal - $costoProduccion; // Utilidad bruta es ventas menos costo de producción
             $costoDiferencia = $diferencia * $costoUnitario;
             
@@ -675,11 +677,9 @@ $costoDiferencia = $diferencia * $costoUnitario;
         $sheet->getColumnDimension('F')->setWidth(15); // Cant. Vendida
         $sheet->getColumnDimension('G')->setWidth(15); // Cant. Merma
         $sheet->getColumnDimension('H')->setWidth(15); // Diferencia
-        // $sheet->getColumnDimension('I')->setWidth(12); // Costo Unit.
         $sheet->getColumnDimension('I')->setWidth(15); // Utilidad Bruta
         $sheet->getColumnDimension('J')->setWidth(15); // Ventas
         $sheet->getColumnDimension('K')->setWidth(15); // Costo Merma
-        // $sheet->getColumnDimension('M')->setWidth(15); // Costo Diferencia
         $sheet->getColumnDimension('L')->setWidth(15); // Costo Producción
         
         // Llenar datos
@@ -696,7 +696,6 @@ $costoDiferencia = $diferencia * $costoUnitario;
             $sheet->setCellValue('I' . $fila, $resultado['utilidad_bruta']);
             $sheet->setCellValue('J' . $fila, $resultado['ventas']);
             $sheet->setCellValue('K' . $fila, $resultado['costo_merma']);
-            // $sheet->setCellValue('M' . $fila, $resultado['costo_diferencia']);
             $sheet->setCellValue('L' . $fila, $resultado['costo_produccion']);
             $fila++;
         }
@@ -711,7 +710,6 @@ $costoDiferencia = $diferencia * $costoUnitario;
         $sheet->setCellValue('I' . $fila, number_format($totales['ventas'] - $totales['costo_produccion'], 2));
         $sheet->setCellValue('J' . $fila, number_format($totales['ventas'], 2));
         $sheet->setCellValue('K' . $fila, number_format($totales['costo_merma'], 2));
-        // $sheet->setCellValue('M' . $fila, number_format($totales['costo_diferencia'], 2));
         $sheet->setCellValue('L' . $fila, number_format($totales['costo_produccion'], 2));
         
         // Aplicar formato a la fila de totales

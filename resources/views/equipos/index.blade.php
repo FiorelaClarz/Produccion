@@ -37,6 +37,11 @@
                 // Separar equipos activos e inactivos
                 $equiposActivos = $equipos->where('status', true);
                 $equiposInactivos = $equipos->where('status', false);
+                
+                // Obtener el rol del usuario y la fecha actual
+                $userRole = Auth::user()->id_roles;
+                $userId = Auth::user()->id_usuarios;
+                $currentDate = now()->format('Y-m-d');
                 @endphp
 
                 <!-- Mostrar primero los activos -->
@@ -52,6 +57,14 @@
                     <td>{{ $equipo->created_at->format('d/m/Y H:i') }}</td>
                     <td>
                         <div class="d-flex">
+                            @php
+                                // Determinar si el usuario tiene permisos para ver los botones de acción
+                                $isCreator = $equipo->id_usuarios == $userId;
+                                $isCreatedToday = $equipo->created_at->format('Y-m-d') == $currentDate;
+                                $canSeeActions = ($userRole == 1 || $userRole == 2) || ($userRole == 3 && $isCreator && $isCreatedToday);
+                            @endphp
+                            
+                            @if($canSeeActions || $userRole == 1 || $userRole == 2)
                             <a href="{{ route('equipos.show', $equipo->id_equipos_cab) }}"
                                 class="btn btn-sm btn-info me-1" title="Ver">
                                 <i class="fas fa-eye"></i>
@@ -98,6 +111,9 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            @else
+                            <span class="text-muted">Sin acciones disponibles</span>
+                            @endif
                         </div>
                     </td>
                 </tr>
@@ -116,6 +132,14 @@
                     <td>{{ $equipo->created_at->format('d/m/Y H:i') }}</td>
                     <td>
                         <div class="d-flex">
+                            @php
+                                // Determinar si el usuario tiene permisos para ver los botones de acción
+                                $isCreator = $equipo->id_usuarios == $userId;
+                                $isCreatedToday = $equipo->created_at->format('Y-m-d') == $currentDate;
+                                $canSeeActions = ($userRole == 1 || $userRole == 2) || ($userRole == 3 && $isCreator && $isCreatedToday);
+                            @endphp
+                            
+                            @if($canSeeActions || $userRole == 1 || $userRole == 2)
                             <a href="{{ route('equipos.show', $equipo->id_equipos_cab) }}"
                                 class="btn btn-sm btn-info me-1" title="Ver">
                                 <i class="fas fa-eye"></i>
@@ -135,6 +159,9 @@
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </form>
+                            @else
+                            <span class="text-muted">Sin acciones disponibles</span>
+                            @endif
                         </div>
                     </td>
                 </tr>

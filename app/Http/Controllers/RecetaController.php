@@ -19,29 +19,46 @@ class RecetaController extends Controller
 {
     /**
      * Muestra el listado de recetas ordenadas por estado (activas primero) y nombre
+     * Filtra las recetas según el rol del usuario:
+     * - Admin (rol 1): ve todas las recetas
+     * - Supervisor (rol 2): ve todas las recetas pero sin acciones
+     * - Personal (rol 3): solo ve recetas de su área
      * 
-     * @return \Illuminate\View\View Vista index con las recetas agrupadas por estado
+     * @return \Illuminate\View\View Vista index con las recetas filtradas según rol
      */
     public function index()
     {
-        // Obtener recetas activas (status=true) ordenadas por nombre
-        $recetasActivas = RecetaCabecera::with(['area', 'producto', 'uMedida'])
-            ->where('is_deleted', false) // Solo recetas no eliminadas
-            ->where('status', true) // Solo recetas activas
-            ->orderBy('nombre') // Orden alfabético
+        // Obtener el usuario autenticado y su rol
+        $user = auth()->user();
+        $idRol = $user->id_roles;
+        $idArea = $user->id_areas;
+        
+        // Consulta base para recetas no eliminadas
+        $query = RecetaCabecera::with(['area', 'producto', 'uMedida'])
+            ->where('is_deleted', false);
+            
+        // Si es personal (rol 3), filtrar por su área
+        if ($idRol == 3) {
+            $query->where('id_areas', $idArea);
+        }
+        
+        // Obtener recetas activas ordenadas por nombre
+        $recetasActivas = (clone $query)
+            ->where('status', true)
+            ->orderBy('nombre')
             ->get();
 
-        // Obtener recetas inactivas (status=false) ordenadas por nombre
-        $recetasInactivas = RecetaCabecera::with(['area', 'producto', 'uMedida'])
-            ->where('is_deleted', false) // Solo recetas no eliminadas
-            ->where('status', false) // Solo recetas inactivas
-            ->orderBy('nombre') // Orden alfabético
+        // Obtener recetas inactivas ordenadas por nombre
+        $recetasInactivas = (clone $query)
+            ->where('status', false)
+            ->orderBy('nombre')
             ->get();
 
         // Combinar las colecciones manteniendo el orden (activas primero)
         $recetas = $recetasActivas->merge($recetasInactivas);
-
-        return view('recetas.index', compact('recetas'));
+        
+        // Pasar el rol del usuario a la vista para controlar los botones de acción
+        return view('recetas.index', compact('recetas', 'idRol'));
     }
 
     /**

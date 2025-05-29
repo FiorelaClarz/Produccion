@@ -3,9 +3,11 @@
 @section('content')
 <div class="container">
     <h1>Listado de Recetas</h1>
+    @if($idRol == 1) {{-- Solo administradores pueden crear nuevas recetas --}}
     <a href="{{ route('recetas.create') }}" class="btn btn-primary mb-3">
         <i class="fas fa-plus"></i> Nueva Receta
     </a>
+    @endif
     
     <div class="table-responsive">
         <table class="table table-striped">
@@ -39,43 +41,45 @@
                     </td>
                     <td class="text-center">
                         <div class="btn-group" role="group">
-                            <!-- Ver -->
+                            <!-- Ver detalles - Visible para todos los roles -->
                             <a href="{{ route('recetas.show', $receta->id_recetas) }}" 
                                class="btn btn-info btn-sm" 
                                title="Ver detalles">
                                 <i class="fas fa-eye"></i>
                             </a>
                             
-                            <!-- Editar -->
-                            <a href="{{ route('recetas.edit', $receta->id_recetas) }}" 
-                               class="btn btn-warning btn-sm" 
-                               title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            
-                            <!-- Activar/Desactivar -->
-                            <form action="{{ route('recetas.toggle-status', $receta->id_recetas) }}" 
-                                  method="POST" 
-                                  class="d-inline"
-                                  title="{{ $receta->status ? 'Desactivar' : 'Activar' }}">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-sm {{ $receta->status ? 'btn-secondary' : 'btn-success' }}">
-                                    <i class="fas {{ $receta->status ? 'fa-toggle-off' : 'fa-toggle-on' }}"></i>
-                                </button>
-                            </form>
-                            
-                            <!-- Eliminar -->
-                            <form action="{{ route('recetas.destroy', $receta->id_recetas) }}" 
-                                  method="POST" 
-                                  class="d-inline"
-                                  title="Eliminar">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
+                            @if($idRol == 1) {{-- Solo administradores pueden modificar recetas --}}
+                                <!-- Editar -->
+                                <a href="{{ route('recetas.edit', $receta->id_recetas) }}" 
+                                   class="btn btn-warning btn-sm" 
+                                   title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                
+                                <!-- Activar/Desactivar -->
+                                <form action="{{ route('recetas.toggle-status', $receta->id_recetas) }}" 
+                                      method="POST" 
+                                      class="d-inline"
+                                      title="{{ $receta->status ? 'Desactivar' : 'Activar' }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="btn btn-sm {{ $receta->status ? 'btn-secondary' : 'btn-success' }}">
+                                        <i class="fas {{ $receta->status ? 'fa-toggle-off' : 'fa-toggle-on' }}"></i>
+                                    </button>
+                                </form>
+                                
+                                <!-- Eliminar -->
+                                <form action="{{ route('recetas.destroy', $receta->id_recetas) }}" 
+                                      method="POST" 
+                                      class="d-inline"
+                                      title="Eliminar">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </td>
                 </tr>

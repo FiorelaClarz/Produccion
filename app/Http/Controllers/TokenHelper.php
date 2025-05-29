@@ -179,17 +179,21 @@ class TokenHelper
                         $cantidad = floatval(str_replace(',', '.', $venta['cantidad']));
                     }
                     
-                    // Obtener el costo unitario de la API
-                    $costoUnitario = 0;
-                    if (isset($venta['cost'])) {
-                        $costoUnitario = floatval(str_replace(',', '.', $venta['cost']));
-                    }
-                    
                     // Sumar la cantidad vendida
                     $result['cantidad_vendida'] += $cantidad;
                     
-                    // Sumar al costo total (cantidad * costo unitario)
-                    $result['costo_total'] += $cantidad * $costoUnitario;
+                    // CAMBIO AQUÍ: Verificar si existe total_sales y usarlo directamente
+                    if (isset($venta['total_sales'])) {
+                        // Sumar el total_sales directamente al costo_total
+                        $result['costo_total'] += floatval(str_replace(',', '.', $venta['total_sales']));
+                    } else {
+                        // Comportamiento anterior: calcular costo_total como cantidad * costo unitario
+                        $costoUnitario = 0;
+                        if (isset($venta['cost'])) {
+                            $costoUnitario = floatval(str_replace(',', '.', $venta['cost']));
+                        }
+                        $result['costo_total'] += $cantidad * $costoUnitario;
+                    }
                 }
                 
                 // Registrar los resultados para debugging

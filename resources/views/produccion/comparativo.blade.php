@@ -93,7 +93,11 @@
                                 <td class="text-right">{{ number_format($resultado['cantidad_merma'] ?? 0, 2) }}</td>
                                 <td class="text-right">{{ number_format($resultado['diferencia'] ?? 0, 2) }}</td>
                                 <td class="text-right">S/ {{ number_format($resultado['costo_produccion'] ?? 0, 2) }}</td>
-                                <td class="text-right">S/ {{ number_format(($resultado['ventas'] ?? 0) - ($resultado['costo_produccion'] ?? 0), 2) }}</td>
+                                @php
+                                    $utilidadBruta = ($resultado['ventas'] ?? 0) - ($resultado['costo_produccion'] ?? 0);
+                                    $colorUtilidad = $utilidadBruta < 0 ? 'text-danger' : '';
+                                @endphp
+                                <td class="text-right {{ $colorUtilidad }}">S/ {{ number_format($utilidadBruta, 2) }}</td>
                                 <td class="text-right">S/ {{ number_format($resultado['ventas'] ?? 0, 2) }}</td>
                                 <td class="text-right">S/ {{ number_format($resultado['costo_merma'] ?? 0, 2) }}</td>
                                 <td class="text-right">S/ {{ number_format($resultado['costo_diferencia'] ?? 0, 2) }}</td>
@@ -127,6 +131,7 @@
                             <th class="text-center">CANT. VENDIDA</th>
                             <th class="text-center">MERMA</th>
                             <th class="text-center">DIFERENCIA</th>
+                            <th class="text-center">COSTO PRODUCCIÓN</th>
                             <th class="text-center">UTILIDAD BRUTA</th>
                             <th class="text-center">VENTAS</th>
                             <th class="text-center">COSTO MERMA</th>
@@ -140,7 +145,11 @@
                             <td class="text-right"><span id="total-venta">{{ number_format($totales['venta'], 2) }}</span></td>
                             <td class="text-right"><span id="total-merma">{{ number_format($totales['merma'], 2) }}</span></td>
                             <td class="text-right"><span id="total-diferencia">{{ number_format($totales['diferencia'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-utilidad">S/ {{ number_format($totales['utilidad_bruta'], 2) }}</span></td>
+                            <td class="text-right"><span id="total-costo-produccion">S/ {{ number_format($totales['costo_produccion'] ?? 0, 2) }}</span></td>
+                            @php
+                                $colorUtilidadTotal = $totales['utilidad_bruta'] < 0 ? 'text-danger' : '';
+                            @endphp
+                            <td class="text-right"><span id="total-utilidad" class="{{ $colorUtilidadTotal }}">S/ {{ number_format($totales['utilidad_bruta'], 2) }}</span></td>
                             <td class="text-right"><span id="total-ventas">S/ {{ number_format($totales['ventas'], 2) }}</span></td>
                             <td class="text-right"><span id="total-costo-merma">S/ {{ number_format($totales['costo_merma'], 2) }}</span></td>
                             <td class="text-right"><span id="total-costo-diferencia">S/ {{ number_format($totales['costo_diferencia'], 2) }}</span></td>
@@ -238,6 +247,7 @@
             if (costosChart) {
                 costosChart.data.datasets[0].data = [
                     totales.ventas,
+                    totales.costo_produccion,
                     totales.costo_merma,
                     totales.costo_diferencia
                 ];
@@ -254,6 +264,7 @@
                 venta: 0,
                 merma: 0,
                 diferencia: 0,
+                costo_produccion: 0,
                 utilidad_bruta: 0,
                 ventas: 0,
                 costo_merma: 0,
@@ -274,16 +285,18 @@
                 const venta = parseFloat($(cells[5]).text().replace(/[^\d.-]/g, '')) || 0;
                 const merma = parseFloat($(cells[6]).text().replace(/[^\d.-]/g, '')) || 0;
                 const diferencia = parseFloat($(cells[7]).text().replace(/[^\d.-]/g, '')) || 0;
-                const utilidad = parseFloat($(cells[8]).text().replace(/[^\d.-]/g, '')) || 0;
-                const ventas = parseFloat($(cells[9]).text().replace(/[^\d.-]/g, '')) || 0;
-                const costoMerma = parseFloat($(cells[10]).text().replace(/[^\d.-]/g, '')) || 0;
-                const costoDif = parseFloat($(cells[11]).text().replace(/[^\d.-]/g, '')) || 0;
+                const costoProduccion = parseFloat($(cells[8]).text().replace(/[^\d.-]/g, '')) || 0;
+                const utilidad = parseFloat($(cells[9]).text().replace(/[^\d.-]/g, '')) || 0;
+                const ventas = parseFloat($(cells[10]).text().replace(/[^\d.-]/g, '')) || 0;
+                const costoMerma = parseFloat($(cells[11]).text().replace(/[^\d.-]/g, '')) || 0;
+                const costoDif = parseFloat($(cells[12]).text().replace(/[^\d.-]/g, '')) || 0;
                 
                 // Sumar a los totales
                 totales.produccion += produccion;
                 totales.venta += venta;
                 totales.merma += merma;
                 totales.diferencia += diferencia;
+                totales.costo_produccion += costoProduccion;
                 totales.utilidad_bruta += utilidad;
                 totales.ventas += ventas;
                 totales.costo_merma += costoMerma;
@@ -292,12 +305,22 @@
             
             console.log('Totales calculados:', totales);
             
-            // Actualizar los totales en el resumen
+            // Actualizar los totales en la UI
             $('#total-produccion').text(totales.produccion.toFixed(2));
             $('#total-venta').text(totales.venta.toFixed(2));
             $('#total-merma').text(totales.merma.toFixed(2));
             $('#total-diferencia').text(totales.diferencia.toFixed(2));
-            $('#total-utilidad').text('S/ ' + totales.utilidad_bruta.toFixed(2));
+            $('#total-costo-produccion').text('S/ ' + totales.costo_produccion.toFixed(2));
+            
+            // Aplicar color rojo a utilidad bruta negativa
+            const $totalUtilidad = $('#total-utilidad');
+            $totalUtilidad.text('S/ ' + totales.utilidad_bruta.toFixed(2));
+            if (totales.utilidad_bruta < 0) {
+                $totalUtilidad.addClass('text-danger');
+            } else {
+                $totalUtilidad.removeClass('text-danger');
+            }
+            
             $('#total-ventas').text('S/ ' + totales.ventas.toFixed(2));
             $('#total-costo-merma').text('S/ ' + totales.costo_merma.toFixed(2));
             $('#total-costo-diferencia').text('S/ ' + totales.costo_diferencia.toFixed(2));
@@ -348,21 +371,24 @@
         };
         
         const costosData = {
-            labels: ['Ventas', 'Costo Merma', 'Costo Diferencia'],
+            labels: ['Ventas', 'Costo Producción', 'Costo Merma', 'Costo Diferencia'],
             datasets: [{
                 label: 'Distribución de costos',
                 data: [
                     {{ $totales['ventas'] }},
+                    {{ $totales['costo_produccion'] ?? 0 }},
                     {{ $totales['costo_merma'] }},
                     {{ $totales['costo_diferencia'] }}
                 ],
                 backgroundColor: [
                     'rgba(75, 192, 192, 0.7)',
+                    'rgba(46, 134, 193, 0.7)',
                     'rgba(255, 99, 132, 0.7)',
                     'rgba(255, 206, 86, 0.7)'
                 ],
                 borderColor: [
                     'rgba(75, 192, 192, 1)',
+                    'rgba(46, 134, 193, 1)',
                     'rgba(255, 99, 132, 1)',
                     'rgba(255, 206, 86, 1)'
                 ],
@@ -414,10 +440,19 @@
         // Crear gráfico de cantidades
         const ctxCantidades = document.getElementById('cantidadesChart').getContext('2d');
         cantidadesChart = new Chart(ctxCantidades, {
-            type: 'pie',
+            type: 'bar',
             data: cantidadesData,
             options: {
                 ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Cantidad'
+                        }
+                    }
+                },
                 plugins: {
                     ...chartOptions.plugins,
                     tooltip: cantidadesTooltipCallback
@@ -428,10 +463,22 @@
         // Crear gráfico de costos
         const ctxCostos = document.getElementById('costosChart').getContext('2d');
         costosChart = new Chart(ctxCostos, {
-            type: 'pie',
+            type: 'bar',
             data: costosData,
             options: {
                 ...chartOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Monto (S/)',
+                            font: {
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
                 plugins: {
                     ...chartOptions.plugins,
                     tooltip: costosTooltipCallback

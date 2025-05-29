@@ -220,16 +220,6 @@ class MenuServiceProvider extends ServiceProvider
                         'icon' => 'fas fa-list'
                     ],
                     [
-                        'text' => 'Nueva Producción',
-                        'route' => 'produccion.create',
-                        'icon' => 'fas fa-plus-circle'
-                    ],
-                    [
-                        'text' => 'Vista Personal',
-                        'route' => 'produccion.index-personal',
-                        'icon' => 'fas fa-user-cog'
-                    ],
-                    [
                         'text' => 'Vista Administrador',
                         'route' => 'produccion.index-admin',
                         'icon' => 'fas fa-user-shield'
@@ -334,17 +324,6 @@ class MenuServiceProvider extends ServiceProvider
                         'text' => 'Todos los Pedidos',
                         'route' => 'pedidos.index',
                         'icon' => 'fas fa-list'
-                    ],
-                    [
-                        'text' => 'Nuevo Pedido',
-                        'route' => 'pedidos.create',
-                        'icon' => 'fas fa-plus-circle'
-                    ],
-                    [
-                        'text' => 'Continuar Pedido',
-                        'route' => 'pedidos.index',
-                        'icon' => 'fas fa-sync-alt',
-                        'js_visible' => 'localStorage.getItem("pedido_temp") !== null'
                     ]
                 ]
             ],
@@ -359,11 +338,6 @@ class MenuServiceProvider extends ServiceProvider
                         'text' => 'Todas las Producciones',
                         'route' => 'produccion.index',
                         'icon' => 'fas fa-list'
-                    ],
-                    [
-                        'text' => 'Vista Administrador',
-                        'route' => 'produccion.index-admin',
-                        'icon' => 'fas fa-user-shield'
                     ],
                     [
                         'text' => 'Reporte por Períodos',
