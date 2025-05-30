@@ -216,6 +216,9 @@ Route::middleware(['auth'])->group(function () {
         // Route::patch('/{id}/toggle-status', [EquipoController::class, 'toggleStatus'])->name('equipos.toggle-status');
         Route::match(['PATCH', 'POST'], '/equipos/{id}/toggle-status', [EquipoController::class, 'toggleStatus'])
             ->name('equipos.toggle-status');
+        // Ruta GET para mostrar confirmación de salida
+        Route::get('/{id}/confirmar-salida', [EquipoController::class, 'confirmarSalida'])->name('equipos.confirmar-salida');
+        // Ruta POST para procesar la salida
         Route::post('/{id}/registrar-salida', [EquipoController::class, 'registrarSalida'])->name('equipos.registrar-salida');
     });
 

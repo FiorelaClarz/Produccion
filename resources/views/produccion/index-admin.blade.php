@@ -32,6 +32,7 @@
     <!-- Notificación para ingresar equipo de trabajo -->
     @if(!$equipoActivo)
     <style>
+        /* Estilos de la notificación modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -90,6 +91,211 @@
         
         .btn-notification {
             padding: 8px 16px;
+        }
+        
+        /* Estilos para la tabla de producción */
+        .tabla-produccion {
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            background-color: #ffffff;
+        }
+        
+        .cabecera-tabla {
+            background: linear-gradient(135deg, #3355aa, #1e40af);
+            color: #ffffff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+            border: none;
+        }
+        
+        .cabecera-tabla th {
+            padding: 15px 10px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        .cabecera-tabla th:last-child {
+            border-right: none;
+        }
+        
+        .fila-produccion {
+            transition: all 0.2s ease;
+        }
+        
+        .fila-produccion:nth-child(odd) {
+            background-color: rgba(242, 245, 250, 0.8);
+        }
+        
+        .fila-produccion:hover {
+            background-color: rgba(225, 232, 255, 0.5);
+        }
+        
+        .fila-produccion td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e6e9f0;
+            vertical-align: middle;
+        }
+        
+        .celda-producto {
+            font-weight: 600;
+            color: #2a3457;
+        }
+        
+        .celda-receta {
+            font-style: italic;
+            color: #505a84;
+        }
+        
+        .celda-cantidad {
+            font-weight: 500;
+            text-align: center !important;
+            color: #344366;
+        }
+        
+        .celda-unidad {
+            text-align: center !important;
+            color: #667799;
+            font-size: 0.9rem;
+        }
+        
+        .celda-estado {
+            text-align: center !important;
+        }
+        
+        .celda-acciones {
+            text-align: center !important;
+        }
+        
+        .celda-monetaria {
+            font-family: 'Roboto Mono', monospace, sans-serif;
+            font-weight: 500;
+            color: #228855;
+            text-align: center !important;
+        }
+        
+        .entrada-cantidad {
+            max-width: 120px;
+            margin: 0 auto;
+            text-align: center;
+            border: 1px solid #c5d0e6;
+            border-radius: 5px;
+            padding: 6px 4px;
+            color: #345;
+            font-weight: 500;
+        }
+        
+        .entrada-cantidad:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.25);
+        }
+        
+        .selector-unidad {
+            max-width: 120px;
+            margin: 0 auto;
+            text-align: center;
+            border: 1px solid #c5d0e6;
+            border-radius: 5px;
+            padding: 6px 4px;
+            color: #345;
+        }
+        
+        .selector-unidad:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.25);
+        }
+        
+        .etiqueta-personalizado {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+            font-size: 0.75rem;
+            padding: 3px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+        }
+        
+        .boton-toggle {
+            padding: 0;
+            margin: 0 0 0 6px;
+            color: #4e73df;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .boton-toggle:hover {
+            color: #2e59d9;
+        }
+        
+        .grupo-botones-estado {
+            display: inline-flex;
+            gap: 4px;
+        }
+        
+        .boton-estado {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .boton-estado.iniciar {
+            border: 1px solid #4e73df;
+            color: #4e73df;
+        }
+        
+        .boton-estado.iniciar.active, .boton-estado.iniciar:hover:not(.disabled) {
+            background-color: #4e73df;
+            color: white;
+        }
+        
+        .boton-estado.terminar {
+            border: 1px solid #1cc88a;
+            color: #1cc88a;
+        }
+        
+        .boton-estado.terminar.active, .boton-estado.terminar:hover:not(.disabled) {
+            background-color: #1cc88a;
+            color: white;
+        }
+        
+        .boton-estado.cancelar {
+            border: 1px solid #e74a3b;
+            color: #e74a3b;
+        }
+        
+        .boton-estado.cancelar.active, .boton-estado.cancelar:hover:not(.disabled) {
+            background-color: #e74a3b;
+            color: white;
+        }
+        
+        .boton-estado.disabled {
+            opacity: 0.65;
+            pointer-events: none;
+        }
+        
+        .fila-detalle {
+            background-color: rgba(240, 244, 250, 0.5);
+            border-left: 4px solid #4e73df;
+        }
+        
+        .fila-detalle td {
+            padding: 15px;
+        }
+        
+        .contenedor-detalle {
+            background-color: white;
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
         }
     </style>
     
@@ -212,8 +418,8 @@
                 @endif
 
                 <div class="table-responsive">
-                    <table class="table table-hover production-table" id="dataTable" width="100%" cellspacing="0">
-                        <thead class="production-table-header">
+                    <table class="table table-hover production-table tabla-produccion" id="dataTable" width="100%" cellspacing="0">
+                        <thead class="production-table-header cabecera-tabla">
                             <tr>
                                 <th>Producto</th>
                                 <th>Receta</th>
@@ -267,13 +473,13 @@
                             @endphp
 
                             <!-- Fila principal para receta agrupada -->
-                            <tr class="production-item {{ $recetaData['es_personalizado'] ? 'personalizado-row' : '' }}" id="row-{{ $idReceta }}">
+                            <tr class="production-item fila-produccion {{ $recetaData['es_personalizado'] ? 'personalizado-row' : '' }}" id="row-{{ $idReceta }}">
                                 <td>
                                     <strong>{{ $recetaCounter }}. {{ $receta->producto->nombre ?? 'N/A' }}</strong>
                                     @if($pedidosPersonalizados->count() > 0)
-                                    <span class="badge badge-warning ml-2" style="color: #BFA100;">Contiene<br>personalizado</span>
+                                    <span class="badge badge-warning ml-2 etiqueta-personalizado">Contiene<br>personalizado</span>
                                     @endif
-                                    <button type="button" class="btn btn-sm btn-link" onclick="toggleDetalles({{ $idReceta }})">
+                                    <button type="button" class="btn btn-sm btn-link boton-toggle" onclick="toggleDetalles({{ $idReceta }})">
                                         <i class="fas fa-chevron-down"></i>
                                     </button>
                                 </td>
@@ -296,11 +502,11 @@
                                     @endif
                                 </td>
                                 <td class="text-center">{{ $nombreUnidadPedido }}</td>
-                                <td class="text-center">{{ number_format($cantidadEsperada, 2) }}</td>
-                                <td class="text-center cantidadProducidaAcu">
+                                <td class="text-center celda-cantidad">{{ number_format($cantidadEsperada, 2) }}</td>
+                                <td class="text-center cantidadProducidaAcu celda-cantidad">
                                     @if($estadoActual === 'pendientes')
                                         <input type="number" name="cantidad_producida_real[{{ $idReceta }}]"
-                                            class="form-control form-control-sm production-input cantidad-no-personalizada" data-recid="{{ $idReceta }}"
+                                            class="form-control form-control-sm production-input cantidad-no-personalizada entrada-cantidad" data-recid="{{ $idReceta }}"
                                             step="0.01" min="0"
                                             value="{{ old('cantidad_producida_real.'.$idReceta, $cantidadEsperada) }}"
                                             @if($recetaData['estado_general'] !== 'en_proceso') disabled @endif
@@ -335,7 +541,7 @@
                                 </td>
                                 <td class="text-center">
                                     @if($estadoActual === 'pendientes')
-                                        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm" {{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'disabled' }}>
+                                        <select name="id_u_medidas_prodcc[{{ $idReceta }}]" class="form-control form-control-sm selector-unidad" {{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'disabled' }}>
                                             @foreach($unidadesMedida as $unidad)
                                             <option value="{{ $unidad->id_u_medidas }}"
                                                 {{ $unidad->id_u_medidas == $recetaData['id_u_medidas'] ? 'selected' : '' }}>
@@ -356,7 +562,7 @@
                                             <input type="hidden" name="es_cancelado[{{ $idReceta }}]" value="{{ $recetaData['estado_general'] === 'cancelado' ? '1' : '0' }}">
 
                                             <!-- Checkbox UI para Iniciar -->
-                                            <label class="btn btn-sm btn-outline-primary estado-btn {{ $recetaData['estado_general'] === 'en_proceso' ? 'active' : '' }} {{ $disableControls ? 'disabled' : '' }}">
+                                            <label class="btn btn-sm btn-outline-primary estado-btn boton-estado iniciar {{ $recetaData['estado_general'] === 'en_proceso' ? 'active' : '' }} {{ $disableControls ? 'disabled' : '' }}">
                                                 <input type="checkbox" name="es_iniciado_ui[{{ $idReceta }}]"
                                                     autocomplete="off" 
                                                     onchange="manejarEstado(this, {{ $idReceta }})"
@@ -365,7 +571,7 @@
                                             </label>
 
                                             <!-- Checkbox UI para Terminar -->
-                                            <label class="btn btn-sm btn-outline-success estado-btn {{ $recetaData['estado_general'] === 'terminado' ? 'active' : '' }}" 
+                                            <label class="btn btn-sm btn-outline-success estado-btn boton-estado terminar {{ $recetaData['estado_general'] === 'terminado' ? 'active' : '' }}" 
                                                 id="terminar-btn-{{ $idReceta }}"
                                                 style="{{ $recetaData['estado_general'] === 'en_proceso' ? '' : 'pointer-events: none; opacity: 0.65;' }}">
                                                 <input type="checkbox" name="es_terminado_ui[{{ $idReceta }}]"
@@ -376,7 +582,7 @@
                                             </label>
                                             
                                             <!-- Checkbox UI para Cancelar -->
-                                            <label class="btn btn-sm btn-outline-danger estado-btn {{ $recetaData['estado_general'] === 'cancelado' ? 'active' : '' }} {{ $disableControls ? 'disabled' : '' }}">
+                                            <label class="btn btn-sm btn-outline-danger estado-btn boton-estado cancelar {{ $recetaData['estado_general'] === 'cancelado' ? 'active' : '' }} {{ $disableControls ? 'disabled' : '' }}">
                                                 <input type="checkbox" name="es_cancelado_ui[{{ $idReceta }}]"
                                                     autocomplete="off" 
                                                     onchange="manejarEstado(this, {{ $idReceta }})"
@@ -401,7 +607,7 @@
                                         </div>
                                     @endif
                                 </td>
-                                <td class="text-center subtotal-receta" id="subtotal-{{ $idReceta }}">
+                                <td class="text-center subtotal-receta celda-monetaria" id="subtotal-{{ $idReceta }}">
                                     @if($estadoActual === 'pendientes')
                                         S/ {{ number_format($subtotalReceta, 2) }}
                                     @elseif($estadoActual === 'terminados')
@@ -430,8 +636,8 @@
                                         S/ {{ number_format($subtotalRecetaCancelados, 2) }}
                                     @endif
                                 </td>
-                                <td class="text-center" id="costo-diseno-{{ $idReceta }}">S/ 0.00</td>
-                                <td class="text-center total-receta" id="total-{{ $idReceta }}">
+                                <td class="text-center costo-personalizado celda-monetaria" id="costo-personalizado-{{ $idReceta }}">S/ 0.00</td>
+                                <td class="text-center total-receta celda-monetaria" id="total-{{ $idReceta }}">
                                     @if($estadoActual === 'pendientes')
                                         S/ {{ number_format($subtotalReceta, 2) }}
                                     @elseif($estadoActual === 'terminados')
@@ -518,8 +724,8 @@
                             </tr>
 
                             <!-- Fila de detalles desplegable -->
-                            <tr class="detalles-row" id="detalles-{{ $idReceta }}" style="display: none;">
-                                <td colspan="13">
+                            <tr id="detalles-{{ $idReceta }}" class="fila-detalle" style="display: none;">
+                                <td colspan="13" class="contenedor-detalle">
                                     <div class="card">
                                         <div class="card-body">
                                             <h6 class="card-title">Detalles de Pedidos</h6>
@@ -2644,8 +2850,23 @@ function guardarObservacion() {
 
 // Cierra la notificación de equipo
 function closeNotification() {
-    document.getElementById('equipoNotification').style.display = 'none';
-    logAction('Notificación de equipo cerrada por el usuario');
+    // Ocultar tanto el modal como el overlay
+    const modalOverlay = document.querySelector('.modal-overlay');
+    const modalNotification = document.getElementById('equipoNotification');
+    
+    if (modalOverlay) {
+        modalOverlay.style.display = 'none';
+    }
+    
+    if (modalNotification) {
+        modalNotification.style.display = 'none';
+    }
+    
+    if (typeof logAction === 'function') {
+        logAction('Notificación de equipo cerrada por el usuario');
+    } else {
+        console.log('Notificación de equipo cerrada');
+    }
 }
 
 // Exportar funciones para acceso global (solo en desarrollo)

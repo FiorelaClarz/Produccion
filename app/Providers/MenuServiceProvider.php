@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Auth;
+use App\Models\EquipoCabecera;
+use Carbon\Carbon;
 
 class MenuServiceProvider extends ServiceProvider
 {
@@ -402,8 +404,62 @@ class MenuServiceProvider extends ServiceProvider
      * 
      * @return array
      */
+    /**
+     * Verifica si el usuario actual tiene un equipo activo creado hoy y retorna su ID
+     * 
+     * @return int|null ID del equipo activo o null si no hay equipo activo hoy
+     */
+    private function getActiveTeamId()
+    {
+        if (!Auth::check()) {
+            return null;
+        }
+        
+        $usuario = Auth::user();
+        $hoy = Carbon::now()->toDateString(); // Fecha actual en formato Y-m-d
+        
+        // Buscar un equipo activo para el usuario actual creado hoy
+        $equipoActivo = EquipoCabecera::where('id_usuarios', $usuario->id_usuarios)
+            ->where('salida', null)
+            ->whereDate('created_at', $hoy)
+            ->where('status', true)
+            ->first();
+            
+        return $equipoActivo ? $equipoActivo->id_equipos_cab : null;
+    }
+    
     private function getPersonalMenu()
     {
+        // Obtener el ID del equipo activo (si existe)
+        $equipoActivoId = $this->getActiveTeamId();
+        
+        // Crear el array de submenu de producción
+        $produccionSubmenu = [
+            [
+                'text' => 'Panel de Producción',
+                'route' => 'produccion.index-personal',
+                'icon' => 'fas fa-tasks'
+            ]
+        ];
+        
+        // Agregar opción según si hay equipo activo o no
+        if ($equipoActivoId) {
+            // Si hay equipo activo hoy, mostrar opción de marcar salida
+            $produccionSubmenu[] = [
+                'text' => 'Marcar Salida',
+                'route' => 'equipos.confirmar-salida',
+                'icon' => 'fas fa-sign-out-alt',
+                'params' => ['id' => $equipoActivoId]
+            ];
+        } else {
+            // Si no hay equipo activo hoy, mostrar opción de crear equipo
+            $produccionSubmenu[] = [
+                'text' => 'Crear Equipo',
+                'route' => 'equipos.create',
+                'icon' => 'fas fa-user-plus'
+            ];
+        }
+        
         return [
             // Equipos de producción
             [
@@ -425,19 +481,7 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'produccion.index-personal',
                 'icon' => 'fas fa-industry',
                 'visible' => true,
-                'submenu' => [
-                    [
-                        'text' => 'Panel de Producción',
-                        'route' => 'produccion.index-personal',
-                        'icon' => 'fas fa-tasks'
-                    ],
-                    [
-                        'text' => 'Marcar Salida',
-                        'route' => 'equipos.registrar-salida',
-                        'icon' => 'fas fa-sign-out-alt',
-                        'params' => ['id' => 'active_equipment_id']
-                    ]
-                ]
+                'submenu' => $produccionSubmenu
             ],
             // Recetas - Solo visualización
             [
@@ -463,6 +507,41 @@ class MenuServiceProvider extends ServiceProvider
      */
     private function getOperadorMenu()
     {
+        // Obtener el ID del equipo activo (si existe)
+        $equipoActivoId = $this->getActiveTeamId();
+        
+        // Crear el array de submenu de producción
+        $produccionSubmenu = [
+            [
+                'text' => 'Panel de Producción',
+                'route' => 'produccion.index-personal',
+                'icon' => 'fas fa-tasks'
+            ],
+            [
+                'text' => 'Mis Producciones',
+                'route' => 'produccion.index',
+                'icon' => 'fas fa-list'
+            ]
+        ];
+        
+        // Agregar opción según si hay equipo activo o no
+        if ($equipoActivoId) {
+            // Si hay equipo activo hoy, mostrar opción de marcar salida
+            $produccionSubmenu[] = [
+                'text' => 'Marcar Salida',
+                'route' => 'equipos.confirmar-salida',
+                'icon' => 'fas fa-sign-out-alt',
+                'params' => ['id' => $equipoActivoId]
+            ];
+        } else {
+            // Si no hay equipo activo hoy, mostrar opción de crear equipo
+            $produccionSubmenu[] = [
+                'text' => 'Crear Equipo',
+                'route' => 'equipos.create',
+                'icon' => 'fas fa-user-plus'
+            ];
+        }
+        
         return [
             // Producción limitada para operadores
             [
@@ -470,24 +549,7 @@ class MenuServiceProvider extends ServiceProvider
                 'route' => 'produccion.index-personal',
                 'icon' => 'fas fa-industry',
                 'visible' => true,
-                'submenu' => [
-                    [
-                        'text' => 'Panel de Producción',
-                        'route' => 'produccion.index-personal',
-                        'icon' => 'fas fa-tasks'
-                    ],
-                    [
-                        'text' => 'Mis Producciones',
-                        'route' => 'produccion.index',
-                        'icon' => 'fas fa-list'
-                    ],
-                    [
-                        'text' => 'Marcar Salida',
-                        'route' => 'equipos.registrar-salida',
-                        'icon' => 'fas fa-sign-out-alt',
-                        'params' => ['id' => 'active_equipment_id']
-                    ]
-                ]
+                'submenu' => $produccionSubmenu
             ],
             // Recetas - Solo visualización
             [

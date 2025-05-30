@@ -348,6 +348,37 @@ class EquipoController extends Controller
     }
 
     /**
+     * Muestra la pantalla de confirmación para registrar la salida
+     * 
+     * @param  int  $id ID del equipo
+     * @return \Illuminate\View\View Vista de confirmación
+     */
+    public function confirmarSalida($id)
+    {
+        try {
+            // Obtener equipo
+            $equipo = EquipoCabecera::with(['usuario', 'area', 'turno', 'equiposDetalle.personal'])
+                ->findOrFail($id);
+
+            // Verificar que el equipo pertenezca al área del usuario
+            if ($equipo->id_areas != Auth::user()->id_areas) {
+                abort(403, 'No tienes permiso para modificar este equipo');
+            }
+
+            // Verificar que el equipo no tenga ya hora de salida registrada
+            if ($equipo->salida) {
+                return redirect()->route('produccion.index')
+                    ->with('error', 'Este equipo ya tiene registrada su hora de salida.');
+            }
+
+            return view('equipos.confirmar-salida', compact('equipo'));
+        } catch (\Exception $e) {
+            return redirect()->route('produccion.index')
+                ->with('error', 'Error al cargar la vista de confirmación: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Registra la hora de salida de un equipo
      * 
      * @param  int  $id ID del equipo

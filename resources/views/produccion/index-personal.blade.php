@@ -85,7 +85,7 @@
         }
     </style>
 
-    <div class="modal-overlay">
+    <div class="modal-overlay" id="equipoOverlay">
         <div class="modal-notification" id="equipoNotification">
             <div class="notification-header">
                 <i class="fas fa-users fa-3x notification-icon"></i>
@@ -99,7 +99,7 @@
                 <a href="{{ route('equipos.create') }}" class="btn btn-primary btn-notification">
                     <i class="fas fa-user-plus"></i> Ingresar equipo de trabajo
                 </a>
-                <button class="btn btn-outline-secondary btn-notification" onclick="closeNotification()">
+                <button class="btn btn-outline-secondary btn-notification" onclick="document.getElementById('equipoOverlay').remove();">
                     Recordarme más tarde
                 </button>
             </div>
@@ -2487,7 +2487,12 @@
 
     // Cerrar notificación de equipo
     function closeNotification() {
-        document.getElementById('equipoNotification').style.display = 'none';
+        // Obtenemos el overlay específico por ID
+        var overlay = document.getElementById('equipoOverlay');
+        if (overlay) {
+            // Eliminamos el overlay completamente del DOM
+            overlay.parentNode.removeChild(overlay);
+        }
     }
 
     // Inicialización cuando el DOM esté listo
