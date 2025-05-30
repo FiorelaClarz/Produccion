@@ -5,9 +5,11 @@
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Detalles del Usuario</h6>
+            @if(auth()->user() && auth()->user()->id_roles === 1)
             <a href="{{ route('usuarios.index') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
+            @endif
         </div>
         <div class="card-body">
             <div class="row">
