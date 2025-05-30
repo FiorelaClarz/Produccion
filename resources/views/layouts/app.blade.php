@@ -39,7 +39,9 @@ function generarRuta($item) {
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    
+    <!-- SweetAlert2 - Cargado correctamente -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -48,50 +50,220 @@ function generarRuta($item) {
     
     <!-- Estilos adicionales -->
     <style>
-        body {
-            padding-top: 56px; /* Para la barra de navegación fija */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display+SC:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap');
+
+        /* Estilos para el texto del logo */
+        .playfair-display-sc-bold {
+            font-family: "Playfair Display SC", serif;
+            font-weight: 700;
+            font-style: normal;
+            color: #ebe64b; /* Color amarillo para el texto del logo */
+        }
+        
+        /* Estilos para la navbar */
+        .navbar .nav-link {
+            color: #ffffff !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar .nav-link:hover {
+            color: #ebe64b !important;
+        }
+        
+        .navbar .nav-link.active {
+            color: #f01917 !important;
+        }
+        
+        .navbar .dropdown-menu {
+            border-top: 3px solid #f01917;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+        }
+        
+        .navbar .dropdown-item:hover {
+            background-color: rgba(235, 230, 75, 0.1);
+            color: #033988;
+        }
+        
+        .navbar .dropdown-item i {
+            color: #033988;
+            width: 20px;
+            text-align: center;
         }
 
+        /* Estilos generales */
+        body {
+            padding-top: 56px; /* Ajuste para la barra de navegación fija */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden; /* Previene scroll horizontal */
+            width: 100%;
+            max-width: 100%;
+        }
+
+        main {
+            flex: 1 0 auto; /* Para que el contenido principal ocupe el espacio disponible */
+        }
+
+        /* Estilos para el sidebar */
         .sidebar {
+            width: 250px;
             position: fixed;
-            top: 56px;
+            top: 56px; /* Altura de la barra de navegación */
             bottom: 0;
             left: 0;
-            z-index: 1000;
-            padding: 20px 0;
-            overflow-x: hidden;
+            z-index: 100;
+            padding: 0;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(180deg, #033988 0%, #032d70 100%); /* Gradiente azul */
             overflow-y: auto;
-            background-color: #343a40;
-            width: 250px;
+            overflow-x: hidden; /* Prevenir scroll horizontal */
+            border-right: 3px solid #ebe64b; /* Borde amarillo a la derecha */
+            transition: all 0.3s ease;
+            max-width: 250px; /* Asegurar que no exceda el ancho */
         }
 
         .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.75);
-            padding: 10px 15px;
+            color: #ffffff; /* Texto blanco */
+            padding: 0.8rem 1.2rem;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 2px;
+            position: relative;
+            border-radius: 0 30px 30px 0;
+            margin-right: 10px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .sidebar .nav-link:hover {
+            background-color: rgba(235, 230, 75, 0.15); /* Amarillo con opacidad */
+            color: #ebe64b; /* Texto amarillo al hover */
+            border-left: 4px solid #ebe64b; /* Borde izquierdo amarillo */
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
         .sidebar .nav-link.active {
-            color: #fff;
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(240, 25, 23, 0.15); /* Rojo con opacidad */
+            color: #ffffff; /* Texto blanco */
+            font-weight: bold;
+            border-left: 4px solid #f01917; /* Borde izquierdo rojo */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Efecto de brillo en elementos activos */
+        .sidebar .nav-link.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shine 2s infinite;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            60%, 100% { transform: translateX(100%); }
         }
 
         .main-content {
             margin-left: 250px;
-            padding: 20px;
+            padding: 10px;
             width: calc(100% - 250px);
+            max-width: calc(100% - 250px);
+            overflow-x: hidden;
+        }
+        
+        /* Asegurar que las tablas se ajusten correctamente */
+        .main-content table {
+            width: 100%;
+            max-width: 100%;
+            table-layout: fixed;
+        }
+        
+        /* Ajustar celdas de tabla para evitar desbordamiento */
+        .main-content table td, .main-content table th {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Estilos para los submenús */
+        .sidebar .collapse {
+            background-color: rgba(255, 255, 255, 0.05);
+            margin: 0 10px 5px 5px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .sidebar .collapse .nav-link {
+            padding-left: 2.5rem;
+            font-size: 0.95rem;
+            border-radius: 5px;
+            margin: 2px 5px;
+        }
+        
+        /* Estilos para íconos */
+        .sidebar .nav-link i {
+            color: #ebe64b; /* Iconos en amarillo */
+            margin-right: 10px;
+            width: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            top: 1px;
+        }
+        
+        .sidebar .nav-link:hover i {
+            transform: scale(1.2);
+        }
+        
+        /* Estilos para headers de secciones */
+        .sidebar .nav-link[data-bs-toggle="collapse"] {
+            background-color: rgba(0, 0, 0, 0.2);
+            margin-top: 5px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(235, 230, 75, 0.2);
+        }
+        
+        /* Estilo para el chevron */
+        .sidebar .fa-chevron-down {
+            transition: transform 0.3s;
+            color: #ebe64b;
+        }
+        
+        .sidebar .nav-link[aria-expanded="true"] .fa-chevron-down {
+            transform: rotate(180deg);
         }
 
-        @media (max-width: 767.98px) {
+        /* Estilos responsivos */
+        @media (max-width: 991.98px) {
             .sidebar {
                 width: 100%;
-                position: relative;
-                top: 0;
+                position: static;
+                height: auto;
+                margin-bottom: 20px;
             }
 
             .main-content {
                 margin-left: 0;
                 width: 100%;
+                max-width: 100%;
+                padding: 8px;
             }
+        }
+        
+        /* Estilos para contenedores */
+        .container, .container-fluid {
+            width: 100%;
+            max-width: 100%;
+            padding-right: 10px;
+            padding-left: 10px;
         }
     </style>
     
@@ -100,10 +272,10 @@ function generarRuta($item) {
 
 <body>
     <!-- Barra de navegación superior -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background: linear-gradient(135deg, #033988 70%, #f01917 100%); border-bottom: 3px solid #ebe64b;">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url('/') }}">
-                {{ config('app.name', 'Producción') }}
+                <img src="{{ asset('images/logo-estrella.png') }}" alt="PRODUCCIÓN-ESTRELLA" height="40"> <span class="playfair-display-sc-bold">PRODUCCIÓN</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
                 <span class="navbar-toggler-icon"></span>
@@ -180,7 +352,7 @@ function generarRuta($item) {
         <div class="row">
             <!-- Sidebar -->
             @auth
-            <div class="d-none d-md-block sidebar bg-dark">
+            <div class="d-none d-md-block sidebar">
                 <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
                         
@@ -315,6 +487,28 @@ function generarRuta($item) {
     <!-- Scripts de la aplicación -->
     @yield('scripts')
     @stack('scripts')
+    
+    <!-- Variable global para mensajes flash desde Laravel -->
+    <script>
+        // Inicializar objeto de mensajes flash
+        var mensajesFlash = {};
+        
+        // Configurar mensajes desde la sesión
+        @if(session()->has('success'))
+            mensajesFlash.success = "{{ session('success') }}";
+        @endif
+        
+        @if(session()->has('error'))
+            mensajesFlash.error = "{{ session('error') }}";
+        @endif
+        
+        @if(session()->has('warning'))
+            mensajesFlash.warning = "{{ session('warning') }}";
+        @endif
+    </script>
+    
+    <!-- Cargar script de notificaciones -->
+    <script src="{{ asset('js/notificaciones.js') }}"></script>
 
     <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -522,4 +716,5 @@ function generarRuta($item) {
     </script>
 </body>
 </html>
+
 

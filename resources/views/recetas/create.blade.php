@@ -1,17 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
+<div class="container-fluid px-2" style="max-width: calc(100% - 250px); margin-left: 250px;">
     <h1>Crear Nueva Receta</h1>
 
     <!-- Formulario principal para crear recetas -->
-    <form id="recetaForm" action="{{ route('recetas.store') }}" method="POST">
+    <form id="recetaForm" action="{{ route('recetas.store') }}" method="POST" style="width: 100%; font-size: 0.95rem;">
         @csrf <!-- Token CSRF para protección contra ataques -->
 
-        <div class="row mb-4">
-            <div class="col-md-6">
+        <div class="row mb-3">
+            <div class="col-md-6 pr-1">
                 <!-- Selección de área -->
-                <div class="form-group">
+                <div class="form-group mb-2">
                     <label for="id_areas">Área</label>
                     <select class="form-control @error('id_areas') is-invalid @enderror" id="id_areas" name="id_areas" required>
                         <option value="">Seleccione un área</option>
@@ -56,7 +56,7 @@
                 </div>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-6 pl-1">
                 <!-- Rendimiento de la receta -->
                 <div class="form-group">
                     <label for="cant_rendimiento">Rendimiento</label>
@@ -116,7 +116,7 @@
         <hr>
 
         <!-- Sección de ingredientes -->
-        <h3>Ingredientes</h3>
+        <h5 class="mt-2">Ingredientes</h5>
 
         <!-- Mensajes de error para ingredientes -->
         <div class="alert alert-danger" id="ingredientesError" style="display:none;">
@@ -132,8 +132,8 @@
         </div>
 
         <!-- Formulario para agregar ingredientes -->
-        <div class="row mb-3">
-            <div class="col-md-5">
+        <div class="row mb-2">
+            <div class="col-md-4 pr-1">
                 <div class="form-group">
                     <label for="ingrediente_nombre">Producto Ingrediente</label>
                     <div class="position-relative">
@@ -163,16 +163,14 @@
                 </div>
             </div>
 
-
-            
-            <div class="col-md-2">
+            <div class="col-md-2 px-1">
                 <div class="form-group">
                     <label for="ingrediente_cantidad">Cantidad a usar</label>
                     <input type="number" step="0.01" class="form-control" id="ingrediente_cantidad" min="0.01" value="1">
                     <small class="text-danger" id="cantidadError" style="display:none;">Este campo es requerido</small>
                 </div>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <div class="form-group">
                     <label for="ingrediente_presentacion">Cantidad de Presentación</label>
                     <input type="number" class="form-control" id="ingrediente_presentacion" min="1" value="1">
@@ -181,8 +179,8 @@
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-md-10">
+        <div class="row mb-2">
+            <div class="col">
                 <!-- <div class="form-group">
                     <label for="ingrediente_u_medida">Unidad de Medida</label>
                     <select class="form-control" id="ingrediente_u_medida">
@@ -194,15 +192,15 @@
                     <small class="text-danger" id="uMedidaError" style="display:none;">Este campo es requerido</small>
                 </div> -->
             </div>
-            <div class="col-md-2 d-flex align-items-end">
+            <div class="col-auto d-flex align-items-end">
                 <button type="button" id="limpiarIngrediente" class="btn btn-secondary mr-2">Limpiar</button>
                 <button type="button" id="agregarIngrediente" class="btn btn-primary">Agregar</button>
             </div>
         </div>
 
         <!-- Tabla de ingredientes agregados -->
-        <div class="table-responsive mb-4">
-            <table class="table table-striped">
+        <div class="table-responsive mb-3">
+            <table class="table table-striped table-sm">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -235,8 +233,8 @@
 
         <!-- Botones de acción -->
         <div class="form-group">
-            <button type="submit" class="btn btn-success">Guardar Receta</button>
-            <a href="{{ route('recetas.index') }}" class="btn btn-danger">Cancelar</a>
+            <button type="submit" class="btn btn-success btn-sm">Guardar Receta</button>
+            <a href="{{ route('recetas.index') }}" class="btn btn-danger btn-sm">Cancelar</a>
         </div>
     </form>
 </div>
@@ -264,6 +262,11 @@
 
 @push('scripts')
 <script>
+$(document).ready(function() {
+    // Ajustar ancho de elementos para que sean más compactos
+    $('#recetaForm select, #recetaForm input, #recetaForm button').addClass('form-control-sm');
+    $('.btn').addClass('btn-sm');
+});
     $(document).ready(function() {
         // Variables globales para manejar los ingredientes y búsquedas
         let searchXHR = null;
@@ -516,16 +519,17 @@
                     $('#ingredienteDuplicadoError').hide();
                 }
 
-                // Agregar nuevo ingrediente
+                // Agregar a la lista de ingredientes
                 ingredientes.push({
                     id_productos_api: id,
                     nombre: nombre,
                     cantidad: cantidad,
                     cant_presentacion: presentacion,
-                    id_u_medidas: uMedidaId,
+                    id_u_medida: uMedidaId,
+                    id_u_medidas: uMedidaId, // Asegurarnos de que id_u_medidas esté definido
                     u_medida: uMedidaNombre,
                     costo_unitario: currentProductCost,
-                    subtotal: subtotal
+                    subtotal: (cantidad / presentacion) * currentProductCost
                 });
             }
 
@@ -539,53 +543,56 @@
         // Actualizar tabla de ingredientes y calcular totales
         function updateIngredientesTable() {
             const tableBody = $('#ingredientesTable');
-            tableBody.empty();
-            totalSubtotal = 0;
-
+            tableBody.empty(); // Limpiar tabla
+            
+            let totalSubtotal = 0;
+            
             if (ingredientes.length === 0) {
                 tableBody.append('<tr><td colspan="8" class="text-center">No hay ingredientes agregados</td></tr>');
                 $('#subtotalTotal').text('S/ 0.00');
-                $('#ingredientesData').val(JSON.stringify([]));
-                return;
+                $('#costoRecetaTotal').val('0');
+            } else {
+                // Mostrar cada ingrediente en la tabla
+                ingredientes.forEach((ingrediente, index) => {
+                    const rowSubtotal = (ingrediente.cantidad / ingrediente.cant_presentacion) * ingrediente.costo_unitario;
+                    totalSubtotal += rowSubtotal;
+                    
+                    const row = `
+                        <tr data-index="${index}">
+                            <td>${ingrediente.id_productos_api}</td>
+                            <td>${ingrediente.nombre}</td>
+                            <td>${ingrediente.cantidad.toFixed(2)}</td>
+                            <td>${ingrediente.cant_presentacion}</td>
+                            <td>${ingrediente.u_medida}</td>
+                            <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
+                            <td>S/ ${rowSubtotal.toFixed(2)}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-warning editar-ingrediente">Editar</button>
+                                <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">Eliminar</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.append(row);
+                });
+                
+                // Actualizar subtotal y costo total
+                $('#subtotalTotal').text(`S/ ${totalSubtotal.toFixed(2)}`);
+                $('#costoRecetaTotal').val(totalSubtotal.toFixed(2));
             }
-
-            // Mostrar los ingredientes
-            ingredientes.forEach((ingrediente, index) => {
-                totalSubtotal += ingrediente.subtotal;
-
-                tableBody.append(`
-                    <tr data-index="${index}">
-                        <td>${ingrediente.id_productos_api}</td>
-                        <td>${ingrediente.nombre}</td>
-                        <td>${ingrediente.cantidad.toFixed(2)}</td>
-                        <td>${ingrediente.cant_presentacion}</td>
-                        <td>${ingrediente.u_medida}</td>
-                        <td>S/ ${ingrediente.costo_unitario.toFixed(2)}</td>
-                        <td>S/ ${ingrediente.subtotal.toFixed(2)}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-primary editar-ingrediente mr-1">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger eliminar-ingrediente">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `);
-            });
-
-            // Actualizar total y el campo oculto para costo_receta
-            $('#subtotalTotal').text('S/ ' + totalSubtotal.toFixed(2));
-            $('#costoRecetaTotal').val(totalSubtotal.toFixed(2));
-
-            // Preparar datos para enviar al servidor
-            const datosParaEnviar = ingredientes.map(ing => ({
-                id_productos_api: ing.id_productos_api,
-                cantidad: ing.cantidad,
-                cant_presentacion: ing.cant_presentacion,
-                id_u_medidas: ing.id_u_medidas
+            
+            // Preparar datos para enviar al servidor - IMPORTANTE para que funcione el botón Guardar
+            const datosParaEnviar = ingredientes.map(ingrediente => ({
+                id_productos_api: ingrediente.id_productos_api,
+                cantidad: ingrediente.cantidad,
+                cant_presentacion: ingrediente.cant_presentacion,
+                id_u_medidas: ingrediente.id_u_medidas || ingrediente.id_u_medida, // Usar id_u_medidas si existe, sino id_u_medida
+                costo_unitario: ingrediente.costo_unitario,
+                subtotal: (ingrediente.cantidad / ingrediente.cant_presentacion) * ingrediente.costo_unitario
             }));
-            $('#ingredientesData').val(JSON.stringify(datosParaEnviar));
+            const jsonData = JSON.stringify(datosParaEnviar);
+            $('#ingredientesData').val(jsonData);
+            console.log('Datos de ingredientes actualizados para envío:', jsonData);
+            console.log('Datos de ingredientes actualizados para envío:', datosParaEnviar);
         }
 
         // Editar ingrediente existente
@@ -640,24 +647,33 @@
 
         // Validación completa del formulario de receta
         function validateRecetaForm() {
+            console.log('Validando formulario...');
             let isValid = true;
             $('#ingredientesError').hide();
 
             // Validar campos del formulario
             isValid = validateFormFields();
+            console.log('Validación de campos básicos:', isValid ? 'OK' : 'Fallo');
 
             // Validar producto principal
             if ($('#id_productos_api').val() === '') {
                 $('#producto_nombre').addClass('is-invalid');
+                console.log('Producto principal no seleccionado');
                 isValid = false;
             } else {
                 $('#producto_nombre').removeClass('is-invalid');
+                console.log('Producto principal:', $('#producto_nombre').val());
             }
 
-            // Validar ingredientes
+            // Validar ingredientes - Esta validación puede estar causando problemas
             if (ingredientes.length === 0) {
                 $('#ingredientesError').show();
+                console.log('No hay ingredientes en la receta');
                 isValid = false;
+            } else {
+                console.log('Ingredientes añadidos:', ingredientes.length);
+                // Forzar la actualización del campo oculto con los ingredientes
+                updateIngredientesTable();
             }
 
             return isValid;
@@ -665,11 +681,91 @@
 
         // Validar al enviar el formulario
         $('#recetaForm').on('submit', function(e) {
-            if (!validateRecetaForm()) {
-                e.preventDefault();
+            e.preventDefault(); // Prevenir el envío inicial
+            
+            // Forzar la eliminación de is-invalid en todos los campos
+            $('[required]').removeClass('is-invalid');
+            $('#ingredientesError').hide();
+            
+            // Actualizar ingredientes siempre antes de validar
+            updateIngredientesTable();
+            
+            // Verificar campos obligatorios manualmente
+            let isValid = true;
+            
+            // Validar área
+            if ($('#id_areas').val() === '') {
+                $('#id_areas').addClass('is-invalid');
+                isValid = false;
+                console.log('Falta seleccionar el área');
+            }
+            
+            // Validar producto principal
+            if ($('#id_productos_api').val() === '') {
+                $('#producto_nombre').addClass('is-invalid');
+                isValid = false;
+                console.log('Falta seleccionar el producto principal');
+            }
+            
+            // Validar rendimiento
+            if ($('#cant_rendimiento').val() === '') {
+                $('#cant_rendimiento').addClass('is-invalid');
+                isValid = false;
+                console.log('Falta indicar el rendimiento');
+            }
+            
+            // Validar unidad de medida
+            if ($('#id_u_medidas').val() === '') {
+                $('#id_u_medidas').addClass('is-invalid');
+                isValid = false;
+                console.log('Falta seleccionar la unidad de medida');
+            }
+            
+            // Validar ingredientes
+            if (ingredientes.length === 0) {
+                $('#ingredientesError').show();
+                isValid = false;
+                console.log('No hay ingredientes agregados');
+            }
+            
+            if (!isValid) {
                 $('html, body').animate({
                     scrollTop: $('.is-invalid').first().offset().top - 100
                 }, 500);
+                console.log('Formulario bloqueado por validación manual');
+                return false;
+            }
+            
+            console.log('Formulario validado correctamente, ingredientes actualizados:', $('#ingredientesData').val());
+            
+            // Verificar que el JSON sea válido
+            try {
+                const json = $('#ingredientesData').val();
+                const parsed = JSON.parse(json);
+                console.log('JSON válido, tiene', parsed.length, 'ingredientes');
+                
+                // Verificar que cada ingrediente tenga id_u_medidas
+                let todosBien = true;
+                parsed.forEach((item, idx) => {
+                    if (!item.id_u_medidas) {
+                        console.error('Ingrediente', idx, 'no tiene id_u_medidas');
+                        todosBien = false;
+                    }
+                });
+                
+                if (!todosBien) {
+                    console.error('Algunos ingredientes tienen datos inválidos');
+                    alert('Hay un problema con algunos ingredientes. Por favor, verifica e intenta de nuevo.');
+                    return false;
+                }
+                
+                // Todo está bien, enviar el formulario
+                console.log('Todo validado correctamente, enviando formulario...');
+                this.submit();
+            } catch (err) {
+                console.error('Error en JSON de ingredientes:', err);
+                alert('Error al procesar los ingredientes. Por favor, intenta de nuevo.');
+                return false;
             }
         });
 
@@ -701,18 +797,45 @@
 </script>
 
 <style>
+    /* Estilos generales para hacer el formulario más compacto */
+    #recetaForm label {
+        margin-bottom: 0.2rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    #recetaForm .form-control {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    #recetaForm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Estilos para asegurar que el formulario quepa en el espacio disponible */
+    @media (min-width: 992px) {
+        #recetaForm {
+            width: 100%;
+            max-width: 100%;
+        }
+    }
+    
     /* Estilos para los resultados de búsqueda */
     #productoResults,
     #ingredienteResults {
         position: absolute;
         z-index: 1000;
-        width: calc(100% - 30px);
-        max-height: 300px;
+        width: 100%;
+        max-height: 200px;
         overflow-y: auto;
         background: white;
         border: 1px solid #ced4da;
         border-radius: 0.25rem;
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        left: 0;
+        font-size: 0.85rem;
     }
 
     .product-item {

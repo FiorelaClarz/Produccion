@@ -307,19 +307,49 @@ class RecetaController extends Controller
                         }
                     }
                 }
-
                 $ingredientesActualesIds[] = $ingrediente['id_productos_api'];
             }
 
-            // Eliminar ingredientes que ya no están en la receta
-            $receta->detalles()
+            // Eliminar ingredientes que ya no están en la receta (usando SoftDelete)
+            $detallesAEliminar = $receta->detalles()
                 ->whereNotIn('id_productos_api', $ingredientesActualesIds)
-                ->delete();
+                ->whereNull('deleted_at')
+                ->get();
+            
+            // Registrar los ingredientes que se eliminarán
+            Log::info('Ingredientes a eliminar:', [
+                'cantidad' => $detallesAEliminar->count(),
+                'ids' => $detallesAEliminar->pluck('id_recetas_det')->toArray()
+            ]);
+            
+            // Eliminar uno por uno para asegurar que se aplique el SoftDelete
+            foreach ($detallesAEliminar as $detalle) {
+                Log::info('Eliminando ingrediente:', [
+                    'id' => $detalle->id_recetas_det,
+                    'producto' => $detalle->nombre
+                ]);
+                $detalle->delete(); // Esto establece deleted_at
+            }
 
-            DB::commit(); // Confirmar transacción
-
+            // Recalcular el costo total de la receta considerando solo ingredientes no eliminados
+            $costoTotal = $receta->detalles()
+                ->whereNull('deleted_at')
+                ->sum('subtotal_receta');
+                
+            Log::info('Costo total recalculado:', ['costo' => $costoTotal]);
+            
+            // Actualizar el costo total de la receta
+            $receta->update([
+                'costo_receta' => $costoTotal
+            ]);
+            
+            // ¡CORREGIDO! Faltaba confirmar la transacción
+            DB::commit();
+            
+            // Redireccionar con mensaje de éxito
             return redirect()->route('recetas.index')
                 ->with('success', 'Receta actualizada exitosamente');
+                
         } catch (\Exception $e) {
             DB::rollBack(); // Revertir transacción en caso de error
             Log::error('Error al actualizar receta:', [

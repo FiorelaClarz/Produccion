@@ -432,11 +432,6 @@ class MenuServiceProvider extends ServiceProvider
                         'icon' => 'fas fa-tasks'
                     ],
                     [
-                        'text' => 'Mis Producciones',
-                        'route' => 'produccion.index-personal',
-                        'icon' => 'fas fa-list'
-                    ],
-                    [
                         'text' => 'Marcar Salida',
                         'route' => 'equipos.registrar-salida',
                         'icon' => 'fas fa-sign-out-alt',
@@ -527,4 +522,3 @@ class MenuServiceProvider extends ServiceProvider
         ];
     }
 }
-

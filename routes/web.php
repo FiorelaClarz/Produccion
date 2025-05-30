@@ -28,7 +28,11 @@ use Illuminate\Http\Request; // Necesario para el Request
 use App\Models\Producto;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    } else {
+        return redirect()->route('login');
+    }
 });
 
 Route::resource('rols', RolController::class)->except(['show']); // show no lo usa
@@ -316,5 +320,4 @@ Route::prefix('api-test')->middleware('auth')->group(function () {
     Route::get('/token', [ApiTestController::class, 'testSalesApi'])->name('api.test.token');
     Route::get('/helper', [ApiTestController::class, 'testHelperMethod'])->name('api.test.helper');
 });
-
 

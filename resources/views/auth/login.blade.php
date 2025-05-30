@@ -4,11 +4,11 @@
 
 @section('content')
 <div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i> Iniciar Sesión</h5>
+    <div class="row justify-content-center align-items-center" style="min-height: calc(100vh - 150px);">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header" style="background: linear-gradient(135deg, #033988 70%, #f01917 100%); border-bottom: 3px solid #ebe64b;">
+                    <h5 class="mb-0 text-white playfair-display-sc-bold"><i class="fas fa-sign-in-alt me-2" style="color: #ebe64b;"></i> Iniciar Sesión</h5>
                 </div>
 
                 <div class="card-body">
@@ -21,7 +21,7 @@
                                    class="form-control @error('dni_personal') is-invalid @enderror" 
                                    name="dni_personal" value="{{ old('dni_personal') }}" 
                                    required autocomplete="dni" autofocus
-                                   placeholder="Ingrese su DNI">
+                                   placeholder="Ingrese su DNI" style="border: 1px solid #ebe64b;">
 
                             @error('dni_personal')
                                 <div class="invalid-feedback">
@@ -36,9 +36,9 @@
                                 <input id="clave" type="password" 
                                        class="form-control @error('clave') is-invalid @enderror" 
                                        name="clave" required autocomplete="current-password"
-                                       placeholder="Ingrese su contraseña">
-                                <button class="btn btn-outline-secondary toggle-password" type="button">
-                                    <i class="fas fa-eye"></i>
+                                       placeholder="Ingrese su contraseña" style="border: 1px solid #ebe64b;">
+                                <button class="btn toggle-password" style="border: 1px solid #ebe64b; background-color: #ffffff;" type="button">
+                                    <i class="fas fa-eye" style="color: #033988;"></i>
                                 </button>
                             </div>
                             @error('clave')
@@ -48,14 +48,9 @@
                             @enderror
                         </div>
 
-                        <div class="mb-3 form-check">
-                            <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
-                            <label class="form-check-label" for="remember">Recordar sesión</label>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-sign-in-alt me-1"></i> Iniciar Sesión
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn" style="background-color: #033988; color: white; border: none; padding: 12px; font-weight: bold; border-radius: 5px; transition: all 0.3s ease;">
+                                <i class="fas fa-sign-in-alt me-2" style="color: #ebe64b;"></i> Iniciar Sesión
                             </button>
                         </div>
                     </form>
