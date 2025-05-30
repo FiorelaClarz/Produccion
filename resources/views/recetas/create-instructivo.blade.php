@@ -32,7 +32,7 @@
                                      data-nombre="{{ $detalle->producto->nombre }}"
                                      data-cantidad="{{ $detalle->cantidad }}"
                                      data-u-medida="{{ $detalle->uMedida->nombre }}">
-                                    <span class="badge badge-info">
+                                    <span class="badge badge-info" style="color:black !important;">
                                         {{ $detalle->producto->nombre }} ({{ $detalle->cantidad }} {{ $detalle->uMedida->nombre }})
                                     </span>
                                 </div>

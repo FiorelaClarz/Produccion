@@ -566,6 +566,20 @@ class MenuServiceProvider extends ServiceProvider
                     ]
                 ]
             ],
+            // Pedidos
+            [
+                'text' => 'Pedidos',
+                'route' => 'pedidos.index',
+                'icon' => 'fas fa-clipboard-list',
+                'visible' => true,
+                'submenu' => [
+                    [
+                        'text' => 'Todos los Pedidos',
+                        'route' => 'pedidos.index',
+                        'icon' => 'fas fa-list'
+                    ]
+                ]
+            ],
             // Mermas - Solo visualización
             [
                 'text' => 'Mermas',
