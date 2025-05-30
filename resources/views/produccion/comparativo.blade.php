@@ -3,6 +3,44 @@
 @push('styles')
 <!-- DataTables CSS -->
 <link href="//cdn.datatables.net/2.3.1/css/dataTables.dataTables.min.css" rel="stylesheet">
+<style>
+    /* Estilos personalizados para el buscador de DataTables */
+    .dataTables_wrapper .dataTables_filter {
+        float: right;
+        text-align: right;
+        margin-bottom: 15px;
+    }
+    
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 6px 12px;
+        margin-left: 8px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    
+    .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+        outline: none;
+    }
+    
+    .dataTables_wrapper .dataTables_filter label {
+        font-weight: 500;
+        color: #444;
+        margin-bottom: 0;
+    }
+    
+    /* Ajuste para pantallas pequeñas */
+    @media (max-width: 767px) {
+        .dataTables_wrapper .dataTables_filter {
+            float: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+    }
+</style>
 @endpush
 
 @section('content')
@@ -200,6 +238,10 @@
         // Inicializar DataTable con la nueva sintaxis de la versión 2.3.1
         table = new DataTable('#dataTable', {
             ordering: true,
+            // Personalización del DOM para mover el buscador a la derecha
+            dom: "<'row'<'col-sm-4 col-md-6'l><'col-sm-8 col-md-6 text-right'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             language: {
                 search: "Buscar:",
                 lengthMenu: "Mostrar _MENU_ registros por página",

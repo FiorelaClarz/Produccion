@@ -28,7 +28,19 @@ function generarRuta($item) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', config('app.name', 'Producción'))</title>
+    <meta name="description" content="Sistema de Gestión de Producción para Estrella Supermercados">
+    <meta name="author" content="Estrella Supermercados">
+    <meta name="theme-color" content="#033988"> 
+    
+    <!-- Título dinámico para la pestaña del navegador -->
+    <title>@yield('title', 'Producción') | Estrella Supermercados</title>
+    
+    <!-- Favicon y configuración de íconos -->
+    <link rel="shortcut icon" href="{{ asset('./images/favicon.png') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('./images/favicon.png') }}" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('./images/favicon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('./images/favicon.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('./images/favicon.png') }}">
     <!-- jQuery primero -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <!-- Luego Popper.js y Bootstrap JS -->

@@ -511,46 +511,46 @@ class MenuServiceProvider extends ServiceProvider
         $equipoActivoId = $this->getActiveTeamId();
         
         // Crear el array de submenu de producción
-        $produccionSubmenu = [
-            [
-                'text' => 'Panel de Producción',
-                'route' => 'produccion.index-personal',
-                'icon' => 'fas fa-tasks'
-            ],
-            [
-                'text' => 'Mis Producciones',
-                'route' => 'produccion.index',
-                'icon' => 'fas fa-list'
-            ]
-        ];
+        // $produccionSubmenu = [
+        //     [
+        //         'text' => 'Panel de Producción',
+        //         'route' => 'produccion.index-personal',
+        //         'icon' => 'fas fa-tasks'
+        //     ],
+        //     [
+        //         'text' => 'Mis Producciones',
+        //         'route' => 'produccion.index',
+        //         'icon' => 'fas fa-list'
+        //     ]
+        // ];
         
         // Agregar opción según si hay equipo activo o no
-        if ($equipoActivoId) {
-            // Si hay equipo activo hoy, mostrar opción de marcar salida
-            $produccionSubmenu[] = [
-                'text' => 'Marcar Salida',
-                'route' => 'equipos.confirmar-salida',
-                'icon' => 'fas fa-sign-out-alt',
-                'params' => ['id' => $equipoActivoId]
-            ];
-        } else {
-            // Si no hay equipo activo hoy, mostrar opción de crear equipo
-            $produccionSubmenu[] = [
-                'text' => 'Crear Equipo',
-                'route' => 'equipos.create',
-                'icon' => 'fas fa-user-plus'
-            ];
-        }
+        // if ($equipoActivoId) {
+        //     // Si hay equipo activo hoy, mostrar opción de marcar salida
+        //     $produccionSubmenu[] = [
+        //         'text' => 'Marcar Salida',
+        //         'route' => 'equipos.confirmar-salida',
+        //         'icon' => 'fas fa-sign-out-alt',
+        //         'params' => ['id' => $equipoActivoId]
+        //     ];
+        // } else {
+        //     // Si no hay equipo activo hoy, mostrar opción de crear equipo
+        //     $produccionSubmenu[] = [
+        //         'text' => 'Crear Equipo',
+        //         'route' => 'equipos.create',
+        //         'icon' => 'fas fa-user-plus'
+        //     ];
+        // }
         
         return [
             // Producción limitada para operadores
-            [
-                'text' => 'Producción',
-                'route' => 'produccion.index-personal',
-                'icon' => 'fas fa-industry',
-                'visible' => true,
-                'submenu' => $produccionSubmenu
-            ],
+            // [
+            //     'text' => 'Producción',
+            //     'route' => 'produccion.index-personal',
+            //     'icon' => 'fas fa-industry',
+            //     'visible' => true,
+            //     'submenu' => $produccionSubmenu
+            // ],
             // Recetas - Solo visualización
             [
                 'text' => 'Recetas',

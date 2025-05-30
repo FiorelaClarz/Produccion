@@ -53,9 +53,10 @@ class PedidoController extends Controller
         // Filtro por rol de usuario
         if ($usuario->id_roles == 4) { // Rol operador
             $query->where('id_tiendas_api', $usuario->id_tiendas_api);
-        } elseif ($usuario->id_roles != 1) { // Si no es admin ni operador
+        } elseif ($usuario->id_roles != 1 && $usuario->id_roles != 2) { // Si no es admin ni rol 2 ni operador
             $query->where('id_usuarios', $usuario->id_usuarios);
         }
+        // Los usuarios con id_roles 1 (admin) y 2 pueden ver todos los pedidos
 
         // Ordenamiento
         $query->orderBy('fecha_last_update', 'desc')

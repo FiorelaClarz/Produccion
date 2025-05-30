@@ -66,7 +66,7 @@ class MermaController extends Controller
         $this->middleware(function ($request, $next) {
             $user = Auth::user();
             // Verificar si el usuario es admin (id_roles === 1) o operador (id_roles === 4)
-            if ($user->id_roles !== 1 && $user->id_roles !== 4) {
+            if ($user->id_roles !== 1 && $user->id_roles !== 4 && $user->id_roles !== 2) {
                 return redirect()->route('home')->with('error', 'No tiene permisos para acceder a esta sección.');
             }
             return $next($request);

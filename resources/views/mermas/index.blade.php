@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('title', 'Gestión de Mermas')
+
 @section('content')
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -19,41 +21,49 @@
 
     <!-- Filtros -->
     <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
-            <div class="dropdown no-arrow">
-                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-gradient-light">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter mr-2"></i>Filtros de Búsqueda</h6>
+            <div>
+                <a href="{{ route('mermas.index', ['filter' => 'today']) }}" class="btn btn-sm {{ $filter == 'today' ? 'btn-primary' : 'btn-outline-primary' }} mr-1">
+                    <i class="fas fa-calendar-day mr-1"></i>Hoy
                 </a>
-                <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" aria-labelledby="dropdownMenuLink">
-                    <div class="dropdown-header">Acciones:</div>
-                    <a class="dropdown-item" href="{{ route('mermas.index', ['filter' => 'today']) }}">Hoy</a>
-                    <a class="dropdown-item" href="{{ route('mermas.index', ['filter' => 'yesterday']) }}">Ayer</a>
-                    <a class="dropdown-item" href="{{ route('mermas.index', ['filter' => 'week']) }}">Última semana</a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="#" data-toggle="modal" data-target="#customDateModal">Fecha personalizada</a>
-                </div>
+                <a href="{{ route('mermas.index', ['filter' => 'yesterday']) }}" class="btn btn-sm {{ $filter == 'yesterday' ? 'btn-primary' : 'btn-outline-primary' }} mr-1">
+                    <i class="fas fa-calendar-minus mr-1"></i>Ayer
+                </a>
+                <a href="{{ route('mermas.index', ['filter' => 'week']) }}" class="btn btn-sm {{ $filter == 'week' ? 'btn-primary' : 'btn-outline-primary' }} mr-1">
+                    <i class="fas fa-calendar-week mr-1"></i>Semana
+                </a>
+                <button class="btn btn-sm {{ $filter == 'custom' ? 'btn-primary' : 'btn-outline-primary' }}" data-toggle="modal" data-target="#customDateModal">
+                    <i class="fas fa-calendar-alt mr-1"></i>Rango de Fechas
+                </button>
             </div>
         </div>
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <div class="form-group mb-md-0">
-                        <label class="d-block" style="margin-bottom: 0;">
-                            <strong>Filtro activo:</strong>
-                            <span class="badge badge-primary ml-2">
-                                @switch($filter)
-                                    @case('today')
-                                        Hoy
-                                        @break
-                                    @case('yesterday')
-                                        Ayer
-                                        @break
-                                    @case('week')
-                                        Última semana
-                                        @break
-                                    @case('custom')
-                                        {{ request('custom_date', 'Fecha personalizada') }}
+                        <div class="d-flex align-items-center">
+                            <span class="mr-2"><i class="fas fa-info-circle text-info"></i></span>
+                            <div>
+                                <strong>Filtro activo:</strong>
+                                <div class="badge badge-primary ml-2 px-3 py-2" style="font-size: 0.9rem; color: white; border-radius: 20px;">
+                                    @switch($filter)
+                                        @case('today')
+                                            <i class="fas fa-calendar-day mr-1"></i> Hoy ({{ date('d/m/Y') }})
+                                            @break
+                                        @case('yesterday')
+                                            <i class="fas fa-calendar-minus mr-1"></i> Ayer ({{ date('d/m/Y', strtotime('-1 day')) }})
+                                            @break
+                                        @case('week')
+                                            <i class="fas fa-calendar-week mr-1"></i> Última semana ({{ date('d/m/Y', strtotime('-7 days')) }} - {{ date('d/m/Y') }})
+                                            @break
+                                        @case('custom')
+                                            <i class="fas fa-calendar-alt mr-1"></i>
+                                            @if(request('start_date') && request('end_date'))
+                                                {{ date('d/m/Y', strtotime(request('start_date'))) }} - {{ date('d/m/Y', strtotime(request('end_date'))) }}
+                                            @else
+                                                {{ request('custom_date') ? date('d/m/Y', strtotime(request('custom_date'))) : 'Rango personalizado' }}
+                                            @endif
                                         @break
                                     @default
                                         Todos
@@ -205,12 +215,12 @@
     </div>
 </div>
 
-<!-- Modal de Fecha Personalizada -->
+<!-- Modal de Rango de Fechas -->
 <div class="modal fade" id="customDateModal" tabindex="-1" role="dialog" aria-labelledby="customDateModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="customDateModalLabel">Seleccionar Fecha</h5>
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title" id="customDateModalLabel"><i class="fas fa-calendar-alt mr-2"></i>Seleccionar Rango de Fechas</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -218,13 +228,33 @@
             <div class="modal-body">
                 <form id="customDateForm" action="{{ route('mermas.index') }}" method="GET">
                     <input type="hidden" name="filter" value="custom">
-                    <div class="form-group">
-                        <label for="custom_date">Fecha:</label>
-                        <input type="date" class="form-control" id="custom_date" name="custom_date" required value="{{ request('custom_date', date('Y-m-d')) }}">
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>Selecciona un rango de fechas para filtrar las mermas.
                     </div>
-                    <div class="text-right">
+                    
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="start_date"><i class="fas fa-calendar mr-1"></i>Fecha de inicio:</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required value="{{ request('start_date', date('Y-m-d', strtotime('-7 days'))) }}">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="end_date"><i class="fas fa-calendar-check mr-1"></i>Fecha de fin:</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required value="{{ request('end_date', date('Y-m-d')) }}">
+                        </div>
+                    </div>
+                    
+                    <!-- Botones rápidos para seleccionar rangos comunes -->
+                    <div class="mb-3">
+                        <small class="text-muted d-block mb-2">Rangos predefinidos:</small>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mr-1 quick-range" data-days="7">Última semana</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mr-1 quick-range" data-days="30">Último mes</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary quick-range" data-days="90">Último trimestre</button>
+                    </div>
+                    
+                    <div class="text-right mt-4">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Aplicar Filtro</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter mr-1"></i>Aplicar Filtro</button>
                     </div>
                 </form>
             </div>
@@ -237,6 +267,32 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
+        // Manejar los botones de rango rápido en el modal de fechas
+        $('.quick-range').on('click', function() {
+            const days = $(this).data('days');
+            const endDate = new Date();
+            const startDate = new Date();
+            
+            // Restar los días al startDate
+            startDate.setDate(startDate.getDate() - days);
+            
+            // Formatear las fechas como YYYY-MM-DD
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            // Establecer los valores en los campos de fecha
+            $('#start_date').val(formatDate(startDate));
+            $('#end_date').val(formatDate(endDate));
+            
+            // Destacar el botón seleccionado
+            $('.quick-range').removeClass('btn-secondary').addClass('btn-outline-secondary');
+            $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
+        });
+
         // Inicializar DataTable
         $('#dataTable').DataTable({
             "paging": false,

@@ -7,11 +7,13 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Información General</h4>
+            @if(Auth::check() && Auth::user()->id_roles === 1)
             <div>
                 <a href="{{ route('recetas.edit', $receta->id_recetas) }}" class="btn btn-warning btn-sm">
                     <i class="fas fa-edit"></i> Editar Receta
                 </a>
             </div>
+            @endif
         </div>
         <div class="card-body">
             <div class="row">
@@ -107,10 +109,12 @@
            class="btn btn-info">
             <i class="fas fa-book"></i> Ver Instructivo
         </a>
+        @if(Auth::check() && Auth::user()->id_roles === 1)
         <a href="{{ route('recetas.edit-instructivo', ['receta' => $receta->id_recetas, 'instructivo' => $receta->instructivo->id_recetas_instructivos]) }}" 
            class="btn btn-warning">
             <i class="fas fa-edit"></i> Editar Instructivo
         </a>
+        @endif
         <span class="badge badge-primary align-self-center ml-2">
             Versión: {{ $receta->instructivo->version }}
         </span>
@@ -119,10 +123,12 @@
     <div class="alert alert-warning">
         <i class="fas fa-exclamation-triangle"></i> Esta receta no tiene un instructivo asociado.
     </div>
+    @if(Auth::check() && Auth::user()->id_roles === 1)
     <a href="{{ route('recetas.create-instructivo', $receta->id_recetas) }}" 
        class="btn btn-success">
         <i class="fas fa-plus"></i> Crear Instructivo
     </a>
+    @endif
 @endif
         </div>
     </div>

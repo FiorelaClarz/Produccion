@@ -87,9 +87,11 @@
 
             <div class="row mt-4">
                 <div class="col-md-12 text-right">
+                    @if(auth()->user() && auth()->user()->id_roles === 1)
                     <a href="{{ route('usuarios.edit', $usuario->id_usuarios) }}" class="btn btn-primary">
                         <i class="fas fa-edit"></i> Editar
                     </a>
+                    @endif
                 </div>
             </div>
         </div>

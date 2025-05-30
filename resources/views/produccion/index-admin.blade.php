@@ -593,11 +593,11 @@
                                     @else
                                         <div class="estado-final">
                                             @if($recetaData['estado_general'] === 'terminado')
-                                                <span class="badge badge-success">
+                                                <span class="badge badge-success" style="color:black !important;">
                                                     <i class="fas fa-check-circle"></i> Terminado
                                                 </span>
                                             @elseif($recetaData['estado_general'] === 'cancelado')
-                                                <span class="badge badge-danger">
+                                                <span class="badge badge-danger" style="color:black !important;">
                                                     <i class="fas fa-times-circle"></i> Cancelado
                                                 </span>
                                                 @if(!empty($recetaData['observaciones']))
@@ -752,11 +752,11 @@
                                                                 <td>{{ number_format($pedido->cantidad, 2) }}</td>
                                                                 <td>
                                                                     @if($pedido->id_estados == 4)
-                                                                        <span class="badge badge-success">Terminado</span>
+                                                                        <span class="badge badge-success" style="color:black !important;">Terminado</span>
                                                                     @elseif($pedido->id_estados == 5)
-                                                                        <span class="badge badge-danger">Cancelado</span>
+                                                                        <span class="badge badge-danger" style="color:black !important;">Cancelado</span>
                                                                     @elseif($pedido->id_estados == 3)
-                                                                        <span class="badge badge-primary">En Proceso</span>
+                                                                        <span class="badge badge-primary" style="color:black !important;">En Proceso</span>
                                                                     @else
                                                                         <span class="badge badge-secondary">Pendiente</span>
                                                                     @endif
@@ -903,13 +903,13 @@
                                             </label>
                                         </div>
                                     @else
-                                        <span class="badge badge-secondary">
+                                        <span class="badge badge-secondary" style="color:black !important;">
                                             @if($pedido->id_estados == 4)
-                                                <i class="fas fa-check-circle"></i> Terminado
+                                                <i class="fas fa-check-circle" style="color:black !important;"></i> Terminado
                                             @elseif($pedido->id_estados == 5)
-                                                <i class="fas fa-times-circle"></i> Cancelado
+                                                <i class="fas fa-times-circle" style="color:black !important;"></i> Cancelado
                                             @else
-                                                <i class="fas fa-clock"></i> Pendiente
+                                                <i class="fas fa-clock" style="color:black !important;"></i> Pendiente
                                             @endif
                                         </span>
                                     @endif
