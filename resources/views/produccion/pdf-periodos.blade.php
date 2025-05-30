@@ -1,4 +1,5 @@
- @extends('layouts.pdf')
+ 
+@extends('layouts.app')
 
 <style>
     @page {
