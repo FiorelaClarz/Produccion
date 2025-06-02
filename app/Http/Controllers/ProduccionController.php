@@ -1242,28 +1242,17 @@ class ProduccionController extends Controller
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $filename = 'produccion_' . Carbon::now()->format('YmdHis') . '.xlsx';
         
+        // Establecer las cabeceras correctas para la descarga del archivo Excel
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
+        header('Expires: 0');
+        header('Pragma: public');
         
-        $fechaInicio = $request->input('fecha_inicio', Carbon::now()->subWeek()->toDateString());
-        $fechaFin = $request->input('fecha_fin', Carbon::now()->toDateString());
-
-        $datos = ProduccionDetalle::select(
-            DB::raw('DATE(produccion_cab.fecha) as fecha'),
-            DB::raw('SUM(cantidad_producida_real) as total_producido'),
-            DB::raw('SUM(cantidad_esperada) as total_esperado'),
-            'areas.nombre as area'
-        )
-            ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
-            ->join('areas', 'produccion_det.id_areas', '=', 'areas.id_areas')
-            ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin])
-            ->where('produccion_det.es_cancelado', false)
-            ->groupBy('fecha', 'area')
-            ->orderBy('fecha')
-            ->get();
-
-        return response()->json($datos);
+        // Importante: escribir el archivo al output
+        ob_end_clean(); // Limpiar cualquier salida previa
+        $writer->save('php://output');
+        exit;
     }
 
     /**
