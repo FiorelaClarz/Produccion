@@ -74,7 +74,15 @@ class PedidoController extends Controller
                 $query->whereDate('fecha_last_update', $today->copy()->subDay());
                 break;
             case 'week':
-                $query->whereBetween('fecha_last_update', [$today->copy()->subWeek(), $today]);
+                // Si se proporciona un rango de fechas personalizado
+                if ($request->has('start_date') && $request->has('end_date')) {
+                    $startDate = Carbon::parse($request->start_date)->startOfDay();
+                    $endDate = Carbon::parse($request->end_date)->endOfDay();
+                    $query->whereBetween('fecha_last_update', [$startDate, $endDate]);
+                } else {
+                    // Comportamiento predeterminado: última semana
+                    $query->whereBetween('fecha_last_update', [$today->copy()->subWeek(), $today]);
+                }
                 break;
             case 'custom':
                 if ($request->has('custom_date')) {
@@ -594,3 +602,5 @@ class PedidoController extends Controller
         return $pdf->stream($filename);
     }
 }
+
+

@@ -1620,41 +1620,55 @@
             }
             if (isChecked) desmarcarOtrosEstados(idReceta, tipo, true);
         } else if (tipo === 'es_terminado_ui' && isChecked) {
-            if (!confirm('¿Está seguro de marcar como terminado? Una vez terminado no podrá editar los datos.')) {
-                checkbox.checked = false;
-                if (hiddenInput) hiddenInput.value = '0';
-                return;
-            }
-            if (!validarTerminado(idReceta)) {
-                checkbox.checked = false;
-                if (hiddenInput) hiddenInput.value = '0';
-                return;
-            }
-            const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_ui[${idReceta}]"]`);
-            const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
-            if (iniciadoCheckbox && !iniciadoCheckbox.checked) {
-                iniciadoCheckbox.checked = true;
-                if (iniciadoHidden) iniciadoHidden.value = '1';
-            }
-            const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
-            if (cantidadInput) {
-                const cantidadHidden = document.createElement('input');
-                cantidadHidden.type = 'hidden';
-                cantidadHidden.name = `cantidad_producida_real[${idReceta}]`;
-                cantidadHidden.value = cantidadInput.value;
-                cantidadInput.parentNode.appendChild(cantidadHidden);
-                cantidadInput.disabled = true;
-            }
-            const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
-            if (unidadSelect) {
-                const unidadHidden = document.createElement('input');
-                unidadHidden.type = 'hidden';
-                unidadHidden.name = `id_u_medidas_prodcc[${idReceta}]`;
-                unidadHidden.value = unidadSelect.value;
-                unidadSelect.parentNode.appendChild(unidadHidden);
-                unidadSelect.disabled = true;
-            }
-            desmarcarOtrosEstados(idReceta, tipo, true);
+            checkbox.checked = false;
+            if (hiddenInput) hiddenInput.value = '0';
+            
+            Swal.fire({
+                title: '¿Está seguro?',
+                text: 'Una vez terminado no podrá editar los datos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, terminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    checkbox.checked = true;
+                    if (hiddenInput) hiddenInput.value = '1';
+                    
+                    if (!validarTerminado(idReceta)) {
+                        checkbox.checked = false;
+                        if (hiddenInput) hiddenInput.value = '0';
+                        return;
+                    }
+                    const iniciadoCheckbox = document.querySelector(`input[name="es_iniciado_ui[${idReceta}]"]`);
+                    const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado[${idReceta}]"]`);
+                    if (iniciadoCheckbox && !iniciadoCheckbox.checked) {
+                        iniciadoCheckbox.checked = true;
+                        if (iniciadoHidden) iniciadoHidden.value = '1';
+                    }
+                    const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
+                    if (cantidadInput) {
+                        const cantidadHidden = document.createElement('input');
+                        cantidadHidden.type = 'hidden';
+                        cantidadHidden.name = `cantidad_producida_real[${idReceta}]`;
+                        cantidadHidden.value = cantidadInput.value;
+                        cantidadInput.parentNode.appendChild(cantidadHidden);
+                        cantidadInput.disabled = true;
+                    }
+                    const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc[${idReceta}]"]`);
+                    if (unidadSelect) {
+                        const unidadHidden = document.createElement('input');
+                        unidadHidden.type = 'hidden';
+                        unidadHidden.name = `id_u_medidas_prodcc[${idReceta}]`;
+                        unidadHidden.value = unidadSelect.value;
+                        unidadSelect.parentNode.appendChild(unidadHidden);
+                        unidadSelect.disabled = true;
+                    }
+                    desmarcarOtrosEstados(idReceta, tipo, true);
+                }
+            });
         } else if (tipo === 'es_cancelado_ui' && isChecked) {
             // Al cancelar, NO desmarcar otros estados
             // Si no está iniciado, crear campos ocultos con valores por defecto
@@ -1749,7 +1763,11 @@
         const cantidadInput = document.querySelector(`input[name="cantidad_producida_real[${idReceta}]"]`);
 
         if (!cantidadInput || !cantidadInput.value || parseFloat(cantidadInput.value) <= 0) {
-            alert('Debe ingresar una cantidad producida válida antes de terminar.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debe ingresar una cantidad producida válida antes de terminar.'
+            });
             logAction('Validación fallida - Cantidad producida inválida', {
                 receta_id: idReceta,
                 valor: cantidadInput?.value
@@ -1867,64 +1885,78 @@
                 desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
             }
         } else if (tipo === 'es_terminado_personalizado' && isChecked) {
-            // Mostrar confirmación antes de terminar
-            if (!confirm('¿Está seguro de marcar como terminado? Una vez terminado no podrá editar los datos.')) {
-                checkbox.checked = false;
-                if (hiddenInput) hiddenInput.value = '0';
-                return;
-            }
+            // Mostrar confirmación antes de terminar con SweetAlert2
+            checkbox.checked = false;
+            if (hiddenInput) hiddenInput.value = '0';
+            
+            Swal.fire({
+                title: '¿Está seguro?',
+                text: 'Una vez terminado no podrá editar los datos.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, terminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    checkbox.checked = true;
+                    if (hiddenInput) hiddenInput.value = '1';
+                    
+                    if (!validarTerminadoPersonalizado(checkbox, idPedido, idReceta)) {
+                        checkbox.checked = false;
+                        if (hiddenInput) hiddenInput.value = '0';
+                        return;
+                    }
 
-            if (!validarTerminadoPersonalizado(checkbox, idPedido, idReceta)) {
-                checkbox.checked = false;
-                if (hiddenInput) hiddenInput.value = '0';
-                return;
-            }
+                    // Asegurarnos de que el estado iniciado esté marcado
+                    const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${idPedido}]"]`);
+                    if (iniciadoHidden) {
+                        iniciadoHidden.value = '1';
+                        logAction('Estado iniciado forzado para pedido personalizado', {
+                            pedido_id: idPedido,
+                            valor: iniciadoHidden.value
+                        });
+                    }
 
-            // Asegurarnos de que el estado iniciado esté marcado
-            const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${idPedido}]"]`);
-            if (iniciadoHidden) {
-                iniciadoHidden.value = '1';
-                logAction('Estado iniciado forzado para pedido personalizado', {
-                    pedido_id: idPedido,
-                    valor: iniciadoHidden.value
-                });
-            }
+                    // Deshabilitar campos al terminar pero mantener los valores
+                    const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
+                    if (cantidadInput) {
+                        // Crear un campo oculto con el valor actual
+                        const cantidadHidden = document.createElement('input');
+                        cantidadHidden.type = 'hidden';
+                        cantidadHidden.name = `cantidad_producida_real_personalizado[${idPedido}]`;
+                        cantidadHidden.value = cantidadInput.value;
+                        cantidadInput.parentNode.appendChild(cantidadHidden);
+                        cantidadInput.disabled = true;
+                    }
+                    
+                    const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc_personalizado[${idPedido}]"]`);
+                    if (unidadSelect) {
+                        // Crear un campo oculto con el valor actual
+                        const unidadHidden = document.createElement('input');
+                        unidadHidden.type = 'hidden';
+                        unidadHidden.name = `id_u_medidas_prodcc_personalizado[${idPedido}]`;
+                        unidadHidden.value = unidadSelect.value;
+                        unidadSelect.parentNode.appendChild(unidadHidden);
+                        unidadSelect.disabled = true;
+                    }
 
-            // Deshabilitar campos al terminar pero mantener los valores
-            const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
-            if (cantidadInput) {
-                // Crear un campo oculto con el valor actual
-                const cantidadHidden = document.createElement('input');
-                cantidadHidden.type = 'hidden';
-                cantidadHidden.name = `cantidad_producida_real_personalizado[${idPedido}]`;
-                cantidadHidden.value = cantidadInput.value;
-                cantidadInput.parentNode.appendChild(cantidadHidden);
-                cantidadInput.disabled = true;
-            }
-
-            const unidadSelect = document.querySelector(`select[name="id_u_medidas_prodcc_personalizado[${idPedido}]"]`);
-            if (unidadSelect) {
-                // Crear un campo oculto con el valor actual
-                const unidadHidden = document.createElement('input');
-                unidadHidden.type = 'hidden';
-                unidadHidden.name = `id_u_medidas_prodcc_personalizado[${idPedido}]`;
-                unidadHidden.value = unidadSelect.value;
-                unidadSelect.parentNode.appendChild(unidadHidden);
-                unidadSelect.disabled = true;
-            }
-
-            const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
-            if (costoInput) {
-                // Crear un campo oculto con el valor actual
-                const costoHidden = document.createElement('input');
-                costoHidden.type = 'hidden';
-                costoHidden.name = `costo_diseño[${idPedido}]`;
-                costoHidden.value = costoInput.value;
-                costoInput.parentNode.appendChild(costoHidden);
-                costoInput.disabled = true;
-            }
-
-            desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
+                    const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
+                    if (costoInput) {
+                        // Crear un campo oculto con el valor actual
+                        const costoHidden = document.createElement('input');
+                        costoHidden.type = 'hidden';
+                        costoHidden.name = `costo_diseño[${idPedido}]`;
+                        costoHidden.value = costoInput.value;
+                        costoInput.parentNode.appendChild(costoHidden);
+                        costoInput.disabled = true;
+                    }
+                    
+                    desmarcarOtrosEstadosPersonalizado(idPedido, tipo, true);
+                }
+            });
+        
         } else if (tipo === 'es_cancelado_personalizado' && isChecked) {
             // Al cancelar, NO desmarcar otros estados
             // Si no está iniciado, crear campos ocultos con valores por defecto
@@ -2119,7 +2151,11 @@
         // Validar que esté iniciado primero usando el campo oculto
         const iniciadoHidden = document.querySelector(`input[type="hidden"][name="es_iniciado_personalizado[${idPedido}]"]`);
         if (!iniciadoHidden || iniciadoHidden.value !== '1') {
-            alert('Debe iniciar el pedido personalizado antes de terminarlo.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debe iniciar el pedido personalizado antes de terminarlo.'
+            });
             logAction('Validación fallida - No está iniciado', {
                 pedido_id: idPedido,
                 receta_id: idReceta,
@@ -2131,7 +2167,11 @@
         // Validar cantidad producida
         const cantidadInput = document.querySelector(`input[name="cantidad_producida_real_personalizado[${idPedido}]"]`);
         if (!cantidadInput || !cantidadInput.value || parseFloat(cantidadInput.value) <= 0) {
-            alert('Debe ingresar una cantidad producida válida para este pedido personalizado.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debe ingresar una cantidad producida válida para este pedido personalizado.'
+            });
             logAction('Validación fallida - Cantidad inválida', {
                 pedido_id: idPedido,
                 receta_id: idReceta,
@@ -2143,7 +2183,11 @@
         // Validar costo diseño
         const costoInput = document.querySelector(`input[name="costo_diseño[${idPedido}]"]`);
         if (!costoInput || !costoInput.value || parseFloat(costoInput.value) <= 0) {
-            alert('Debe ingresar un costo de diseño válido (mayor que cero) para este pedido personalizado.');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debe ingresar un costo de diseño válido (mayor que cero) para este pedido personalizado.'
+            });
             logAction('Validación fallida - Costo diseño inválido', {
                 pedido_id: idPedido,
                 receta_id: idReceta,

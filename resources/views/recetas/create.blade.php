@@ -218,7 +218,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="6" class="text-right"><strong>Subtotal:</strong></td>
+                        <td colspan="6" class="text-right"><strong>Total:</strong></td>
                         <td id="subtotalTotal">S/ 0.00</td>
                         <td></td>
                     </tr>
@@ -880,3 +880,4 @@ $(document).ready(function() {
     }
 </style>
 @endpush
+

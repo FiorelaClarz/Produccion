@@ -60,7 +60,7 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="buscar-receta" class="form-label">
-                                            <i class="fas fa-search me-1"></i>Buscar Receta
+                                            <i class="fas fa-search me-1"></i>Buscar Producto
                                         </label>
                                         <div class="input-group">
                                             <input type="text" class="form-control" id="buscar-receta" placeholder="Buscar por nombre de receta..." autocomplete="off" disabled>
@@ -342,12 +342,14 @@
                 type: 'POST',
                 async: false,
                 data: {
-                    id_productos_api: productoId,
+                    id_recetas: recetaId,
                     _token: '{{ csrf_token() }}'
                 },
                 success: function(response) {
                     // Crear objeto merma con costo y total
+
                     const costo = response.costo || 0;
+                      // Aquí se obtiene el costo
                     const total = parseFloat(cantidad) * parseFloat(costo);
                     
                     const merma = {
@@ -794,5 +796,6 @@
     });
 </script>
 @endpush
+
 
 

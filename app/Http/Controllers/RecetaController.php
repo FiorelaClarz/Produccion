@@ -126,6 +126,10 @@ class RecetaController extends Controller
                 return back()->with('error', 'Ya existe una receta para este producto')->withInput();
             }
 
+            // Obtener el costo total de la receta del formulario
+            $costoRecetaTotal = $request->input('costo_receta', 0);
+            Log::info('Costo total de la receta recibido:', ['costo_receta' => $costoRecetaTotal]);
+
             // Crear cabecera de la receta
             $cabecera = RecetaCabecera::create([
                 'id_areas' => $request->id_areas,
@@ -135,6 +139,7 @@ class RecetaController extends Controller
                 'id_u_medidas' => $request->id_u_medidas,
                 'constante_crecimiento' => $request->constante_crecimiento,
                 'constante_peso_lata' => $request->constante_peso_lata,
+                'costo_receta' => $costoRecetaTotal, // Guardar el costo total de la receta
                 'status' => true, // Por defecto se crea como activa
                 'is_deleted' => false // No eliminada
             ]);
@@ -767,3 +772,4 @@ public function updateInstructivo(Request $request, $idReceta, $idInstructivo)
     }
 }
 }
+

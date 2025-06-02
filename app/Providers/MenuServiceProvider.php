@@ -577,6 +577,11 @@ class MenuServiceProvider extends ServiceProvider
                         'text' => 'Todos los Pedidos',
                         'route' => 'pedidos.index',
                         'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Nuevo Pedido',
+                        'route' => 'pedidos.create',
+                        'icon' => 'fas fa-plus-circle'
                     ]
                 ]
             ],
@@ -592,9 +597,21 @@ class MenuServiceProvider extends ServiceProvider
                         'text' => 'Ver Mermas',
                         'route' => 'mermas.index',
                         'icon' => 'fas fa-list'
+                    ],
+                    [
+                        'text' => 'Registrar Merma',
+                        'route' => 'mermas.create',
+                        'icon' => 'fas fa-plus-circle'
+                    ],
+                    [
+                        'text' => 'Generar PDF',
+                        'route' => 'mermas.pdf-multiple',
+                        'icon' => 'fas fa-file-pdf'
                     ]
                 ]
             ]
         ];
     }
 }
+
+

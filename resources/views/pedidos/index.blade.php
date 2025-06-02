@@ -14,7 +14,11 @@
                         Mostrando pedidos actualizados ayer
                         @break
                     @case('week')
-                        Mostrando pedidos actualizados en la última semana
+                        @if(request()->has('start_date') && request()->has('end_date'))
+                            Mostrando pedidos desde {{ date('d/m/Y', strtotime(request()->start_date)) }} hasta {{ date('d/m/Y', strtotime(request()->end_date)) }}
+                        @else
+                            Mostrando pedidos actualizados en la última semana
+                        @endif
                         @break
                     @case('custom')
                         Mostrando pedidos actualizados en la fecha seleccionada
@@ -31,12 +35,12 @@
                         <div>
                             <strong>Turno Actual:</strong> 
                             @if($horaLimiteActual->hora_limite >= '07:00:00' && $horaLimiteActual->hora_limite <= '12:00:00')
-    Mañana ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
-@elseif($horaLimiteActual->hora_limite >= '12:01:00' && $horaLimiteActual->hora_limite <= '18:59:00')
-    Tarde ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
-@else
-    Noche ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
-@endif
+                                Mañana ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
+                            @elseif($horaLimiteActual->hora_limite >= '12:01:00' && $horaLimiteActual->hora_limite <= '18:59:00')
+                                Tarde ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
+                            @else
+                                Noche ({{ substr($horaLimiteActual->hora_limite, 0, 5) }})
+                            @endif
                             <br>
                             <strong>Ventana de Pedidos:</strong> 
                             {{ Carbon\Carbon::parse($horaLimiteActual->hora_limite)->subHour()->format('H:i') }} - {{ $horaLimiteActual->hora_limite }}
@@ -136,12 +140,33 @@
                         <a href="{{ route('pedidos.index', ['filter' => 'week']) }}" 
                            class="btn btn-outline-primary {{ $filter == 'week' ? 'active' : '' }}"
                            data-bs-toggle="tooltip"
-                           title="Mostrar pedidos de la última semana">
-                            Última Semana
+                           title="Filtrar pedidos por rango de fechas personalizado">
+                            Rango de Fechas
                         </a>
                     </div>
                 </div>
                 <div class="col-md-4 mt-2 mt-md-0">
+                    @if($filter == 'week')
+                    <form action="{{ route('pedidos.index') }}" method="GET" class="d-flex">
+                        <input type="hidden" name="filter" value="week">
+                        <div class="d-flex flex-column flex-md-row gap-2">
+                            <div class="d-flex align-items-center">
+                                <input type="date" class="form-control form-control-sm me-2" name="start_date" 
+                                       value="{{ request()->start_date ?? date('Y-m-d', strtotime('-7 days')) }}"
+                                       max="{{ date('Y-m-d') }}" placeholder="Fecha inicio">
+                                <span class="me-2">a</span>
+                                <input type="date" class="form-control form-control-sm me-2" name="end_date" 
+                                       value="{{ request()->end_date ?? date('Y-m-d') }}"
+                                       max="{{ date('Y-m-d') }}" placeholder="Fecha fin">
+                            </div>
+                            <button class="btn btn-primary btn-sm" type="submit"
+                                    data-bs-toggle="tooltip"
+                                    title="Buscar por rango de fechas">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                    @else
                     <form action="{{ route('pedidos.index') }}" method="GET" class="d-flex">
                         <input type="hidden" name="filter" value="custom">
                         <input type="date" class="form-control form-control-sm me-2" name="custom_date" 
@@ -153,6 +178,7 @@
                             <i class="fas fa-search"></i>
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
         </div>
@@ -168,7 +194,7 @@
                     <th width="15%">Tienda</th>
                     <th width="10%">Fecha/Hora</th>
                     <th width="10%">Hora Límite</th>
-                    <th width="15%">Detalles</th>
+                    <th width="15%">Estado</th>
                     <th width="15%">Acciones</th>
                 </tr>
             </thead>
@@ -217,61 +243,14 @@
                         </small>
                     </td>
                     <td class="align-middle">
-                        <div class="accordion accordion-custom" id="accordion-{{ $pedido->id_pedidos_cab }}">
-                            <div class="accordion-item border-0 bg-transparent">
-                                <h2 class="accordion-header" id="heading-{{ $pedido->id_pedidos_cab }}">
-                                    <button class="accordion-button collapsed py-1 px-2 shadow-none" 
-                                            type="button" 
-                                            data-bs-toggle="collapse" 
-                                            data-bs-target="#collapse-{{ $pedido->id_pedidos_cab }}" 
-                                            aria-expanded="false" 
-                                            aria-controls="collapse-{{ $pedido->id_pedidos_cab }}">
-                                        <small>Ver detalles ({{ $pedido->pedidosDetalle->count() }})</small>
-                                    </button>
-                                </h2>
-                                <div id="collapse-{{ $pedido->id_pedidos_cab }}" 
-                                     class="accordion-collapse collapse" 
-                                     aria-labelledby="heading-{{ $pedido->id_pedidos_cab }}" 
-                                     data-bs-parent="#accordion-{{ $pedido->id_pedidos_cab }}">
-                                    <div class="accordion-body p-0">
-                                        <table class="table table-sm table-bordered mb-0">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th width="20%">Área</th>
-                                                    <th width="30%">Producto/Receta</th>
-                                                    <th width="10%">Cantidad</th>
-                                                    <th width="15%">Unidad</th>
-                                                    <th width="25%">Estado</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($pedido->pedidosDetalle as $detalle)
-                                                <tr>
-                                                    <td><small>{{ $detalle->area->nombre ?? 'N/A' }}</small></td>
-                                                    <td>
-                                                        <small>
-                                                            @if($detalle->receta)
-                                                                {{ $detalle->receta->nombre }}
-                                                            @else
-                                                                {{ $detalle->descripcion ?? 'Personalizado' }}
-                                                            @endif
-                                                        </small>
-                                                    </td>
-                                                    <td class="text-end"><small>{{ $detalle->cantidad }}</small></td>
-                                                    <td><small>{{ $detalle->uMedida->nombre ?? 'N/A' }}</small></td>
-                                                    <td>
-                                                        <span class="badge bg-{{ $detalle->estado->color ?? 'secondary' }}">
-                                                            <small>{{ $detalle->estado->nombre ?? 'N/A' }}</small>
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <button class="btn btn-sm btn-outline-primary detail-toggle" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#collapse-{{ $pedido->id_pedidos_cab }}" 
+                                aria-expanded="false" 
+                                aria-controls="collapse-{{ $pedido->id_pedidos_cab }}">
+                            <small><i class="fas fa-chevron-down me-1"></i> Ver detalles ({{ $pedido->pedidosDetalle->count() }})</small>
+                        </button>
                     </td>
                     <td class="align-middle">
                         <div class="d-flex flex-column flex-sm-row gap-1">
@@ -327,6 +306,52 @@
                         </div>
                     </td>
                 </tr>
+                <!-- Fila expandible para detalles del pedido -->
+                <tr class="detail-row">
+                    <td colspan="8" class="p-0">
+                        <div id="collapse-{{ $pedido->id_pedidos_cab }}" 
+                            class="collapse border-top border-bottom border-light" 
+                            aria-labelledby="heading-{{ $pedido->id_pedidos_cab }}">
+                            <div class="p-3 bg-light">
+                                <h6 class="mb-3 text-primary"><i class="fas fa-clipboard-list me-2"></i>Detalles del Pedido #{{ $pedido->id_pedidos_cab }}</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover mb-0">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th width="15%">Área</th>
+                                                <th width="35%">Producto/Receta</th>
+                                                <th width="10%">Cantidad</th>
+                                                <th width="15%">Unidad</th>
+                                                <th width="25%">Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($pedido->pedidosDetalle as $detalle)
+                                            <tr>
+                                                <td>{{ $detalle->area->nombre ?? 'N/A' }}</td>
+                                                <td>
+                                                    @if($detalle->receta)
+                                                        {{ $detalle->receta->nombre }}
+                                                    @else
+                                                        {{ $detalle->descripcion ?? 'Personalizado' }}
+                                                    @endif
+                                                </td>
+                                                <td class="text-end">{{ $detalle->cantidad }}</td>
+                                                <td>{{ $detalle->uMedida->nombre ?? 'N/A' }}</td>
+                                                <td>
+                                                    <span class="badge bg-{{ $detalle->estado->color ?? 'secondary' }} px-3 py-2">
+                                                        {{ $detalle->estado->nombre ?? 'N/A' }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
             @empty
                 <tr>
                     <td colspan="8" class="text-center py-4">
@@ -352,6 +377,29 @@
 
 @section('styles')
 <style>
+    /* Estilos para los detalles de pedido */
+    .detail-toggle {
+        transition: all 0.2s ease;
+    }
+    
+    .detail-toggle[aria-expanded="true"] {
+        background-color: #033988;
+        color: white;
+    }
+    
+    .detail-toggle[aria-expanded="true"] i {
+        transform: rotate(180deg);
+        transition: transform 0.2s;
+    }
+    
+    .detail-row {
+        background-color: transparent !important;
+    }
+    
+    .detail-row td {
+        border-top: none;
+    }
+    
     /* Estilos personalizados para el acordeón */
     .accordion-custom .accordion-button {
         padding: 0.25rem 0.5rem;
@@ -599,3 +647,4 @@
     });
 </script>
 @endsection
+

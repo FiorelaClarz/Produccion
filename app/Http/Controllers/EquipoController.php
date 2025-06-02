@@ -27,7 +27,7 @@ class EquipoController extends Controller
 
         // Obtener equipos activos del área del usuario, ordenados por fecha de creación
         $equipos = EquipoCabecera::with(['usuario', 'area', 'turno', 'equiposDetalle.personal'])
-            ->where('id_areas', $userAreaId)
+            // ->where('id_areas', $userAreaId)
             ->where('is_deleted', false)
             ->orderBy('created_at', 'desc')
             ->get();

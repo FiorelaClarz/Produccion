@@ -1246,62 +1246,6 @@ class ProduccionController extends Controller
         header('Content-Disposition: attachment;filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
         
-        $writer->save('php://output');
-        exit;
-    }
-
-    /**
-     * Exportar producción a PDF
-     */
-    public function exportarPdf(Request $request)
-    {
-        $fechaInicio = Carbon::parse($request->input('fecha_inicio', Carbon::now()->startOfDay()));
-        $fechaFin = Carbon::parse($request->input('fecha_fin', Carbon::now()->endOfDay()));
-        $estado = $request->input('estado', 'todos');
-
-        // Consulta base
-        $query = ProduccionDetalle::with(['recetaCabecera.producto', 'recetaCabecera.instructivo'])
-            ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
-            ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin]);
-
-        // Aplicar filtro de estado
-        if ($estado !== 'todos') {
-            switch ($estado) {
-                case 'pendientes':
-                    $query->where('es_terminado', false)->where('es_cancelado', false);
-                    break;
-                case 'terminados':
-                    $query->where('es_terminado', true);
-                    break;
-                case 'cancelados':
-                    $query->where('es_cancelado', true);
-                    break;
-            }
-        }
-
-        $producciones = $query->orderBy('produccion_cab.fecha', 'desc')
-            ->orderBy('produccion_cab.hora', 'desc')
-            ->get();
-
-        // Configurar DOMPDF para evitar el uso de fuentes externas
-        $pdf = PDF::loadView('produccion.pdf-periodos', compact('producciones', 'fechaInicio', 'fechaFin', 'estado'))
-            ->setPaper('A4', 'landscape')
-            ->setOptions([
-                'defaultFont' => 'Helvetica',
-                'fontCache' => storage_path('fonts'),
-                'tempDir' => storage_path('fonts'),
-                'chroot' => base_path(),
-                'isFontSubsettingEnabled' => false
-            ]);
-
-        return $pdf->download('produccion_' . Carbon::now()->format('YmdHis') . '.pdf');
-    }
-
-    /**
-     * Obtener datos para gráficos de producción
-     */
-    public function obtenerDatosGraficos(Request $request)
-    {
         $fechaInicio = $request->input('fecha_inicio', Carbon::now()->subWeek()->toDateString());
         $fechaFin = $request->input('fecha_fin', Carbon::now()->toDateString());
 
@@ -1482,5 +1426,83 @@ class ProduccionController extends Controller
             ], 500);
         }
     }
+    
+    /**
+     * Exportar producción a PDF
+     */
+    public function exportarPdf(Request $request)
+    {
+        $fechaInicio = Carbon::parse($request->input('fecha_inicio', Carbon::now()->startOfDay()));
+        $fechaFin = Carbon::parse($request->input('fecha_fin', Carbon::now()->endOfDay()));
+        $estado = $request->input('estado', 'todos');
+
+        // Consulta base
+        $query = ProduccionDetalle::with(['recetaCabecera.producto', 'recetaCabecera.instructivo', 'area', 'produccionCabecera.usuario'])
+            ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
+            ->whereBetween('produccion_cab.fecha', [$fechaInicio, $fechaFin]);
+
+        // Aplicar filtro de estado
+        if ($estado !== 'todos') {
+            switch ($estado) {
+                case 'pendientes':
+                    $query->where('es_terminado', false)->where('es_cancelado', false);
+                    break;
+                case 'terminados':
+                    $query->where('es_terminado', true);
+                    break;
+                case 'cancelados':
+                    $query->where('es_cancelado', true);
+                    break;
+            }
+        }
+
+        $producciones = $query->orderBy('produccion_cab.fecha', 'desc')
+            ->orderBy('produccion_cab.hora', 'desc')
+            ->get();
+        
+        // Calcular métricas para el PDF
+        $cantidadProducida = $producciones->sum('cantidad_producida_real');
+        $cantidadPedida = $producciones->sum('cantidad_pedido');
+        $valorTotal = $producciones->sum('total_receta');
+        $totalItems = $producciones->count();
+        $totalTerminados = $producciones->where('es_terminado', true)->count();
+        $totalCancelados = $producciones->where('es_cancelado', true)->count();
+        $totalPendientes = $totalItems - $totalTerminados - $totalCancelados;
+        
+        // Calcular porcentajes
+        $porcentajeCantidad = $cantidadPedida > 0 ? min(100, ($cantidadProducida / $cantidadPedida) * 100) : 0;
+        $porcentajeTerminados = $totalItems > 0 ? min(100, ($totalTerminados / $totalItems) * 100) : 0;
+        $porcentajeCancelados = $totalItems > 0 ? min(100, ($totalCancelados / $totalItems) * 100) : 0;
+        $porcentajePendientes = $totalItems > 0 ? min(100, ($totalPendientes / $totalItems) * 100) : 0;
+        
+        // Crear arreglo de métricas
+        $metricas = [
+            'cantidadProducida' => number_format($cantidadProducida, 2),
+            'cantidadPedida' => number_format($cantidadPedida, 2),
+            'valorTotal' => number_format($valorTotal, 2),
+            'totalItems' => $totalItems,
+            'totalTerminados' => $totalTerminados,
+            'totalCancelados' => $totalCancelados,
+            'totalPendientes' => $totalPendientes,
+            'porcentajeCantidad' => round($porcentajeCantidad),
+            'porcentajeTerminados' => round($porcentajeTerminados),
+            'porcentajeCancelados' => round($porcentajeCancelados),
+            'porcentajePendientes' => round($porcentajePendientes)
+        ];
+
+        // Configurar DOMPDF para evitar el uso de fuentes externas
+        $pdf = PDF::loadView('produccion.pdf-periodos', compact('producciones', 'fechaInicio', 'fechaFin', 'estado', 'metricas'))
+            ->setPaper('A4', 'landscape')
+            ->setOptions([
+                'defaultFont' => 'Helvetica',
+                'fontCache' => storage_path('fonts'),
+                'tempDir' => storage_path('fonts'),
+                'chroot' => base_path(),
+                'isFontSubsettingEnabled' => false
+            ]);
+
+        return $pdf->download('produccion_' . Carbon::now()->format('YmdHis') . '.pdf');
+    }
 }
+
 

@@ -90,6 +90,7 @@
                     <th>ÁREA</th>
                     <th>PRODUCTO</th>
                     <th>PROD.</th>
+                    <th>UM</th>
                     <th>VENTA</th>
                     <th>MERMA</th>
                     <th>DIFERENCIA</th>
@@ -97,6 +98,7 @@
                     <th>UTIL. BRUTA</th>
                     <th>VENTAS</th>
                     <th>COSTO MERMA</th>
+                    <th>COSTO DIF.</th>
                 </tr>
             </thead>
             <tbody>
@@ -105,6 +107,13 @@
                         <td>{{ $resultado['area'] }}</td>
                         <td>{{ $resultado['producto'] }}</td>
                         <td class="text-right">{{ number_format($resultado['cantidad_producida'], 2) }}</td>
+                        <td class="text-center">
+                            @if(isset($resultado['id_u_medidas_prodcc']) && isset($unidadesMedida[$resultado['id_u_medidas_prodcc']]))
+                                {{ $unidadesMedida[$resultado['id_u_medidas_prodcc']] }}
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td class="text-right">{{ number_format($resultado['cantidad_vendida'], 2) }}</td>
                         <td class="text-right">{{ number_format($resultado['cantidad_merma'], 2) }}</td>
                         <td class="text-right">{{ number_format($resultado['diferencia'], 2) }}</td>
@@ -112,10 +121,11 @@
                         <td class="text-right">S/ {{ number_format(($resultado['ventas'] ?? 0) - ($resultado['costo_produccion'] ?? 0), 2) }}</td>
                         <td class="text-right">S/ {{ number_format($resultado['ventas'], 2) }}</td>
                         <td class="text-right">S/ {{ number_format($resultado['costo_merma'], 2) }}</td>
+                        <td class="text-right">S/ {{ number_format($resultado['costo_diferencia'] ?? 0, 2) }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center">No hay datos disponibles</td>
+                        <td colspan="12" class="text-center">No hay datos disponibles</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -123,13 +133,15 @@
                 <tr class="totals">
                     <td colspan="2" class="text-right">TOTALES:</td>
                     <td class="text-right">{{ number_format($totales['produccion'], 2) }}</td>
+                    <td></td>
                     <td class="text-right">{{ number_format($totales['venta'], 2) }}</td>
                     <td class="text-right">{{ number_format($totales['merma'], 2) }}</td>
                     <td class="text-right">{{ number_format($totales['diferencia'], 2) }}</td>
                     <td class="text-right">S/ {{ number_format($totales['costo_produccion'] ?? 0, 2) }}</td>
-                    <td class="text-right">S/ {{ number_format($totales['ventas'] - ($totales['costo_produccion'] ?? 0), 2) }}</td>
+                    <td class="text-right">S/ {{ number_format($totales['utilidad_bruta'] ?? $totales['ventas'] - ($totales['costo_produccion'] ?? 0), 2) }}</td>
                     <td class="text-right">S/ {{ number_format($totales['ventas'], 2) }}</td>
                     <td class="text-right">S/ {{ number_format($totales['costo_merma'], 2) }}</td>
+                    <td class="text-right">S/ {{ number_format($totales['costo_diferencia'] ?? 0, 2) }}</td>
                 </tr>
             </tfoot>
         </table>
@@ -152,5 +164,6 @@
     </div>
 </body>
 </html>
+
 
 

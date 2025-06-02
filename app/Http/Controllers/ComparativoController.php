@@ -98,6 +98,8 @@ class ComparativoController extends Controller
                 'mermas_det.id_recetas',
                 DB::raw('SUM(mermas_det.cantidad) as cantidad_merma'),
                 DB::raw('AVG(mermas_det.costo) as costo_unitario'),
+                // Cálculo del Costo Merma:
+                // Se obtiene inicialmente de la base de datos en la consulta SQL. Esto suma los valores del campo "total" de los registros de mermas.
                 DB::raw('SUM(mermas_det.total) as costo_merma')
             )
             ->join('mermas_cab', 'mermas_det.id_mermas_cab', '=', 'mermas_cab.id_mermas_cab')
@@ -137,9 +139,13 @@ class ComparativoController extends Controller
             $costoMerma = 0;
             $costoUnitario = 0;
             
+            // Obtenemos el costo_receta directamente de la tabla recetas_cab
+            $costoReceta = $produccion->costo_receta;
+            
             if (isset($mermaData[$idReceta])) {
                 $cantidadMerma = $mermaData[$idReceta]->cantidad_merma;
-                $costoMerma = $mermaData[$idReceta]->costo_merma;
+                // Cálculo del costo de merma usando costo_receta de recetas_cab
+                $costoMerma = $cantidadMerma * $costoReceta;
                 $costoUnitario = $mermaData[$idReceta]->costo_unitario;
             } else {
                 // Si no hay registro en mermas, calculamos el costo unitario desde producción
@@ -191,7 +197,10 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             
             // Actualizar el cálculo de utilidad bruta para que sea ventas - costo produccion
             $utilidadBruta = $ventasTotal - $costoProduccion;
-            $costoDiferencia = $diferencia * $costoUnitario;
+
+            // $diferencia es la cantidad producida menos cantidad vendida menos cantidad de merma
+            // Calculamos el costo de la diferencia usando costo_receta de recetas_cab
+            $costoDiferencia = $diferencia * $costoReceta;
             
             $resultados[] = [
                 'fecha' => $fechaInicio == $fechaFin ? Carbon::parse($fechaInicio)->format('d-m-Y') : '',
@@ -255,12 +264,19 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             }
         }
         
+        // Cargar las unidades de medida directamente para asegurar consistencia
+        $unidadesMedida = UMedida::pluck('nombre', 'id_u_medidas');
+        
+        // Para depuración
+        $idKilogramo = array_search('Kilogramos', $unidadesMedida->toArray());
+
         return view('produccion.comparativo', compact(
             'resultados', 
             'totales', 
             'fechaInicio', 
             'fechaFin', 
-            'areas'
+            'areas',
+            'unidadesMedida'
         ));
     }
     
@@ -283,6 +299,9 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             $fechaFin = $fechaTemp;
         }
         
+        // Obtener todas las unidades de medida para mostrarlas en el reporte
+        $unidadesMedida = UMedida::pluck('nombre', 'id_u_medidas')->toArray();
+        
         // Obtener tiendas activas para consultar la API de ventas
         $tiendas = Tienda::activos()->get();
         
@@ -294,12 +313,12 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             'areas.id_areas',
             'recetas_cab.nombre as receta_nombre',
             'recetas_cab.id_productos_api',
-            'recetas_cab.costo_receta',  // Add this line
+            'recetas_cab.costo_receta',  
             'productos.nombre as producto_nombre',
             DB::raw('DATE(produccion_cab.fecha) as fecha_produccion'),
             'produccion_det.id_u_medidas_prodcc',
             DB::raw('SUM(produccion_det.cantidad_producida_real) as cantidad_producida'),
-            DB::raw('SUM(produccion_det.cantidad_esperada) as cantidad_esperada'),  // Add this line
+            DB::raw('SUM(produccion_det.cantidad_esperada) as cantidad_esperada'),  
             DB::raw('SUM(produccion_det.total_receta) as costo_produccion')
         )
             ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
@@ -350,10 +369,12 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             $cantidadMerma = 0;
             $costoMerma = 0;
             $costoUnitario = 0;
+            // Obtenemos el costo_receta directamente de la tabla recetas_cab
+            $costoReceta = $produccion->costo_receta;
             
             if (isset($mermaData[$idReceta])) {
                 $cantidadMerma = $mermaData[$idReceta]->cantidad_merma;
-                $costoMerma = $mermaData[$idReceta]->costo_merma;
+                $costoMerma = $cantidadMerma * $costoReceta;
                 $costoUnitario = $mermaData[$idReceta]->costo_unitario;
             } else {
                 // Si no hay registro en mermas, calculamos el costo unitario desde producción
@@ -401,7 +422,7 @@ Log::debug("Consulta de ventas para tienda {$codigoTienda}, producto {$idItem}: 
             // $ventasTotal = $cantidadVendida * $costoUnitario;
             $costoProduccion = $produccion->costo_produccion;
 $utilidadBruta = $ventasTotal - $costoProduccion;
-$costoDiferencia = $diferencia * $costoUnitario;
+$costoDiferencia = $diferencia * $costoReceta;
             
             $resultados[] = [
                 'fecha' => Carbon::parse($fechaProduccion)->format('d-m-Y'),
@@ -454,7 +475,8 @@ $costoDiferencia = $diferencia * $costoUnitario;
             'resultados', 
             'totales',
             'title',
-            'subtitle'
+            'subtitle',
+            'unidadesMedida'
         ));
         
         return $pdf->stream('comparativo_produccion_mermas_' . Carbon::now()->format('Ymd') . '.pdf');
@@ -479,6 +501,9 @@ $costoDiferencia = $diferencia * $costoUnitario;
             $fechaFin = $fechaTemp;
         }
         
+        // Obtener todas las unidades de medida para mostrarlas en el reporte
+        $unidadesMedida = UMedida::pluck('nombre', 'id_u_medidas')->toArray();
+        
         // Obtener tiendas activas para consultar la API de ventas
         $tiendas = Tienda::activos()->get();
         
@@ -489,12 +514,12 @@ $costoDiferencia = $diferencia * $costoUnitario;
             'areas.id_areas',
             'recetas_cab.nombre as receta_nombre',
             'recetas_cab.id_productos_api',
-            'recetas_cab.costo_receta',  // Add this line
+            'recetas_cab.costo_receta',  
             'productos.nombre as producto_nombre',
             DB::raw('DATE(produccion_cab.fecha) as fecha_produccion'),
             'produccion_det.id_u_medidas_prodcc',
             DB::raw('SUM(produccion_det.cantidad_producida_real) as cantidad_producida'),
-            DB::raw('SUM(produccion_det.cantidad_esperada) as cantidad_esperada'),  // Add this line
+            DB::raw('SUM(produccion_det.cantidad_esperada) as cantidad_esperada'),  
             DB::raw('SUM(produccion_det.total_receta) as costo_produccion')
         )
             ->join('produccion_cab', 'produccion_det.id_produccion_cab', '=', 'produccion_cab.id_produccion_cab')
@@ -547,10 +572,13 @@ $costoDiferencia = $diferencia * $costoUnitario;
             $cantidadMerma = 0;
             $costoMerma = 0;
             $costoUnitario = 0;
+
+            // Obtenemos el costo_receta directamente de la tabla recetas_cab
+            $costoReceta = $produccion->costo_receta;
             
             if (isset($mermaData[$idReceta])) {
                 $cantidadMerma = $mermaData[$idReceta]->cantidad_merma;
-                $costoMerma = $mermaData[$idReceta]->costo_merma;
+                $costoMerma = $cantidadMerma * $costoReceta;
                 $costoUnitario = $mermaData[$idReceta]->costo_unitario;
             } else {
                 // Si no hay registro en mermas, calculamos el costo unitario desde producción
@@ -591,7 +619,7 @@ $costoDiferencia = $diferencia * $costoUnitario;
             // Calcular valores monetarios
             $costoProduccion = $produccion->costo_produccion;
             $utilidadBruta = $ventasTotal - $costoProduccion; // Utilidad bruta es ventas menos costo de producción
-            $costoDiferencia = $diferencia * $costoUnitario;
+            $costoDiferencia = $diferencia * $costoReceta;
             
             $resultados[] = [
                 'fecha' => $fechaProduccion ? Carbon::parse($fechaProduccion)->format('d-m-Y') : '',
@@ -599,6 +627,7 @@ $costoDiferencia = $diferencia * $costoUnitario;
                 'receta' => $produccion->receta_nombre,
                 'producto' => $produccion->producto_nombre,
                 'cantidad_producida' => $cantidadProducida,
+                'id_u_medidas_prodcc' => $produccion->id_u_medidas_prodcc,
                 'cantidad_vendida' => $cantidadVendida,
                 'cantidad_merma' => $cantidadMerma,
                 'diferencia' => $diferencia,
@@ -643,14 +672,14 @@ $costoDiferencia = $diferencia * $costoUnitario;
         $sheet->setCellValue('A2', $periodoTexto);
         
         // Aplicar formato al título
-        $sheet->getStyle('A1:M1')->getFont()->setBold(true)->setSize(14);
-        $sheet->getStyle('A2:M2')->getFont()->setBold(true);
+        $sheet->getStyle('A1:N1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A2:N2')->getFont()->setBold(true);
         
         // Encabezados de la tabla
         $encabezados = [
             'FECHA', 'ÁREA', 'RECETA', 'PRODUCTO', 
-            'CANT. PRODUCIDA', 'CANT. VENDIDA', 'CANT. MERMA', 'DIFERENCIA', 
-            'UTILIDAD BRUTA', 'VENTAS', 'COSTO MERMA', 'COSTO PRODUCCIÓN'
+            'CANT. PRODUCIDA', 'UM', 'CANT. VENDIDA', 'CANT. MERMA', 'DIFERENCIA', 
+            'COSTO PRODUCCIÓN', 'UTILIDAD BRUTA', 'VENTAS', 'COSTO MERMA', 'COSTO DIF.'
         ];
         
         $columna = 'A';
@@ -663,8 +692,8 @@ $costoDiferencia = $diferencia * $costoUnitario;
         }
         
         // Aplicar formato a los encabezados
-        $sheet->getStyle('A4:L4')->getFont()->setBold(true);
-        $sheet->getStyle('A4:L4')->getFill()
+        $sheet->getStyle('A4:N4')->getFont()->setBold(true);
+        $sheet->getStyle('A4:N4')->getFill()
               ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
               ->getStartColor()->setRGB('D9EAD3');
         
@@ -674,13 +703,15 @@ $costoDiferencia = $diferencia * $costoUnitario;
         $sheet->getColumnDimension('C')->setWidth(25); // Receta
         $sheet->getColumnDimension('D')->setWidth(25); // Producto
         $sheet->getColumnDimension('E')->setWidth(15); // Cant. Producida
-        $sheet->getColumnDimension('F')->setWidth(15); // Cant. Vendida
-        $sheet->getColumnDimension('G')->setWidth(15); // Cant. Merma
-        $sheet->getColumnDimension('H')->setWidth(15); // Diferencia
-        $sheet->getColumnDimension('I')->setWidth(15); // Utilidad Bruta
-        $sheet->getColumnDimension('J')->setWidth(15); // Ventas
-        $sheet->getColumnDimension('K')->setWidth(15); // Costo Merma
-        $sheet->getColumnDimension('L')->setWidth(15); // Costo Producción
+        $sheet->getColumnDimension('F')->setWidth(10); // UM
+        $sheet->getColumnDimension('G')->setWidth(15); // Cant. Vendida
+        $sheet->getColumnDimension('H')->setWidth(15); // Cant. Merma
+        $sheet->getColumnDimension('I')->setWidth(15); // Diferencia
+        $sheet->getColumnDimension('J')->setWidth(15); // Costo Producción
+        $sheet->getColumnDimension('K')->setWidth(15); // Utilidad Bruta
+        $sheet->getColumnDimension('L')->setWidth(15); // Ventas
+        $sheet->getColumnDimension('M')->setWidth(15); // Costo Merma
+        $sheet->getColumnDimension('N')->setWidth(15); // Costo Diferencia
         
         // Llenar datos
         $fila = 5;
@@ -690,13 +721,19 @@ $costoDiferencia = $diferencia * $costoUnitario;
             $sheet->setCellValue('C' . $fila, $resultado['receta']);
             $sheet->setCellValue('D' . $fila, $resultado['producto']);
             $sheet->setCellValue('E' . $fila, $resultado['cantidad_producida']);
-            $sheet->setCellValue('F' . $fila, $resultado['cantidad_vendida']);
-            $sheet->setCellValue('G' . $fila, $resultado['cantidad_merma']);
-            $sheet->setCellValue('H' . $fila, $resultado['diferencia']);
-            $sheet->setCellValue('I' . $fila, $resultado['utilidad_bruta']);
-            $sheet->setCellValue('J' . $fila, $resultado['ventas']);
-            $sheet->setCellValue('K' . $fila, $resultado['costo_merma']);
-            $sheet->setCellValue('L' . $fila, $resultado['costo_produccion']);
+            // Agregar unidad de medida
+            $um = isset($resultado['id_u_medidas_prodcc']) && isset($unidadesMedida[$resultado['id_u_medidas_prodcc']]) 
+                ? $unidadesMedida[$resultado['id_u_medidas_prodcc']] 
+                : '-';
+            $sheet->setCellValue('F' . $fila, $um);
+            $sheet->setCellValue('G' . $fila, $resultado['cantidad_vendida']);
+            $sheet->setCellValue('H' . $fila, $resultado['cantidad_merma']);
+            $sheet->setCellValue('I' . $fila, $resultado['diferencia']);
+            $sheet->setCellValue('J' . $fila, $resultado['costo_produccion']);
+            $sheet->setCellValue('K' . $fila, $resultado['utilidad_bruta']);
+            $sheet->setCellValue('L' . $fila, $resultado['ventas']);
+            $sheet->setCellValue('M' . $fila, $resultado['costo_merma']);
+            $sheet->setCellValue('N' . $fila, $resultado['costo_diferencia']);
             $fila++;
         }
         
@@ -704,23 +741,28 @@ $costoDiferencia = $diferencia * $costoUnitario;
         $sheet->setCellValue('A' . $fila, 'TOTALES');
         $sheet->getStyle('A' . $fila)->getFont()->setBold(true);
         $sheet->setCellValue('E' . $fila, number_format($totales['produccion'], 2));
-        $sheet->setCellValue('F' . $fila, number_format($totales['venta'], 2));
-        $sheet->setCellValue('G' . $fila, number_format($totales['merma'], 2));
-        $sheet->setCellValue('H' . $fila, number_format($totales['diferencia'], 2));
-        $sheet->setCellValue('I' . $fila, number_format($totales['ventas'] - $totales['costo_produccion'], 2));
-        $sheet->setCellValue('J' . $fila, number_format($totales['ventas'], 2));
-        $sheet->setCellValue('K' . $fila, number_format($totales['costo_merma'], 2));
-        $sheet->setCellValue('L' . $fila, number_format($totales['costo_produccion'], 2));
+        $sheet->setCellValue('F' . $fila, ''); // Unidad de medida no se suma
+        $sheet->setCellValue('G' . $fila, number_format($totales['venta'], 2));
+        $sheet->setCellValue('H' . $fila, number_format($totales['merma'], 2));
+        $sheet->setCellValue('I' . $fila, number_format($totales['diferencia'], 2));
+        $sheet->setCellValue('J' . $fila, number_format($totales['costo_produccion'], 2));
+        $sheet->setCellValue('K' . $fila, number_format($totales['utilidad_bruta'], 2));
+        $sheet->setCellValue('L' . $fila, number_format($totales['ventas'], 2));
+        $sheet->setCellValue('M' . $fila, number_format($totales['costo_merma'], 2));
+        $sheet->setCellValue('N' . $fila, number_format($totales['costo_diferencia'], 2));
         
         // Aplicar formato a la fila de totales
-        $sheet->getStyle('A' . $fila . ':L' . $fila)->getFont()->setBold(true);
-        $sheet->getStyle('A' . $fila . ':L' . $fila)->getFill()
+        $sheet->getStyle('A' . $fila . ':N' . $fila)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $fila . ':N' . $fila)->getFill()
               ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
               ->getStartColor()->setRGB('E6E6E6');
         
         // Aplicar formato de número a las columnas numéricas
-        $rangoNumeros = 'E5:L' . ($fila);
+        $rangoNumeros = 'E5:N' . ($fila);
         $sheet->getStyle($rangoNumeros)->getNumberFormat()->setFormatCode('#,##0.00');
+        
+        // No aplicamos formato de número a la columna F (unidad de medida)
+        $sheet->getStyle('F5:F' . ($fila))->getNumberFormat()->setFormatCode('@');
         
         // Ajustes finales y creación del archivo Excel
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
@@ -734,5 +776,6 @@ $costoDiferencia = $diferencia * $costoUnitario;
         return response()->download($rutaTemporal, $nombreArchivo)->deleteFileAfterSend(true);
     }
 }
+
 
 

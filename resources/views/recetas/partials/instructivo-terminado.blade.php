@@ -1,3 +1,4 @@
+<!-- NO SE USA -->
 <div class="instructivo-terminado">
     <div class="alert alert-success">
         <i class="fas fa-check-circle"></i> Este pedido ya fue terminado

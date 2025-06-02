@@ -14,6 +14,9 @@
         .table th { background-color: #f2f2f2; text-align: left; }
         .footer { margin-top: 30px; font-size: 12px; text-align: center; color: #777; }
         .pedido-header { background-color: #e9ecef; padding: 5px; margin-top: 15px; }
+        .personalizado { background-color: #ffeeba; }
+        .personalizado-info { margin-top: 5px; margin-bottom: 10px; padding: 5px; border-left: 3px solid #ffc107; }
+        .imagen-referencial { max-width: 150px; max-height: 150px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -44,11 +47,22 @@
             @foreach($pedido->pedidosDetalle as $detalle)
             <tr>
                 <td>{{ $detalle->area->nombre ?? 'N/A' }}</td>
-                <td>
+                <td class="{{ $detalle->es_personalizado ? 'personalizado' : '' }}">
                     @if($detalle->receta)
                         {{ $detalle->receta->nombre }}
                     @else
-                        {{ $detalle->descripcion ?? 'Personalizado' }}
+                        <strong>{{ $detalle->descripcion ?? 'Personalizado' }}</strong>
+                        @if($detalle->es_personalizado)
+                            <div class="personalizado-info">
+                                <div><strong>Descripción detallada:</strong> {{ $detalle->descripcion }}</div>
+                                @if($detalle->foto_referencial)
+                                    <div><strong>Imagen de referencia:</strong> {{ $detalle->foto_referencial }}</div>
+                                    @if($detalle->foto_referencial_url)
+                                        <img src="{{ $detalle->foto_referencial_url }}" class="imagen-referencial" alt="Imagen referencial">
+                                    @endif
+                                @endif
+                            </div>
+                        @endif
                     @endif
                 </td>
                 <td>{{ $detalle->cantidad }}</td>

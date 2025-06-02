@@ -149,6 +149,8 @@
                                         <th>Receta</th>
                                         <th>Producto</th>
                                         <th>Cantidad</th>
+                                        <th>Costo</th>
+                                        <th>Total</th>
                                         <th>U. Medida</th>
                                         <th>Observación</th>
                                         <th class="text-center">Acciones</th>
@@ -226,6 +228,8 @@
                     id_productos_api: {{ $detalle->id_productos_api }},
                     producto_nombre: "{{ optional($detalle->receta)->producto_nombre ?? 'N/A' }}",
                     cantidad: {{ $detalle->cantidad }},
+                    costo: {{ $detalle->costo ?? 0 }},
+                    total: {{ $detalle->total ?? 0 }},
                     id_u_medidas: {{ $detalle->id_u_medidas }},
                     u_medida_nombre: "{{ $detalle->uMedida->nombre ?? 'N/A' }}",
                     obs: "{{ $detalle->obs ?? '' }}"
@@ -310,23 +314,42 @@
             const productoNombre = $(this).data('producto-nombre');
             const uMedidaId = $(this).data('u-medida-id');
             
-            // Guardar datos de la receta seleccionada
-            recetaSeleccionada = {
-                id: id,
-                nombre: nombre,
-                producto_id: productoId,
-                producto_nombre: productoNombre,
-                u_medida_id: uMedidaId
-            };
-            
-            // Mostrar receta seleccionada
-            $('#buscar-receta').val(nombre);
-            $('#id_recetas').val(id);
-            $('#id_productos_api').val(productoId);
-            $('#id_u_medidas').val(uMedidaId);
-            
-            // Habilitar campos restantes
-            $('#cantidad, #id_u_medidas, #obs, #btn-agregar-merma').prop('disabled', false);
+            // Obtener el costo de la receta
+            $.ajax({
+                url: '{{ route("mermas.obtener-costo") }}',
+                type: 'POST',
+                async: false,
+                data: {
+                    id_recetas: id,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    const costo = response.costo || 0;
+                    
+                    // Guardar datos de la receta seleccionada
+                    recetaSeleccionada = {
+                        id: id,
+                        nombre: nombre,
+                        producto_id: productoId,
+                        producto_nombre: productoNombre,
+                        u_medida_id: uMedidaId,
+                        costo: costo
+                    };
+                    
+                    // Mostrar receta seleccionada
+                    $('#buscar-receta').val(nombre);
+                    $('#id_recetas').val(id);
+                    $('#id_productos_api').val(productoId);
+                    $('#id_u_medidas').val(uMedidaId);
+                    
+                    // Habilitar campos restantes
+                    $('#cantidad, #id_u_medidas, #obs, #btn-agregar-merma').prop('disabled', false);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error al obtener costo de receta:', error);
+                    toastr.error('Error al obtener costo de receta. Intente nuevamente.');
+                }
+            });
             
             // Ocultar sugerencias
             $('#sugerencias-recetas').hide();
@@ -358,6 +381,10 @@
             const uMedidaNombre = $('#id_u_medidas option:selected').text();
             const obs = $('#obs').val();
             
+            // Obtener costo y calcular total
+            const costo = recetaSeleccionada.costo || 0;
+            const total = parseFloat(cantidad) * parseFloat(costo);
+            
             // Crear objeto merma
             const merma = {
                 id_areas: areaId,
@@ -367,6 +394,8 @@
                 id_productos_api: productoId,
                 producto_nombre: productoNombre,
                 cantidad: cantidad,
+                costo: costo,
+                total: total,
                 id_u_medidas: uMedidaId,
                 u_medida_nombre: uMedidaNombre,
                 obs: obs
@@ -449,6 +478,8 @@
                         <td>${merma.receta_nombre}</td>
                         <td>${merma.producto_nombre}</td>
                         <td class="text-right">${parseFloat(merma.cantidad).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(merma.costo || 0).toFixed(2)}</td>
+                        <td class="text-right">${parseFloat(merma.total || 0).toFixed(2)}</td>
                         <td>${merma.u_medida_nombre}</td>
                         <td>${merma.obs || '-'}</td>
                         <td class="text-center">
@@ -513,7 +544,8 @@
                 nombre: merma.receta_nombre,
                 producto_id: merma.id_productos_api,
                 producto_nombre: merma.producto_nombre,
-                u_medida_id: merma.id_u_medidas
+                u_medida_id: merma.id_u_medidas,
+                costo: merma.costo || 0
             };
             
             // Establecer los demás valores
@@ -654,3 +686,5 @@
     });
 </script>
 @endpush
+
+

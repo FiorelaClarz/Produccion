@@ -2,6 +2,109 @@
 
 @section('title', 'Gestión de Mermas')
 
+@push('styles')
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="//cdn.datatables.net/2.3.1/css/dataTables.dataTables.min.css">
+
+<style>
+    /* Estilos personalizados para la paginación */
+    .pagination .page-item .page-link {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+        line-height: 1.2;
+    }
+    
+    /* Ajustar tamaño de los iconos de flecha */
+    .pagination svg {
+        width: 10px;
+        height: 10px;
+    }
+    
+    /* Estilos específicos para los botones Previous y Next */
+    .pagination .page-item:first-child .page-link,
+    .pagination .page-item:last-child .page-link {
+        padding: 0.2rem 0.35rem;
+    }
+    
+    /* Asegurar alineación vertical correcta */
+    .pagination .page-item {
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Reducir el tamaño del contenedor de las flechas */
+    .pagination nav div:first-child {
+        padding: 0;
+        display: none !important;
+    }
+    
+    /* Reducir el espacio entre elementos de paginación */
+    .pagination .page-item + .page-item {
+        margin-left: -1px;
+    }
+    
+    /* Añadir esquinas redondeadas solo en los extremos */
+    .pagination .page-item:first-child .page-link {
+        border-top-left-radius: 0.2rem;
+        border-bottom-left-radius: 0.2rem;
+    }
+    
+    .pagination .page-item:last-child .page-link {
+        border-top-right-radius: 0.2rem;
+        border-bottom-right-radius: 0.2rem;
+    }
+    
+    /* Estilos mejorados para DataTables */
+    .dataTables_wrapper .dataTables_filter {
+        margin-bottom: 15px;
+        text-align: right;
+    }
+    
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 6px 12px;
+        margin-left: 6px;
+    }
+    
+    .dataTables_wrapper .table td, 
+    .dataTables_wrapper .table th {
+        vertical-align: middle;
+    }
+    
+    /* Destacar filas al pasar el cursor */
+    #dataTable tbody tr:hover {
+        background-color: rgba(0,123,255,0.1) !important;
+    }
+    
+    /* Mejorar visibilidad de la búsqueda */
+    .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        outline: 0;
+    }
+    
+    /* Estilo para las filas encontradas en la búsqueda */
+    .dataTables_wrapper tbody tr.dt-hasChild {
+        background-color: rgba(255, 243, 205, 0.5) !important;
+    }
+    
+    /* Estilos para el cuadro de búsqueda personalizado */
+    .custom-search-container {
+        margin-bottom: 1rem;
+    }
+    
+    .custom-search-container input {
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    
+    .custom-search-container input:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -46,7 +149,7 @@
                             <span class="mr-2"><i class="fas fa-info-circle text-info"></i></span>
                             <div>
                                 <strong>Filtro activo:</strong>
-                                <div class="badge badge-primary ml-2 px-3 py-2" style="font-size: 0.9rem; color: white; border-radius: 20px;">
+                                <div class="badge badge-primary ml-2 px-3 py-2" style="font-size: 0.9rem; color: blue; border-radius: 20px;">
                                     @switch($filter)
                                         @case('today')
                                             <i class="fas fa-calendar-day mr-1"></i> Hoy ({{ date('d/m/Y') }})
@@ -183,7 +286,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="d-flex justify-content-end mt-3">
+            <div class="d-flex justify-content-end mt-3" style="display: none !important;">
                 {{ $mermas->links() }}
             </div>
         </div>
@@ -265,6 +368,9 @@
 @endsection
 
 @push('scripts')
+<!-- DataTables JS -->
+<script src="//cdn.datatables.net/2.3.1/js/dataTables.min.js"></script>
+
 <script>
     $(document).ready(function() {
         // Manejar los botones de rango rápido en el modal de fechas
@@ -293,26 +399,111 @@
             $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
         });
 
-        // Inicializar DataTable
-        $('#dataTable').DataTable({
-            "paging": false,
-            "searching": true,
-            "ordering": true,
-            "info": false,
-            "responsive": true,
-            "language": {
-                "search": "Buscar:",
-                "zeroRecords": "No se encontraron registros coincidentes",
-                "infoEmpty": "Mostrando 0 a 0 de 0 registros",
-                "infoFiltered": "(filtrado de _MAX_ registros totales)",
-                "paginate": {
-                    "first": "Primero",
-                    "last": "Último",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                }
+        // Enfoque simplificado que utiliza la tabla HTML existente
+        try {
+            // Obtener referencias a elementos importantes
+            const dataTable = document.getElementById('dataTable');
+            
+            // Agregar div para la búsqueda manual si no existe DataTables
+            if (!document.querySelector('.custom-search-container')) {
+                const searchContainer = document.createElement('div');
+                searchContainer.className = 'custom-search-container mb-3';
+                searchContainer.innerHTML = `
+                    <div class="d-flex justify-content-end">
+                        <div class="form-group mb-0">
+                            <label for="customSearch" class="mr-2">Buscar:</label>
+                            <input type="text" id="customSearch" class="form-control form-control-sm" style="display: inline-block; width: auto;">
+                        </div>
+                    </div>
+                `;
+                dataTable.parentNode.insertBefore(searchContainer, dataTable);
+                
+                // Implementar búsqueda manual
+                document.getElementById('customSearch').addEventListener('keyup', function() {
+                    const searchText = this.value.toLowerCase();
+                    const rows = dataTable.querySelectorAll('tbody tr:not(.collapse)');
+                    
+                    rows.forEach(row => {
+                        let found = false;
+                        const cells = row.querySelectorAll('td:not(:nth-child(6)):not(:nth-child(7))');
+                        
+                        cells.forEach(cell => {
+                            if (cell.textContent.toLowerCase().includes(searchText)) {
+                                found = true;
+                            }
+                        });
+                        
+                        row.style.display = found ? '' : 'none';
+                        
+                        // Manejar las filas de detalles expandibles
+                        const detailId = row.getAttribute('id');
+                        if (detailId) {
+                            const detailRow = document.getElementById(detailId);
+                            if (detailRow) {
+                                detailRow.style.display = found ? '' : 'none';
+                            }
+                        }
+                    });
+                });
             }
-        });
+            
+            // Configurar ordenamiento manual si se hace clic en los encabezados
+            const headers = dataTable.querySelectorAll('thead th');
+            headers.forEach((header, index) => {
+                if (index < 5) { // Solo los primeros 5 encabezados son ordenables
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', function() {
+                        sortTable(index);
+                    });
+                }
+            });
+            
+            // Función para ordenar la tabla
+            function sortTable(columnIndex) {
+                const tbody = dataTable.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr:not(.collapse)'));
+                
+                // Determinar el orden (ascendente o descendente)
+                const currentOrder = headers[columnIndex].getAttribute('data-order') || 'asc';
+                const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+                
+                // Actualizar atributo de orden en todos los encabezados
+                headers.forEach(h => h.removeAttribute('data-order'));
+                headers[columnIndex].setAttribute('data-order', newOrder);
+                
+                // Ordenar filas
+                rows.sort((a, b) => {
+                    const aValue = a.cells[columnIndex].textContent.trim();
+                    const bValue = b.cells[columnIndex].textContent.trim();
+                    
+                    // Intentar ordenar como números si es posible
+                    const aNum = parseFloat(aValue);
+                    const bNum = parseFloat(bValue);
+                    
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return newOrder === 'asc' ? aNum - bNum : bNum - aNum;
+                    } else {
+                        return newOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                    }
+                });
+                
+                // Reordenar el DOM
+                rows.forEach(row => {
+                    tbody.appendChild(row);
+                    
+                    // Mover también las filas de detalles si existen
+                    const id = row.cells[0].textContent.trim();
+                    const detailRow = document.getElementById(`collapse-${id}`);
+                    if (detailRow) {
+                        tbody.appendChild(detailRow);
+                    }
+                });
+            }
+            
+            console.log('Configuración de tabla completada exitosamente');
+        } catch (e) {
+            console.error('Error al configurar la tabla:', e);
+        }
 
         // Configurar el modal de eliminación
         $('.delete-merma').click(function() {
@@ -322,5 +513,6 @@
     });
 </script>
 @endpush
+
 
 

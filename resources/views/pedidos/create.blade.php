@@ -79,10 +79,10 @@
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label for="buscar-receta" class="form-label">
-                                            <i class="fas fa-search me-1"></i>Buscar Receta (mínimo 3 caracteres)
+                                            <i class="fas fa-search me-1"></i>Buscar Producto (mínimo 3 caracteres)
                                         </label>
                                         <input type="text" class="form-control" id="buscar-receta" name="buscar-receta"
-                                            placeholder="Ingrese nombre de receta..." minlength="3">
+                                            placeholder="Ingrese nombre de producto..." minlength="3">
                                         <div id="sugerencias-recetas" class="list-group mt-2" style="display:none; position: absolute; z-index: 1000; width: 100%;"></div>
                                         <input type="hidden" id="id_recetas" name="id_recetas">
                                         <input type="hidden" id="id_productos_api" name="id_productos_api">

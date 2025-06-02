@@ -32,13 +32,14 @@ class MermaController extends Controller
     public function obtenerCosto(Request $request)
     {
         try {
-            $idProducto = $request->id_productos_api;
+            $idReceta = $request->id_recetas;
             $costo = 0;
             
-            if ($idProducto) {
-                $producto = Producto::find($idProducto);
-                if ($producto) {
-                    $costo = $producto->costo ?? 0;
+            if ($idReceta) {
+                // Obtener el costo_receta en lugar del costo del producto
+                $receta = RecetaCabecera::find($idReceta);
+                if ($receta) {
+                    $costo = $receta->costo_receta ?? 0;
                 }
             }
             
@@ -204,13 +205,11 @@ class MermaController extends Controller
                     throw new \Exception('La receta seleccionada no existe');
                 }
                 
-                // Obtener el costo del producto
+                // Obtener el costo de la receta
                 $costo = 0;
-                if ($receta->id_productos_api) {
-                    $producto = Producto::find($receta->id_productos_api);
-                    if ($producto) {
-                        $costo = $producto->costo ?? 0;
-                    }
+                if ($receta) {
+                    // Usar costo_receta en lugar del costo del producto
+                    $costo = $receta->costo_receta ?? 0;
                 }
                 
                 // Calcular el total (cantidad * costo)
@@ -383,11 +382,18 @@ class MermaController extends Controller
                 if (isset($detalle['id_mermas_det']) && $detalle['id_mermas_det']) {
                     $mermaDetalle = MermaDetalle::find($detalle['id_mermas_det']);
                     if ($mermaDetalle) {
+                        // Obtener el costo de la receta
+                        $costo = $receta->costo_receta ?? 0;
+                        $cantidad = floatval($detalle['cantidad']);
+                        $total = $cantidad * $costo;
+                        
                         $mermaDetalle->update([
                             'id_areas' => $detalle['id_areas'],
                             'id_recetas' => $detalle['id_recetas'],
                             'id_productos_api' => $receta->id_productos_api, // Usar el ID del producto de la receta
-                            'cantidad' => $detalle['cantidad'],
+                            'cantidad' => $cantidad,
+                            'costo' => $costo, // Actualizar el costo con costo_receta
+                            'total' => $total, // Actualizar el total
                             'id_u_medidas' => $detalle['id_u_medidas'],
                             'obs' => $detalle['obs'] ?? null,
                             'is_deleted' => false,  // Asegurarse de que no esté marcado como eliminado
@@ -397,13 +403,20 @@ class MermaController extends Controller
                     }
                 }
                 
+                // Obtener el costo de la receta
+                $costo = $receta->costo_receta ?? 0;
+                $cantidad = floatval($detalle['cantidad']);
+                $total = $cantidad * $costo;
+                
                 // Crear nuevo detalle
                 MermaDetalle::create([
                     'id_mermas_cab' => $id,
                     'id_areas' => $detalle['id_areas'],
                     'id_recetas' => $detalle['id_recetas'],
                     'id_productos_api' => $receta->id_productos_api, // Usar el ID del producto de la receta
-                    'cantidad' => $detalle['cantidad'],
+                    'cantidad' => $cantidad,
+                    'costo' => $costo, // Usar costo_receta
+                    'total' => $total, // Calcular total
                     'id_u_medidas' => $detalle['id_u_medidas'],
                     'obs' => $detalle['obs'] ?? null,
                     'is_deleted' => false
@@ -776,5 +789,6 @@ class MermaController extends Controller
         return response()->download($path, $filename)->deleteFileAfterSend(true);
     }
 }
+
 
 

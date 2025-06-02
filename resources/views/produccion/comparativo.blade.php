@@ -45,8 +45,8 @@
 
 @section('content')
 @php
-    // Obtener todas las unidades de medida para usar en la vista
-    $unidadesMedida = \App\Models\UMedida::pluck('nombre', 'id_u_medidas');
+    // Ahora $unidadesMedida viene directo del controlador, no necesitamos cargarlo aquí
+    // $unidadesMedida = \App\Models\UMedida::pluck('nombre', 'id_u_medidas');
 @endphp
 <div class="container-fluid">
     <!-- Encabezado -->
@@ -86,6 +86,54 @@
         </div>
     </div>
 
+        <!-- Resumen de Datos Filtrados -->
+        <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">Resumen de Datos Filtrados</h6>
+            <div class="small text-muted">
+                <i class="fas fa-info-circle mr-1"></i>Los totales reflejan solo los datos filtrados actualmente
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-center">CANT. PRODUCIDA</th>
+                            <!-- <th class="text-center">UM</th> -->
+                            <th class="text-center">CANT. VENDIDA</th>
+                            <th class="text-center">MERMA</th>
+                            <th class="text-center">DIFERENCIA</th>
+                            <th class="text-center">COSTO PRODUCCIÓN</th>
+                            <th class="text-center">UTILIDAD BRUTA</th>
+                            <th class="text-center">VENTAS</th>
+                            <th class="text-center">COSTO MERMA</th>
+                            <th class="text-center">COSTO DIF.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="font-weight-bold">
+                            <td class="text-right"><span id="total-produccion">{{ number_format($totales['produccion'], 2) }}</span></td>
+                            <!-- <td class="text-center">Varias UM</td> -->
+                            <td class="text-right"><span id="total-venta">{{ number_format($totales['venta'], 2) }}</span></td>
+                            <td class="text-right"><span id="total-merma">{{ number_format($totales['merma'], 2) }}</span></td>
+                            <td class="text-right"><span id="total-diferencia">{{ number_format($totales['diferencia'], 2) }}</span></td>
+                            <td class="text-right"><span id="total-costo-produccion">S/ {{ number_format($totales['costo_produccion'] ?? 0, 2) }}</span></td>
+                            @php
+                                $colorUtilidadTotal = $totales['utilidad_bruta'] < 0 ? 'text-danger' : '';
+                            @endphp
+                            <td class="text-right"><span id="total-utilidad" class="{{ $colorUtilidadTotal }}">S/ {{ number_format($totales['utilidad_bruta'], 2) }}</span></td>
+                            <td class="text-right"><span id="total-ventas">S/ {{ number_format($totales['ventas'], 2) }}</span></td>
+                            <!-- costo_merma, mermas -->
+                            <td class="text-right"><span id="total-costo-merma">S/ {{ number_format($totales['costo_merma'], 2) }}</span></td>
+                            <td class="text-right"><span id="total-costo-diferencia">S/ {{ number_format($totales['costo_diferencia'], 2) }}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Tabla de Comparación -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
@@ -102,7 +150,7 @@
                             <th>ÁREA</th>
                             <th>PRODUCTO</th>
                             <th class="text-center">CANT. PRODUCIDA</th>
-                            <th class="text-center">UM</th>
+                            <!-- <th class="text-center">UM</th> -->
                             <th class="text-center">CANT. VENDIDA</th>
                             <th class="text-center">MERMA</th>
                             <th class="text-center">DIFERENCIA</th>
@@ -120,13 +168,13 @@
                                 <td>{{ $resultado['area'] }}</td>
                                 <td>{{ $resultado['producto'] }}</td>
                                 <td class="text-right">{{ number_format($resultado['cantidad_producida'] ?? 0, 2) }}</td>
-                                <td class="text-center">
-                                    @if(isset($resultado['id_u_medidas_prodcc']) && isset($unidadesMedida[$resultado['id_u_medidas_prodcc']]))
-                                        {{ $unidadesMedida[$resultado['id_u_medidas_prodcc']] }}
-                                    @else
-                                        -
-                                    @endif
-                                </td>
+                                <!-- <td class="text-center">
+                                @if(isset($resultado['id_u_medidas_prodcc']) && isset($unidadesMedida[$resultado['id_u_medidas_prodcc']]))
+                                {{ $unidadesMedida[$resultado['id_u_medidas_prodcc']] }}
+                            @else
+                                -
+                            @endif
+                                </td> -->
                                 <td class="text-right">{{ number_format($resultado['cantidad_vendida'] ?? 0, 2) }}</td>
                                 <td class="text-right">{{ number_format($resultado['cantidad_merma'] ?? 0, 2) }}</td>
                                 <td class="text-right">{{ number_format($resultado['diferencia'] ?? 0, 2) }}</td>
@@ -137,6 +185,8 @@
                                 @endphp
                                 <td class="text-right {{ $colorUtilidad }}">S/ {{ number_format($utilidadBruta, 2) }}</td>
                                 <td class="text-right">S/ {{ number_format($resultado['ventas'] ?? 0, 2) }}</td>
+                                <!-- costo_merma, mermas -->
+                                <!-- El costo de merma se calcula multiplicando la cantidad de merma por el costo_receta de la tabla recetas_cab, y el costo de diferencia se calcula multiplicando la diferencia de cantidades por el costo_receta de la tabla recetas_cab. -->
                                 <td class="text-right">S/ {{ number_format($resultado['costo_merma'] ?? 0, 2) }}</td>
                                 <td class="text-right">S/ {{ number_format($resultado['costo_diferencia'] ?? 0, 2) }}</td>
                             </tr>
@@ -151,52 +201,6 @@
         </div>
     </div>
 
-    <!-- Resumen de Datos Filtrados -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Resumen de Datos Filtrados</h6>
-            <div class="small text-muted">
-                <i class="fas fa-info-circle mr-1"></i>Los totales reflejan solo los datos filtrados actualmente
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered mb-0">
-                    <thead class="bg-light">
-                        <tr>
-                            <th class="text-center">CANT. PRODUCIDA</th>
-                            <th class="text-center">UM</th>
-                            <th class="text-center">CANT. VENDIDA</th>
-                            <th class="text-center">MERMA</th>
-                            <th class="text-center">DIFERENCIA</th>
-                            <th class="text-center">COSTO PRODUCCIÓN</th>
-                            <th class="text-center">UTILIDAD BRUTA</th>
-                            <th class="text-center">VENTAS</th>
-                            <th class="text-center">COSTO MERMA</th>
-                            <th class="text-center">COSTO DIF.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="font-weight-bold">
-                            <td class="text-right"><span id="total-produccion">{{ number_format($totales['produccion'], 2) }}</span></td>
-                            <td class="text-center">Varias UM</td>
-                            <td class="text-right"><span id="total-venta">{{ number_format($totales['venta'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-merma">{{ number_format($totales['merma'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-diferencia">{{ number_format($totales['diferencia'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-costo-produccion">S/ {{ number_format($totales['costo_produccion'] ?? 0, 2) }}</span></td>
-                            @php
-                                $colorUtilidadTotal = $totales['utilidad_bruta'] < 0 ? 'text-danger' : '';
-                            @endphp
-                            <td class="text-right"><span id="total-utilidad" class="{{ $colorUtilidadTotal }}">S/ {{ number_format($totales['utilidad_bruta'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-ventas">S/ {{ number_format($totales['ventas'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-costo-merma">S/ {{ number_format($totales['costo_merma'], 2) }}</span></td>
-                            <td class="text-right"><span id="total-costo-diferencia">S/ {{ number_format($totales['costo_diferencia'], 2) }}</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
     
     <!-- Gráficos y estadísticas -->
     <div class="row">
@@ -324,14 +328,14 @@
                 
                 // Extraer valores numéricos directamente de las celdas DOM
                 const produccion = parseFloat($(cells[3]).text().replace(/[^\d.-]/g, '')) || 0;
-                const venta = parseFloat($(cells[5]).text().replace(/[^\d.-]/g, '')) || 0;
-                const merma = parseFloat($(cells[6]).text().replace(/[^\d.-]/g, '')) || 0;
-                const diferencia = parseFloat($(cells[7]).text().replace(/[^\d.-]/g, '')) || 0;
-                const costoProduccion = parseFloat($(cells[8]).text().replace(/[^\d.-]/g, '')) || 0;
-                const utilidad = parseFloat($(cells[9]).text().replace(/[^\d.-]/g, '')) || 0;
-                const ventas = parseFloat($(cells[10]).text().replace(/[^\d.-]/g, '')) || 0;
-                const costoMerma = parseFloat($(cells[11]).text().replace(/[^\d.-]/g, '')) || 0;
-                const costoDif = parseFloat($(cells[12]).text().replace(/[^\d.-]/g, '')) || 0;
+                const venta = parseFloat($(cells[4]).text().replace(/[^\d.-]/g, '')) || 0;
+                const merma = parseFloat($(cells[5]).text().replace(/[^\d.-]/g, '')) || 0;
+                const diferencia = parseFloat($(cells[6]).text().replace(/[^\d.-]/g, '')) || 0;
+                const costoProduccion = parseFloat($(cells[7]).text().replace(/[^\d.-]/g, '')) || 0;
+                const utilidad = parseFloat($(cells[8]).text().replace(/[^\d.-]/g, '')) || 0;
+                const ventas = parseFloat($(cells[9]).text().replace(/[^\d.-]/g, '')) || 0;
+                const costoMerma = parseFloat($(cells[10]).text().replace(/[^\d.-]/g, '')) || 0;
+                const costoDif = parseFloat($(cells[11]).text().replace(/[^\d.-]/g, '')) || 0;
                 
                 // Sumar a los totales
                 totales.produccion += produccion;
@@ -530,5 +534,6 @@
     });
 </script>
 @endpush
+
 
 
